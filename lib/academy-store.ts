@@ -1,7 +1,7 @@
 import { env } from "cloudflare:workers";
 import { getD1 } from "../db";
 import { COURSE_CATALOG, FIXED_LESSONS } from "./curriculum";
-import { REMINDER_TEMPLATES } from "./reminders";
+import { REMINDER_TEMPLATES, selectReminder } from "./reminders";
 
 export type AcademyIdentity = {
   id: string;
@@ -13,10 +13,34 @@ type RuntimeEnv = {
   TELEGRAM_BOT_TOKEN?: string;
   OLLAMA_BASE_URL?: string;
   OLLAMA_MODEL?: string;
+  ACADEMY_CRON_SECRET?: string;
+  ACADEMY_MINI_APP_URL?: string;
 };
 
 function runtimeEnv(): RuntimeEnv {
   return env as unknown as RuntimeEnv;
+}
+
+function localDateKey(timezone = "Asia/Bangkok", date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const values = Object.fromEntries(
+    parts
+      .filter((part) => part.type !== "literal")
+      .map((part) => [part.type, part.value]),
+  );
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
+function dateDistance(from: string, to: string) {
+  const fromTime = Date.parse(`${from}T00:00:00Z`);
+  const toTime = Date.parse(`${to}T00:00:00Z`);
+  if (!Number.isFinite(fromTime) || !Number.isFinite(toTime)) return 0;
+  return Math.max(0, Math.floor((toTime - fromTime) / 86_400_000));
 }
 
 function bytesToHex(bytes: ArrayBuffer) {
@@ -119,7 +143,7 @@ export async function ensureSeedData(identity: AcademyIdentity) {
   const seeded = await d1
     .prepare("SELECT value FROM schema_version WHERE key = 'academy_seed'")
     .first<{ value: string }>();
-  if (seeded?.value === "v1") return;
+  if (seeded?.value === "v2") return;
 
   const statements = [
     ...COURSE_CATALOG.map((course) =>
@@ -199,7 +223,7 @@ export async function ensureSeedData(identity: AcademyIdentity) {
     ),
     d1
       .prepare(
-        `INSERT INTO schema_version (key, value) VALUES ('academy_seed', 'v1')
+        `INSERT INTO schema_version (key, value) VALUES ('academy_seed', 'v2')
          ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
       ),
   ];
@@ -211,6 +235,14 @@ export async function ensureSeedData(identity: AcademyIdentity) {
 
 export async function getBootstrap(identity: AcademyIdentity) {
   const d1 = getD1();
+  const user = await d1
+    .prepare("SELECT timezone FROM users WHERE id = ?")
+    .bind(identity.id)
+    .first<{ timezone: string }>();
+  const timezone = user?.timezone || "Asia/Bangkok";
+  const todayKey = localDateKey(timezone);
+  await syncEnrollmentDays(identity.id, todayKey);
+
   const [catalogResult, enrollmentResult, submissionResult, noteResult] =
     await Promise.all([
       d1
@@ -223,7 +255,8 @@ export async function getBootstrap(identity: AcademyIdentity) {
       d1
         .prepare(
           `SELECT e.id, e.course_id AS courseId, e.current_day AS currentDay,
-                  e.active, c.title, c.slug, c.accent, c.daily_minutes AS dailyMinutes
+                  e.active, e.started_on AS startedOn, c.title, c.slug, c.accent,
+                  c.daily_minutes AS dailyMinutes
            FROM enrollments e
            JOIN courses c ON c.id = e.course_id
            WHERE e.user_id = ? AND e.active = 1
@@ -253,6 +286,7 @@ export async function getBootstrap(identity: AcademyIdentity) {
     courseId: string;
     currentDay: number;
     active: number;
+    startedOn: string;
     title: string;
     slug: string;
     accent: string;
@@ -296,13 +330,76 @@ export async function getBootstrap(identity: AcademyIdentity) {
     }),
   );
 
+  const allCompleted =
+    today.length > 0 &&
+    today.every((item) => item.submission?.status === "completed");
+  const lagDays = enrollments.reduce((maximum, enrollment) => {
+    const calendarDay = Math.min(
+      60,
+      dateDistance(enrollment.startedOn, todayKey) + 1,
+    );
+    return Math.max(maximum, Math.max(0, calendarDay - enrollment.currentDay));
+  }, 0);
+
   return {
     user: identity,
     catalog: catalogResult.results,
     enrollments,
     today,
     notes: noteResult.results,
+    supervision: {
+      todayKey,
+      timezone,
+      allCompleted,
+      lagDays,
+      state: allCompleted
+        ? "completed"
+        : lagDays >= 2
+          ? "interrupted"
+          : lagDays === 1
+            ? "behind"
+            : "on_track",
+    },
   };
+}
+
+async function syncEnrollmentDays(userId: string, todayKey: string) {
+  const d1 = getD1();
+  const completed = await d1
+    .prepare(
+      `SELECT e.id, e.current_day AS currentDay, s.completed_on AS completedOn
+       FROM enrollments e
+       JOIN lessons l
+         ON l.course_id = e.course_id AND l.day = e.current_day
+       LEFT JOIN submissions s
+         ON s.lesson_id = l.id AND s.user_id = e.user_id
+       WHERE e.user_id = ? AND e.active = 1`,
+    )
+    .bind(userId)
+    .all<{
+      id: number;
+      currentDay: number;
+      completedOn: string | null;
+    }>();
+
+  const advances = completed.results
+    .filter(
+      (item) =>
+        item.currentDay < 60 &&
+        Boolean(item.completedOn) &&
+        String(item.completedOn) < todayKey,
+    )
+    .map((item) =>
+      d1
+        .prepare(
+          `UPDATE enrollments
+           SET current_day = current_day + 1
+           WHERE id = ? AND user_id = ? AND current_day = ?`,
+        )
+        .bind(item.id, userId, item.currentDay),
+    );
+
+  if (advances.length > 0) await d1.batch(advances);
 }
 
 export async function updateEnrollments(
@@ -319,6 +416,11 @@ export async function updateEnrollments(
   }
 
   const d1 = getD1();
+  const timezoneRow = await d1
+    .prepare("SELECT timezone FROM users WHERE id = ?")
+    .bind(identity.id)
+    .first<{ timezone: string }>();
+  const startedOn = localDateKey(timezoneRow?.timezone || "Asia/Bangkok");
   const placeholders = uniqueCourseIds.map(() => "?").join(",");
   const valid = await d1
     .prepare(
@@ -340,22 +442,42 @@ export async function updateEnrollments(
     ...uniqueCourseIds.map((courseId) =>
       d1
         .prepare(
-          `INSERT INTO enrollments (user_id, course_id, current_day, active)
-           VALUES (?, ?, 1, 1)
+          `INSERT INTO enrollments
+             (user_id, course_id, current_day, active, started_on)
+           VALUES (?, ?, 1, 1, ?)
            ON CONFLICT(user_id, course_id) DO UPDATE SET
              active = 1,
              paused_at = NULL`,
         )
-        .bind(identity.id, courseId),
+        .bind(identity.id, courseId, startedOn),
     ),
   ];
   await d1.batch(statements);
 }
 
+const CRITERION_ALIASES: Record<string, string[]> = {
+  角色: ["你是", "身份", "担任", "扮演", "专家", "设计师", "顾问", "经理"],
+  任务: ["任务", "请完成", "负责", "需要完成", "目标是"],
+  背景: ["背景", "场景", "当前情况", "面向", "用户是", "因为"],
+  约束: ["约束", "限制", "必须", "不得", "不超过", "优先"],
+  验收标准: ["验收", "判断完成", "成功标准", "达到以下", "可交付"],
+};
+
+function matchesCriterion(normalizedAnswer: string, criterion: string) {
+  const normalizedCriterion = criterion.toLowerCase();
+  const candidates = [
+    normalizedCriterion,
+    ...(CRITERION_ALIASES[normalizedCriterion] ?? []),
+  ];
+  return candidates.some((candidate) =>
+    normalizedAnswer.includes(candidate.toLowerCase()),
+  );
+}
+
 function scoreAnswer(answer: string, criteria: string[]) {
   const normalized = answer.toLowerCase();
   const matched = criteria.filter((criterion) =>
-    normalized.includes(criterion.toLowerCase()),
+    matchesCriterion(normalized, criterion),
   );
   const lengthScore = Math.min(20, Math.floor(answer.trim().length / 5));
   const criteriaScore =
@@ -457,13 +579,21 @@ export async function submitLesson(
     ruleFeedback: rule.feedback,
   });
   const status = rule.score >= 60 ? "completed" : "needs_revision";
+  const timezoneRow = await d1
+    .prepare("SELECT timezone FROM users WHERE id = ?")
+    .bind(identity.id)
+    .first<{ timezone: string }>();
+  const completedOn =
+    status === "completed"
+      ? localDateKey(timezoneRow?.timezone || "Asia/Bangkok")
+      : null;
 
   const saved = await d1
     .prepare(
       `INSERT INTO submissions
          (user_id, enrollment_id, lesson_id, original_answer, status,
-          rule_score, rule_feedback, ai_feedback, completion_source)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          rule_score, rule_feedback, ai_feedback, completion_source, completed_on)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(user_id, lesson_id) DO UPDATE SET
          revised_answer = excluded.original_answer,
          status = excluded.status,
@@ -471,6 +601,7 @@ export async function submitLesson(
          rule_feedback = excluded.rule_feedback,
          ai_feedback = excluded.ai_feedback,
          completion_source = excluded.completion_source,
+         completed_on = excluded.completed_on,
          updated_at = CURRENT_TIMESTAMP
        RETURNING id, status, rule_score AS ruleScore, rule_feedback AS ruleFeedback,
                  ai_feedback AS aiFeedback`,
@@ -485,6 +616,7 @@ export async function submitLesson(
       rule.feedback,
       aiFeedback,
       payload.completionSource ?? "self",
+      completedOn,
     )
     .first();
 
@@ -512,4 +644,90 @@ export async function saveNote(
     )
     .bind(identity.id, payload.lessonId ?? null, content)
     .first();
+}
+
+export function verifyCronSecret(request: Request) {
+  const expected = runtimeEnv().ACADEMY_CRON_SECRET;
+  const supplied = request.headers
+    .get("authorization")
+    ?.replace(/^Bearer\s+/i, "");
+  if (!expected || !supplied || supplied !== expected) {
+    throw new Response("Cron authorization required", { status: 401 });
+  }
+}
+
+export async function createReminder(
+  userId: string,
+  requestedLevel: 1 | 2 | 3 | 4,
+) {
+  const d1 = getD1();
+  const user = await d1
+    .prepare("SELECT id, timezone FROM users WHERE id = ?")
+    .bind(userId)
+    .first<{ id: string; timezone: string }>();
+  if (!user) throw new Response("User not found", { status: 404 });
+
+  const todayKey = localDateKey(user.timezone);
+  await syncEnrollmentDays(userId, todayKey);
+
+  const state = await d1
+    .prepare(
+      `SELECT
+         COUNT(*) AS total,
+         SUM(CASE WHEN s.status = 'completed' THEN 1 ELSE 0 END) AS completed,
+         MAX(
+           CAST(julianday(?) - julianday(e.started_on) AS INTEGER)
+           - (e.current_day - 1)
+         ) AS lagDays
+       FROM enrollments e
+       JOIN lessons l
+         ON l.course_id = e.course_id AND l.day = e.current_day
+       LEFT JOIN submissions s
+         ON s.lesson_id = l.id AND s.user_id = e.user_id
+       WHERE e.user_id = ? AND e.active = 1`,
+    )
+    .bind(todayKey, userId)
+    .first<{ total: number; completed: number; lagDays: number | null }>();
+
+  const total = Number(state?.total ?? 0);
+  const completed = Number(state?.completed ?? 0);
+  if (total === 0 || completed >= total) {
+    return {
+      skipped: true as const,
+      reason: total === 0 ? "no_active_courses" : "already_completed",
+    };
+  }
+
+  const lagDays = Math.max(0, Number(state?.lagDays ?? 0));
+  const level: 1 | 2 | 3 | 4 =
+    lagDays >= 2 ? 4 : lagDays === 1 ? 3 : requestedLevel;
+  const recent = await d1
+    .prepare(
+      `SELECT template_id AS templateId
+       FROM reminder_events
+       WHERE user_id = ?
+       ORDER BY id DESC
+       LIMIT 5`,
+    )
+    .bind(userId)
+    .all<{ templateId: string }>();
+  const template = selectReminder(
+    level,
+    recent.results.map((item) => item.templateId),
+  );
+
+  await d1
+    .prepare(
+      `INSERT INTO reminder_events (user_id, template_id, level)
+       VALUES (?, ?, ?)`,
+    )
+    .bind(userId, template.id, level)
+    .run();
+
+  return {
+    skipped: false as const,
+    reminder: template,
+    miniAppUrl: runtimeEnv().ACADEMY_MINI_APP_URL ?? null,
+    state: { total, completed, lagDays, level },
+  };
 }

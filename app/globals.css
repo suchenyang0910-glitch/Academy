@@ -910,6 +910,46 @@ blockquote {
   font: 400 12px/1.65 Georgia, "Songti SC", serif;
 }
 
+.supervision-completed {
+  border-left-color: var(--sage);
+  background: rgba(82, 104, 79, 0.07);
+}
+
+.supervision-completed span {
+  color: var(--sage);
+}
+
+.supervision-behind,
+.supervision-interrupted {
+  border-left-width: 4px;
+  background: rgba(185, 99, 69, 0.1);
+}
+
+.supervision-interrupted {
+  border: 1px solid rgba(185, 99, 69, 0.3);
+  border-left: 4px solid var(--terracotta);
+}
+
+.lag-warning {
+  margin-top: 17px;
+  padding: 14px;
+  border: 1px dashed rgba(185, 99, 69, 0.45);
+  background: rgba(185, 99, 69, 0.05);
+}
+
+.lag-warning span {
+  color: var(--terracotta);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+}
+
+.lag-warning p {
+  margin: 7px 0 0;
+  color: #575248;
+  font-size: 11px;
+  line-height: 1.65;
+}
+
 .evidence-state {
   align-self: center;
   justify-self: center;

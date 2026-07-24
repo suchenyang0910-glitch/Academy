@@ -16,7 +16,7 @@ test("builds the Academy product shell without starter content", async () => {
   assert.doesNotMatch(page, /codex-preview|Your site is taking shape/i);
 });
 
-test("ships the fixed 60-day AI curriculum and reminder pool", async () => {
+test("ships five fixed 60-day curricula and the reminder pool", async () => {
   const [curriculum, reminders, hosting] = await Promise.all([
     readFile(new URL("../lib/curriculum.ts", import.meta.url), "utf8"),
     readFile(new URL("../lib/reminders.ts", import.meta.url), "utf8"),
@@ -26,6 +26,12 @@ test("ships the fixed 60-day AI curriculum and reminder pool", async () => {
   assert.match(curriculum, /Array\.from\(\{ length: 60 \}/);
   assert.match(curriculum, /结构化分析与验证/);
   assert.match(curriculum, /毕业项目 · 20例测试/);
+  assert.match(curriculum, /export const ENGLISH_LESSONS/);
+  assert.match(curriculum, /export const BUSINESS_LESSONS/);
+  assert.match(curriculum, /export const FOUNDER_NOTE_LESSONS/);
+  assert.match(curriculum, /export const QUIZ_LESSONS/);
+  assert.match(curriculum, /\.\.\.ENGLISH_LESSONS/);
+  assert.match(curriculum, /\.\.\.BUSINESS_LESSONS/);
   assert.match(reminders, /recentTemplateIds\.slice\(0, 5\)/);
   assert.match(reminders, /今天的知识不会自己长进脑子/);
   assert.equal(JSON.parse(hosting).d1, "DB");

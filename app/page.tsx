@@ -79,6 +79,13 @@ type Bootstrap = {
   enrollments: Enrollment[];
   today: TodayItem[];
   notes: Note[];
+  supervision: {
+    todayKey: string;
+    timezone: string;
+    allCompleted: boolean;
+    lagDays: number;
+    state: "completed" | "interrupted" | "behind" | "on_track";
+  };
 };
 
 type Tab = "today" | "courses" | "notes" | "progress";
@@ -371,9 +378,11 @@ function TodayView({
         </div>
       </section>
 
-      <section className="supervision-note">
-        <span>今日监督</span>
-        <p>不要求突然自律，只要求今天的任务别被明天继承。</p>
+      <section
+        className={`supervision-note supervision-${data.supervision.state}`}
+      >
+        <span>{supervisionCopy(data.supervision).label}</span>
+        <p>{supervisionCopy(data.supervision).message}</p>
       </section>
 
       <section className="lesson-section">
@@ -865,6 +874,15 @@ function ProgressView({
           <small>满分 100</small>
         </article>
       </section>
+      {data.supervision.lagDays > 0 && (
+        <section className="lag-warning">
+          <span>课程没有跳过</span>
+          <p>
+            当前比日历计划落后 {data.supervision.lagDays} 天。完成当前课程后，
+            系统会在下一个学习日解锁下一课。
+          </p>
+        </section>
+      )}
       <section className="subject-progress">
         <div className="section-heading">
           <div>
@@ -929,4 +947,29 @@ function formatDate(value: string) {
     hour: "2-digit",
     minute: "2-digit",
   }).format(parsed);
+}
+
+function supervisionCopy(supervision: Bootstrap["supervision"]) {
+  if (supervision.state === "completed") {
+    return {
+      label: "今日完成",
+      message: "今天的任务已经留下证据。系统明天再来打扰你。",
+    };
+  }
+  if (supervision.state === "interrupted") {
+    return {
+      label: "连续中断",
+      message: `已经落后 ${supervision.lagDays} 天。下一课不会解锁，先把当前任务处理掉。`,
+    };
+  }
+  if (supervision.state === "behind") {
+    return {
+      label: "需要补课",
+      message: "昨天的任务还在。它没有消失，只是开始积灰。",
+    };
+  }
+  return {
+    label: "今日监督",
+    message: "不要求突然自律，只要求今天的任务别被明天继承。",
+  };
 }

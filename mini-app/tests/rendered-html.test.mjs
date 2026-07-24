@@ -24,7 +24,10 @@ test("ships five fixed 60-day curricula and the reminder pool", async () => {
   ]);
 
   assert.match(curriculum, /Array\.from\(\{ length: 60 \}/);
-  assert.match(curriculum, /结构化分析与验证/);
+  assert.match(curriculum, /结构化分析与决策辅助/);
+  assert.match(curriculum, /认识 AI：它是什么、不是什麽/);
+  assert.match(curriculum, /先建立正确预期，再学习操作/);
+  assert.match(curriculum, /AI 给出很像答案的文字，不代表它已经查证过/);
   assert.match(curriculum, /毕业项目 · 20例测试/);
   assert.match(curriculum, /export const ENGLISH_LESSONS/);
   assert.match(curriculum, /export const BUSINESS_LESSONS/);

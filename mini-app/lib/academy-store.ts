@@ -235,7 +235,7 @@ export async function ensureSeedData(identity: AcademyIdentity) {
   const seeded = await d1
     .prepare("SELECT value FROM schema_version WHERE key = 'academy_seed'")
     .first<{ value: string }>();
-  if (seeded?.value === "v3") return;
+  if (seeded?.value === "v4") return;
 
   const statements = [
     ...COURSE_CATALOG.map((course) =>
@@ -315,7 +315,7 @@ export async function ensureSeedData(identity: AcademyIdentity) {
     ),
     d1
       .prepare(
-        `INSERT INTO schema_version (key, value) VALUES ('academy_seed', 'v3')
+        `INSERT INTO schema_version (key, value) VALUES ('academy_seed', 'v4')
          ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
       ),
   ];

@@ -2,6 +2,7 @@ import { env } from "cloudflare:workers";
 import { getD1 } from "../db";
 import { COURSE_CATALOG, FIXED_LESSONS } from "./curriculum";
 import { REMINDER_TEMPLATES, selectReminder } from "./reminders";
+import { getPaymentCatalog } from "./telegram-payments";
 
 export type AcademyIdentity = {
   id: string;
@@ -462,6 +463,7 @@ export async function getBootstrap(identity: AcademyIdentity) {
       : identity,
     referral,
     access,
+    payment: getPaymentCatalog(),
     catalog: catalogResult.results,
     enrollments,
     today,

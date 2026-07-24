@@ -60,7 +60,7 @@ test("records Telegram profile fields and tracks qualified referrals", async () 
 });
 
 test("enforces trial access and grants referral subscription rewards", async () => {
-  const [page, store, schema, migration] = await Promise.all([
+  const [page, store, schema, migration, payments] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../lib/academy-store.ts", import.meta.url), "utf8"),
     readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
@@ -68,14 +68,41 @@ test("enforces trial access and grants referral subscription rewards", async () 
       new URL("../drizzle/0003_ordinary_captain_flint.sql", import.meta.url),
       "utf8",
     ),
+    readFile(new URL("../lib/telegram-payments.ts", import.meta.url), "utf8"),
   ]);
 
   assert.match(page, /21 天免费试用/);
-  assert.match(page, /\$19\.9/);
-  assert.match(page, /\$199/);
+  assert.match(payments, /\$19\.9/);
+  assert.match(payments, /\$199/);
   assert.match(store, /export async function assertLearningAccess/);
   assert.match(store, /referral_30d/);
   assert.match(store, /21 天试用已结束/);
   assert.match(schema, /export const subscriptions/);
   assert.match(migration, /CREATE TABLE `subscriptions`/);
+});
+
+test("connects Telegram Stars invoices, payment callbacks, and refunds", async () => {
+  const [page, payments, schema, migration] = await Promise.all([
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../lib/telegram-payments.ts", import.meta.url), "utf8"),
+    readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
+    readFile(
+      new URL("../drizzle/0004_round_morbius.sql", import.meta.url),
+      "utf8",
+    ),
+  ]);
+
+  assert.match(page, /openInvoice/);
+  assert.match(page, /Stars 待定/);
+  assert.match(payments, /createInvoiceLink/);
+  assert.match(payments, /currency: "XTR"/);
+  assert.match(payments, /subscription_period = 2_592_000/);
+  assert.match(payments, /answerPreCheckoutQuery/);
+  assert.match(payments, /successful_payment/);
+  assert.match(payments, /telegram_payment_charge_id/);
+  assert.match(payments, /refunded_payment/);
+  assert.match(schema, /export const paymentOrders/);
+  assert.match(schema, /export const paymentTransactions/);
+  assert.match(migration, /CREATE TABLE `payment_orders`/);
+  assert.match(migration, /CREATE TABLE `payment_transactions`/);
 });

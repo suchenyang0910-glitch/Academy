@@ -218,6 +218,54 @@ export const subscriptions = sqliteTable(
   ],
 );
 
+export const paymentOrders = sqliteTable(
+  "payment_orders",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id),
+    planKey: text("plan_key").notNull(),
+    invoicePayload: text("invoice_payload").notNull(),
+    amountStars: integer("amount_stars").notNull(),
+    recurring: integer("recurring", { mode: "boolean" }).notNull().default(false),
+    status: text("status").notNull().default("pending"),
+    createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    uniqueIndex("payment_orders_payload_unique").on(table.invoicePayload),
+    index("payment_orders_user_status_idx").on(table.userId, table.status),
+  ],
+);
+
+export const paymentTransactions = sqliteTable(
+  "payment_transactions",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    orderId: integer("order_id")
+      .notNull()
+      .references(() => paymentOrders.id),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id),
+    telegramPaymentChargeId: text("telegram_payment_charge_id").notNull(),
+    providerPaymentChargeId: text("provider_payment_charge_id"),
+    currency: text("currency").notNull().default("XTR"),
+    amountStars: integer("amount_stars").notNull(),
+    subscriptionExpirationDate: integer("subscription_expiration_date"),
+    status: text("status").notNull().default("paid"),
+    paidAt: text("paid_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    refundedAt: text("refunded_at"),
+  },
+  (table) => [
+    uniqueIndex("payment_transactions_charge_unique").on(
+      table.telegramPaymentChargeId,
+    ),
+    index("payment_transactions_user_paid_idx").on(table.userId, table.paidAt),
+  ],
+);
+
 export const schemaVersion = sqliteTable("schema_version", {
   key: text("key").notNull(),
   value: text("value").notNull(),

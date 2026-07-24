@@ -10,6 +10,12 @@ declare global {
         ready?: () => void;
         expand?: () => void;
         openTelegramLink?: (url: string) => void;
+        openInvoice?: (
+          url: string,
+          callback?: (
+            status: "paid" | "cancelled" | "failed" | "pending",
+          ) => void,
+        ) => void;
       };
     };
   }
@@ -108,6 +114,21 @@ type Bootstrap = {
     daysRemaining: number;
     planKey: string | null;
   };
+  payment: {
+    provider: "telegram_stars";
+    currency: "XTR";
+    enabled: boolean;
+    webhookConfigured: boolean;
+    plans: Array<{
+      key: "monthly" | "quarterly" | "half_year" | "yearly";
+      label: string;
+      usdPrice: string;
+      durationDays: number;
+      recurring: boolean;
+      stars: number | null;
+      enabled: boolean;
+    }>;
+  };
   catalog: CatalogCourse[];
   enrollments: Enrollment[];
   today: TodayItem[];
@@ -122,13 +143,6 @@ type Bootstrap = {
 };
 
 type Tab = "today" | "courses" | "notes" | "progress" | "profile";
-
-const PRICING_PLANS = [
-  { key: "monthly", label: "月付", price: "$19.9", note: "$19.90／月" },
-  { key: "quarterly", label: "季度", price: "$55.9", note: "$18.63／月" },
-  { key: "half_year", label: "半年", price: "$109", note: "$18.17／月" },
-  { key: "yearly", label: "年付", price: "$199", note: "$16.58／月" },
-] as const;
 
 function academyHeaders() {
   const referralCode =
@@ -282,7 +296,11 @@ export default function Home() {
                 />
               )}
               {tab === "profile" && (
-                <ProfileView data={data} notify={notify} />
+                <ProfileView
+                  data={data}
+                  notify={notify}
+                  onPaymentFinished={load}
+                />
               )}
             </>
           )}
@@ -1010,10 +1028,13 @@ function ProgressView({
 function ProfileView({
   data,
   notify,
+  onPaymentFinished,
 }: {
   data: Bootstrap;
   notify: (message: string) => void;
+  onPaymentFinished: () => Promise<void>;
 }) {
+  const [payingPlan, setPayingPlan] = useState<string | null>(null);
   const initials =
     data.user.displayName
       .split(/\s+/)
@@ -1081,6 +1102,46 @@ function ProfileView({
     }
   }
 
+  async function startStarsPayment(planKey: string, enabled: boolean) {
+    if (!enabled) {
+      notify("这档方案还没有配置 Stars 数量");
+      return;
+    }
+    if (!window.Telegram?.WebApp?.openInvoice) {
+      notify("请从 Telegram Mini App 内发起 Stars 支付");
+      return;
+    }
+
+    setPayingPlan(planKey);
+    try {
+      const invoice = await academyRequest<{ invoiceUrl: string }>(
+        "/api/academy/payments/invoice",
+        {
+          method: "POST",
+          body: JSON.stringify({ planKey }),
+        },
+      );
+      window.Telegram.WebApp.openInvoice(invoice.invoiceUrl, (status) => {
+        setPayingPlan(null);
+        if (status === "paid" || status === "pending") {
+          notify(
+            status === "paid" ? "Stars 支付成功，正在更新权限" : "支付正在确认",
+          );
+          window.setTimeout(() => void onPaymentFinished(), 700);
+          return;
+        }
+        if (status === "failed") notify("Stars 支付失败，请稍后重试");
+      });
+    } catch (paymentError) {
+      setPayingPlan(null);
+      notify(
+        paymentError instanceof Error
+          ? paymentError.message
+          : "Stars 发票创建失败",
+      );
+    }
+  }
+
   return (
     <>
       <section className="page-intro profile-intro">
@@ -1139,22 +1200,29 @@ function ProfileView({
             : "历史课程、笔记和证据仍可查看；新课程和提交已停止。"}
         </p>
         <div className="pricing-grid" aria-label="订阅价格">
-          {PRICING_PLANS.map((plan) => (
+          {data.payment.plans.map((plan) => (
             <button
               type="button"
               key={plan.key}
-              onClick={() =>
-                notify(`${plan.label} ${plan.price}：支付渠道确认后接入`)
-              }
+              disabled={payingPlan !== null}
+              onClick={() => startStarsPayment(plan.key, plan.enabled)}
             >
-              <span>{plan.label}</span>
-              <strong>{plan.price}</strong>
-              <small>{plan.note}</small>
+              <span>
+                {plan.durationDays} 天
+                {plan.recurring ? " · 自动续费" : ""}
+              </span>
+              <strong>{plan.stars ? `⭐ ${plan.stars}` : "Stars 待定"}</strong>
+              <small>
+                {plan.usdPrice} 目标价
+                {payingPlan === plan.key ? " · 正在创建发票" : ""}
+              </small>
             </button>
           ))}
         </div>
         <small className="payment-note">
-          价格与权限状态已经生效；当前尚未连接支付服务，不会产生真实扣款。
+          {data.payment.enabled
+            ? "数字课程通过 Telegram Stars 结算。付款成功回调后才会增加权限。"
+            : "Telegram Stars 接口已接好；填写 Bot Token、Webhook Secret 和四档 Stars 数量后启用。"}
         </small>
       </section>
 

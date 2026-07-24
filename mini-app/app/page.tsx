@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
 
 declare global {
@@ -241,9 +242,14 @@ export default function Home() {
       <section className="phone" aria-label="Academy Telegram Mini App">
         <div className="paper-grain" aria-hidden="true" />
         <header className="topbar">
-          <div className="brand-mark" aria-hidden="true">
-            A
-          </div>
+          <Image
+            className="brand-mark"
+            src="/brand/academy-bot-logo.png"
+            alt="Academy"
+            width={36}
+            height={36}
+            priority
+          />
           <div className="brand-copy">
             <strong>ACADEMY</strong>
             <span>学习监督系统</span>

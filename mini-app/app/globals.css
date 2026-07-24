@@ -89,10 +89,9 @@ textarea:focus-visible {
 .brand-mark {
   width: 36px;
   height: 36px;
-  display: grid;
-  place-items: center;
-  border: 1px solid var(--ink);
-  font: 500 19px/1 Georgia, "Times New Roman", serif;
+  display: block;
+  border-radius: 50%;
+  object-fit: cover;
 }
 
 .brand-copy {

@@ -58,3 +58,24 @@ test("records Telegram profile fields and tracks qualified referrals", async () 
   assert.match(migration, /CREATE TABLE `invitations`/);
   assert.match(migration, /ADD `telegram_username`/);
 });
+
+test("enforces trial access and grants referral subscription rewards", async () => {
+  const [page, store, schema, migration] = await Promise.all([
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../lib/academy-store.ts", import.meta.url), "utf8"),
+    readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
+    readFile(
+      new URL("../drizzle/0003_ordinary_captain_flint.sql", import.meta.url),
+      "utf8",
+    ),
+  ]);
+
+  assert.match(page, /21 天免费试用/);
+  assert.match(page, /\$19\.9/);
+  assert.match(page, /\$199/);
+  assert.match(store, /export async function assertLearningAccess/);
+  assert.match(store, /referral_30d/);
+  assert.match(store, /21 天试用已结束/);
+  assert.match(schema, /export const subscriptions/);
+  assert.match(migration, /CREATE TABLE `subscriptions`/);
+});

@@ -95,7 +95,18 @@ type Bootstrap = {
     qualified: number;
     rewardTarget: number;
     rewardDays: number;
+    earnedRewards: number;
+    nextRewardRemaining: number;
     shareUrl: string | null;
+  };
+  access: {
+    active: boolean;
+    state: "trial" | "paid" | "reward" | "expired";
+    trialStartedAt: string;
+    trialEndsAt: string;
+    accessEndsAt: string;
+    daysRemaining: number;
+    planKey: string | null;
   };
   catalog: CatalogCourse[];
   enrollments: Enrollment[];
@@ -111,6 +122,13 @@ type Bootstrap = {
 };
 
 type Tab = "today" | "courses" | "notes" | "progress" | "profile";
+
+const PRICING_PLANS = [
+  { key: "monthly", label: "月付", price: "$19.9", note: "$19.90／月" },
+  { key: "quarterly", label: "季度", price: "$55.9", note: "$18.63／月" },
+  { key: "half_year", label: "半年", price: "$109", note: "$18.17／月" },
+  { key: "yearly", label: "年付", price: "$199", note: "$16.58／月" },
+] as const;
 
 function academyHeaders() {
   const referralCode =
@@ -156,7 +174,9 @@ export default function Home() {
     try {
       const bootstrap = await academyRequest<Bootstrap>("/api/academy/bootstrap");
       setData(bootstrap);
-      if (bootstrap.enrollments.length === 0) setPickerOpen(true);
+      if (bootstrap.enrollments.length === 0 && bootstrap.access.active) {
+        setPickerOpen(true);
+      }
     } catch (requestError) {
       setError(
         requestError instanceof Error ? requestError.message : "加载失败",
@@ -175,6 +195,15 @@ export default function Home() {
   function notify(message: string) {
     setToast(message);
     window.setTimeout(() => setToast(""), 1800);
+  }
+
+  function openCoursePicker() {
+    if (!data?.access.active) {
+      setTab("profile");
+      notify("试用已结束，先处理使用权限");
+      return;
+    }
+    setPickerOpen(true);
   }
 
   const completedCount =
@@ -210,25 +239,31 @@ export default function Home() {
           {!loading && error && <ErrorState message={error} onRetry={load} />}
           {!loading && data && (
             <>
+              {!data.access.active && tab !== "profile" && (
+                <ExpiredBanner onOpenPlans={() => setTab("profile")} />
+              )}
               {tab === "today" && (
                 <TodayView
                   data={data}
                   progress={progress}
                   completedCount={completedCount}
-                  onSelect={setSelected}
-                  onOpenPicker={() => setPickerOpen(true)}
+                  onSelect={(item) =>
+                    data.access.active ? setSelected(item) : setTab("profile")
+                  }
+                  onOpenPicker={openCoursePicker}
                 />
               )}
               {tab === "courses" && (
                 <CoursesView
                   catalog={data.catalog}
                   enrollments={data.enrollments}
-                  onEdit={() => setPickerOpen(true)}
+                  onEdit={openCoursePicker}
                 />
               )}
               {tab === "notes" && (
                 <NotesView
                   notes={data.notes}
+                  accessActive={data.access.active}
                   onSaved={(note) => {
                     setData((current) =>
                       current
@@ -342,6 +377,20 @@ function LoadingState() {
       <strong>正在整理今天的学习</strong>
       <p>课程不会自己完成，但页面可以先自己加载。</p>
     </div>
+  );
+}
+
+function ExpiredBanner({ onOpenPlans }: { onOpenPlans: () => void }) {
+  return (
+    <section className="expired-banner" role="status">
+      <div>
+        <span>试用已结束</span>
+        <p>历史记录仍可查看。继续提交课程需要订阅或有效邀请奖励。</p>
+      </div>
+      <button type="button" onClick={onOpenPlans}>
+        查看方案
+      </button>
+    </section>
   );
 }
 
@@ -777,9 +826,11 @@ function LessonSheet({
 
 function NotesView({
   notes,
+  accessActive,
   onSaved,
 }: {
   notes: Note[];
+  accessActive: boolean;
   onSaved: (note: Note) => void;
 }) {
   const [draft, setDraft] = useState("");
@@ -812,26 +863,32 @@ function NotesView({
         <h1>学习笔记</h1>
         <p>不是收藏内容，而是保存你自己的判断。</p>
       </section>
-      <section className="inline-composer">
-        <textarea
-          value={draft}
-          onChange={(event) => setDraft(event.target.value)}
-          placeholder="一个发现、一次判断，或明天必须继续的问题…"
-          maxLength={2000}
-        />
-        <div>
-          <span>{draft.length}/2000</span>
-          {error && <strong>{error}</strong>}
-          <button
-            className="primary-button"
-            type="button"
-            onClick={save}
-            disabled={saving || !draft.trim()}
-          >
-            {saving ? "保存中…" : "保存笔记"}
-          </button>
-        </div>
-      </section>
+      {accessActive ? (
+        <section className="inline-composer">
+          <textarea
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            placeholder="一个发现、一次判断，或明天必须继续的问题…"
+            maxLength={2000}
+          />
+          <div>
+            <span>{draft.length}/2000</span>
+            {error && <strong>{error}</strong>}
+            <button
+              className="primary-button"
+              type="button"
+              onClick={save}
+              disabled={saving || !draft.trim()}
+            >
+              {saving ? "保存中…" : "保存笔记"}
+            </button>
+          </div>
+        </section>
+      ) : (
+        <p className="locked-composer">
+          试用结束后仍可查看历史笔记，但不能继续新增学习记录。
+        </p>
+      )}
       <section className="timeline note-timeline">
         {notes.length === 0 && (
           <p className="empty-note">还没有笔记。大脑觉得记得住，通常只是它的个人意见。</p>
@@ -964,12 +1021,17 @@ function ProfileView({
       .join("")
       .slice(0, 2)
       .toUpperCase() || "A";
-  const referralProgress = Math.min(
-    100,
-    Math.round(
-      (data.referral.qualified / Math.max(1, data.referral.rewardTarget)) * 100,
-    ),
+  const qualifiedTowardNext =
+    data.referral.qualified % data.referral.rewardTarget;
+  const referralProgress = Math.round(
+    (qualifiedTowardNext / Math.max(1, data.referral.rewardTarget)) * 100,
   );
+  const accessLabel = {
+    trial: "21 天免费试用",
+    paid: "付费订阅",
+    reward: "邀请奖励",
+    expired: "已到期",
+  }[data.access.state];
 
   function localShareUrl() {
     if (data.referral.shareUrl) return data.referral.shareUrl;
@@ -1061,6 +1123,41 @@ function ProfileView({
         </div>
       </section>
 
+      <section className={`access-card access-${data.access.state}`}>
+        <div className="access-heading">
+          <div>
+            <span className="eyebrow">ACCESS STATUS</span>
+            <h2>{accessLabel}</h2>
+          </div>
+          <strong>
+            {data.access.active ? `${data.access.daysRemaining} 天` : "已锁定"}
+          </strong>
+        </div>
+        <p>
+          {data.access.active
+            ? `当前使用权限至 ${formatShortDate(data.access.accessEndsAt)}。`
+            : "历史课程、笔记和证据仍可查看；新课程和提交已停止。"}
+        </p>
+        <div className="pricing-grid" aria-label="订阅价格">
+          {PRICING_PLANS.map((plan) => (
+            <button
+              type="button"
+              key={plan.key}
+              onClick={() =>
+                notify(`${plan.label} ${plan.price}：支付渠道确认后接入`)
+              }
+            >
+              <span>{plan.label}</span>
+              <strong>{plan.price}</strong>
+              <small>{plan.note}</small>
+            </button>
+          ))}
+        </div>
+        <small className="payment-note">
+          价格与权限状态已经生效；当前尚未连接支付服务，不会产生真实扣款。
+        </small>
+      </section>
+
       <section className="referral-card">
         <div className="referral-heading">
           <div>
@@ -1068,7 +1165,7 @@ function ProfileView({
             <h2>邀请朋友一起训练</h2>
           </div>
           <strong>
-            {data.referral.qualified}/{data.referral.rewardTarget}
+            {qualifiedTowardNext}/{data.referral.rewardTarget}
           </strong>
         </div>
         <p>
@@ -1106,6 +1203,8 @@ function ProfileView({
         </button>
         <small className="qualification-note">
           有效邀请 = Telegram 认证、完成选课，并在 7 天内产生至少 3 个有效学习日。
+          已获得 {data.referral.earnedRewards} 次 30 天奖励；距离下一次还差{" "}
+          {data.referral.nextRewardRemaining} 人。
         </small>
       </section>
 
@@ -1152,6 +1251,16 @@ function formatDate(value: string) {
     day: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+  }).format(parsed);
+}
+
+function formatShortDate(value: string) {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return new Intl.DateTimeFormat("zh-CN", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
   }).format(parsed);
 }
 

@@ -51,6 +51,22 @@ function dateDistance(from: string, to: string) {
   return Math.max(0, Math.floor((toTime - fromTime) / 86_400_000));
 }
 
+function parseDatabaseDate(value: string) {
+  const normalized = value.includes("T")
+    ? value
+    : `${value.replace(" ", "T")}Z`;
+  const parsed = new Date(normalized);
+  return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
+}
+
+function databaseTimestamp(date: Date) {
+  return date.toISOString().replace("T", " ").slice(0, 19);
+}
+
+function addDays(date: Date, days: number) {
+  return new Date(date.getTime() + days * 86_400_000);
+}
+
 function bytesToHex(bytes: ArrayBuffer) {
   return Array.from(new Uint8Array(bytes))
     .map((byte) => byte.toString(16).padStart(2, "0"))
@@ -438,12 +454,14 @@ export async function getBootstrap(identity: AcademyIdentity) {
   }, 0);
 
   const referral = await getReferralSummary(identity.id, user?.referralCode);
+  const access = await getLearningAccess(identity.id);
 
   return {
     user: user
       ? { ...user, isPremium: Boolean(user.isPremium) }
       : identity,
     referral,
+    access,
     catalog: catalogResult.results,
     enrollments,
     today,
@@ -462,6 +480,139 @@ export async function getBootstrap(identity: AcademyIdentity) {
             : "on_track",
     },
   };
+}
+
+async function grantReferralRewards(userId: string, qualified: number) {
+  const d1 = getD1();
+  const milestoneCount = Math.floor(qualified / 3);
+  if (milestoneCount < 1) return 0;
+
+  const user = await d1
+    .prepare("SELECT trial_started_at AS trialStartedAt FROM users WHERE id = ?")
+    .bind(userId)
+    .first<{ trialStartedAt: string }>();
+  if (!user) return 0;
+
+  for (let milestone = 1; milestone <= milestoneCount; milestone += 1) {
+    const externalRef = `referral:${userId}:${milestone}`;
+    const exists = await d1
+      .prepare("SELECT id FROM subscriptions WHERE external_ref = ?")
+      .bind(externalRef)
+      .first();
+    if (exists) continue;
+
+    const latest = await d1
+      .prepare(
+        `SELECT ends_at AS endsAt
+         FROM subscriptions
+         WHERE user_id = ? AND status = 'active'
+         ORDER BY datetime(ends_at) DESC LIMIT 1`,
+      )
+      .bind(userId)
+      .first<{ endsAt: string }>();
+    const trialEnd = addDays(parseDatabaseDate(user.trialStartedAt), 21);
+    const latestEnd = latest?.endsAt
+      ? parseDatabaseDate(latest.endsAt)
+      : trialEnd;
+    const now = new Date();
+    const startsAt = new Date(
+      Math.max(now.getTime(), trialEnd.getTime(), latestEnd.getTime()),
+    );
+    const endsAt = addDays(startsAt, 30);
+
+    await d1
+      .prepare(
+        `INSERT INTO subscriptions
+           (user_id, plan_key, status, source, starts_at, ends_at, external_ref)
+         VALUES (?, 'referral_30d', 'active', 'referral', ?, ?, ?)
+         ON CONFLICT(external_ref) DO NOTHING`,
+      )
+      .bind(
+        userId,
+        databaseTimestamp(startsAt),
+        databaseTimestamp(endsAt),
+        externalRef,
+      )
+      .run();
+  }
+
+  const rewards = await d1
+    .prepare(
+      `SELECT COUNT(*) AS count
+       FROM subscriptions
+       WHERE user_id = ? AND source = 'referral'`,
+    )
+    .bind(userId)
+    .first<{ count: number }>();
+  return Number(rewards?.count ?? 0);
+}
+
+async function getLearningAccess(userId: string) {
+  const d1 = getD1();
+  const user = await d1
+    .prepare("SELECT trial_started_at AS trialStartedAt FROM users WHERE id = ?")
+    .bind(userId)
+    .first<{ trialStartedAt: string }>();
+  if (!user) throw new Response("User not found", { status: 404 });
+
+  const trialStartedAt = parseDatabaseDate(user.trialStartedAt);
+  const trialEndsAt = addDays(trialStartedAt, 21);
+  const latest = await d1
+    .prepare(
+      `SELECT plan_key AS planKey, source, starts_at AS startsAt, ends_at AS endsAt
+       FROM subscriptions
+       WHERE user_id = ? AND status = 'active'
+       ORDER BY datetime(ends_at) DESC LIMIT 1`,
+    )
+    .bind(userId)
+    .first<{
+      planKey: string;
+      source: string;
+      startsAt: string;
+      endsAt: string;
+    }>();
+  const latestEnd = latest?.endsAt
+    ? parseDatabaseDate(latest.endsAt)
+    : new Date(0);
+  const accessEndsAt =
+    latestEnd.getTime() > trialEndsAt.getTime() ? latestEnd : trialEndsAt;
+  const now = new Date();
+  const active = accessEndsAt.getTime() > now.getTime();
+  const subscriptionWins = latestEnd.getTime() > trialEndsAt.getTime();
+
+  return {
+    active,
+    state: !active
+      ? ("expired" as const)
+      : now.getTime() < trialEndsAt.getTime()
+        ? ("trial" as const)
+        : subscriptionWins
+        ? latest?.source === "payment"
+          ? ("paid" as const)
+          : ("reward" as const)
+        : ("trial" as const),
+    trialStartedAt: trialStartedAt.toISOString(),
+    trialEndsAt: trialEndsAt.toISOString(),
+    accessEndsAt: accessEndsAt.toISOString(),
+    daysRemaining: active
+      ? Math.max(
+          1,
+          Math.ceil((accessEndsAt.getTime() - now.getTime()) / 86_400_000),
+        )
+      : 0,
+    planKey: subscriptionWins ? latest?.planKey ?? null : null,
+  };
+}
+
+export async function assertLearningAccess(identity: AcademyIdentity) {
+  const access = await getLearningAccess(identity.id);
+  if (!access.active) {
+    throw new Response(
+      "21 天试用已结束。请选择订阅或使用有效邀请奖励后继续学习。",
+      { status: 402 },
+    );
+  }
+  return access;
 }
 
 async function getReferralSummary(
@@ -532,15 +683,19 @@ async function getReferralSummary(
     .bind(userId)
     .first<{ total: number; pending: number | null; qualified: number | null }>();
 
+  const qualified = Number(stats?.qualified ?? 0);
+  const earnedRewards = await grantReferralRewards(userId, qualified);
   const code = referralCode || (await referralCodeFor(userId));
   const botUsername = runtimeEnv().TELEGRAM_BOT_USERNAME?.replace(/^@/, "");
   return {
     code,
     total: Number(stats?.total ?? 0),
     pending: Number(stats?.pending ?? 0),
-    qualified: Number(stats?.qualified ?? 0),
+    qualified,
     rewardTarget: 3,
     rewardDays: 30,
+    earnedRewards,
+    nextRewardRemaining: 3 - (qualified % 3),
     shareUrl: botUsername
       ? `https://t.me/${botUsername}?startapp=ref_${code}`
       : null,
@@ -590,6 +745,7 @@ export async function updateEnrollments(
   identity: AcademyIdentity,
   courseIds: string[],
 ) {
+  await assertLearningAccess(identity);
   if (courseIds.length < 1 || courseIds.length > 3) {
     throw new Response("请选择 1–3 门课程", { status: 400 });
   }
@@ -731,6 +887,7 @@ export async function submitLesson(
     completionSource?: string;
   },
 ) {
+  await assertLearningAccess(identity);
   const answer = payload.answer.trim();
   if (answer.length < 20) {
     throw new Response("主动练习至少需要 20 个字", { status: 400 });
@@ -811,6 +968,7 @@ export async function saveNote(
   identity: AcademyIdentity,
   payload: { content: string; lessonId?: string | null },
 ) {
+  await assertLearningAccess(identity);
   const content = payload.content.trim();
   if (!content) {
     throw new Response("笔记内容不能为空", { status: 400 });

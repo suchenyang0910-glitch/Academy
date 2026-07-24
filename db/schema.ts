@@ -192,6 +192,32 @@ export const invitations = sqliteTable(
   ],
 );
 
+export const subscriptions = sqliteTable(
+  "subscriptions",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id),
+    planKey: text("plan_key").notNull(),
+    status: text("status").notNull().default("active"),
+    source: text("source").notNull(),
+    startsAt: text("starts_at").notNull(),
+    endsAt: text("ends_at").notNull(),
+    externalRef: text("external_ref"),
+    createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    uniqueIndex("subscriptions_external_ref_unique").on(table.externalRef),
+    index("subscriptions_user_status_end_idx").on(
+      table.userId,
+      table.status,
+      table.endsAt,
+    ),
+  ],
+);
+
 export const schemaVersion = sqliteTable("schema_version", {
   key: text("key").notNull(),
   value: text("value").notNull(),

@@ -1044,13 +1044,6 @@ function ProfileView({
   onPaymentFinished: () => Promise<void>;
 }) {
   const [payingPlan, setPayingPlan] = useState<string | null>(null);
-  const initials =
-    data.user.displayName
-      .split(/\s+/)
-      .map((part) => part[0])
-      .join("")
-      .slice(0, 2)
-      .toUpperCase() || "A";
   const qualifiedTowardNext =
     data.referral.qualified % data.referral.rewardTarget;
   const referralProgress = Math.round(
@@ -1153,46 +1146,6 @@ function ProfileView({
 
   return (
     <>
-      <section className="page-intro profile-intro">
-        <span className="eyebrow">TELEGRAM PROFILE</span>
-        <h1>个人中心</h1>
-        <p>身份来自 Telegram 认证，不使用前端填写的信息冒充用户。</p>
-      </section>
-
-      <section className="identity-card">
-        <div className="identity-avatar" aria-hidden="true">
-          {initials}
-        </div>
-        <div className="identity-copy">
-          <span>{data.user.isPremium ? "TELEGRAM PREMIUM" : "ACADEMY LEARNER"}</span>
-          <h2>{data.user.displayName}</h2>
-          <p>
-            {data.user.telegramUsername
-              ? `@${data.user.telegramUsername}`
-              : "未设置 Telegram 用户名"}
-          </p>
-        </div>
-      </section>
-
-      <section className="profile-facts" aria-label="Telegram 个人信息">
-        <div>
-          <span>Telegram ID</span>
-          <strong>{data.user.telegramId ?? "Founder 本地模式"}</strong>
-        </div>
-        <div>
-          <span>语言</span>
-          <strong>{data.user.languageCode ?? "未提供"}</strong>
-        </div>
-        <div>
-          <span>学习时区</span>
-          <strong>{data.user.timezone}</strong>
-        </div>
-        <div>
-          <span>当前课程</span>
-          <strong>{data.enrollments.length} / 3 门</strong>
-        </div>
-      </section>
-
       <section className={`access-card access-${data.access.state}`}>
         <div className="access-heading">
           <div>
@@ -1285,13 +1238,6 @@ function ProfileView({
         </small>
       </section>
 
-      <section className="privacy-note">
-        <span>隐私说明</span>
-        <p>
-          Academy 记录 Telegram ID、姓名、用户名、语言与 Premium 状态，用于身份识别、
-          个人中心和邀请防刷。头像地址仅记录，不下载为公开素材。
-        </p>
-      </section>
     </>
   );
 }

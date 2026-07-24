@@ -1,6 +1,6 @@
 # Academy — 产品需求文档
 
-> 版本：v3.1
+> 版本：v3.2
 > 最后更新：2026-07-24
 > 项目路径：`E:\academy\`
 > 产品形态：Telegram Bot + Telegram Mini App
@@ -81,19 +81,46 @@ Agent 发布 / Marketplace（最后阶段）
 
 当前 21 天验证**只建设 Academy Core**。Knowledge Hub、OpenMAIC Classroom、Agent Lab 与 Marketplace 均不进入首轮付费验证范围。
 
-### 1.6 五个长期能力模块
+### 1.6 可插拔学习平台总架构
+
+```text
+Academy Core
+├── Knowledge Hub / Knowledge Graph
+├── Learning Planner
+├── Course Engine
+│   ├── Markdown / 图文课
+│   ├── PPT / 视频课
+│   └── Interactive Classroom API
+│       ├── OpenMAIC Adapter
+│       └── Future Classroom Adapter
+├── Agent Lab
+│   ├── Agent Builder API
+│   │   ├── Flowise Adapter
+│   │   ├── Dify Adapter
+│   │   └── LangGraph / Python Adapter
+│   └── Academy Runtime
+├── Assessment
+├── Agent Coach
+└── Publish / Marketplace
+```
+
+任何第三方课堂、工作流编辑器、模型、检索或执行环境都是 Provider；Academy Core 不得直接绑定某一项目的数据格式、用户身份或业务规则。
+
+### 1.7 七个长期能力模块
 
 | 模块 | 负责什么 | 当前状态 |
 |---|---|---|
 | Knowledge Hub | 归档 GitHub、官方文档、PDF、视频等来源，并保留来源、版本与人工审核记录 | 素材采集与人工审核，非用户功能 |
 | Academy Core | 用户、选课、监督、知识检查、进度、证据、付费与邀请 | 当前 MVP 核心 |
 | Interactive Classroom | 用互动课、讨论、白板、模拟或 PBL 深讲一个专题 | 后续可接 OpenMAIC 或同类引擎 |
+| Knowledge Graph | 关联知识点、先修关系、错误类型、课程、项目和能力证据 | 后期由固定课程关系开始积累 |
+| Learning Planner | 根据目标、课程进度、错题和项目状态推荐下一步 | MVP 使用固定规则，后期再个性化 |
 | Agent Lab | GitHub 模板、代码/工作流、测试、部署与项目证据 | Day 60 AI 毕业项目的后续强化 |
 | Publish / Marketplace | 发布经过验证的 Agent、模板、案例或服务 | 最后阶段，不作为早期假设 |
 
-### 1.7 OpenMAIC 接入原则
+### 1.8 Interactive Classroom API 与 OpenMAIC Adapter
 
-OpenMAIC 是候选互动课堂引擎，不是 Academy 的替代品。接入必须满足：
+Interactive Classroom API 是 Academy 的课堂协议；OpenMAIC 只是第一个候选 Adapter，不是 Academy 的替代品。接入必须满足：
 
 1. 先作为独立环境完成内部评估，不改造主学习闭环；
 2. 对同一主题比较固定 Academy 课与互动课堂的完成率、正确率、学习时长、生成成本和移动端体验；
@@ -102,7 +129,18 @@ OpenMAIC 是候选互动课堂引擎，不是 Academy 的替代品。接入必�
 5. 接入前必须完成开源许可证、商业授权、用户数据边界、模型 API 成本和运维容量审查；
 6. 互动课堂不得自行降低 Academy 毕业标准、改写用户进度或发放认证。
 
-### 1.8 Agent Coach
+### 1.9 Agent Builder 与 Academy Runtime
+
+Agent Lab 必须区分“构建”和“执行”：
+
+| 层 | 职责 | 示例 |
+|---|---|---|
+| Agent Builder | 让用户拖拽、编写或编辑工作流 | Flowise、Dify、LangGraph、Python 模板 |
+| Academy Runtime | 保存项目身份、执行授权、测试证据、部署状态、版本与能力记录 | Academy 自有服务与数据模型 |
+
+Builder 可以被替换；Runtime、用户项目身份、证据和发布权限必须始终归 Academy Core 管理。MVP 不建设通用 Runtime，只为毕业项目保存可验证运行结果；企业版再扩展受控执行、密钥隔离、审计与部署策略。
+
+### 1.10 Agent Coach
 
 Agent Coach 是 Academy 的差异化能力，而不是通用聊天入口：
 
@@ -117,6 +155,56 @@ Agent Coach 是 Academy 的差异化能力，而不是通用聊天入口：
 ```
 
 MVP 中 Agent Coach 仅使用固定规则：连续错 2 次推荐回看与补题；一周后进入复习队列；完成模块后推荐既定下一课。不得让模型自动重排课程、降低标准或替用户完成项目。
+
+### 1.11 Academy Architecture Principles（架构原则）
+
+1. **Core First**：用户、学习记录、课程版本、知识图谱、能力图谱、证据、订阅和发布权限只由 Academy Core 管理。
+2. **Adapter First**：OpenMAIC、Flowise、Dify、模型、检索和执行环境均必须经适配器接入。
+3. **Replaceable by Design**：任何外部组件停止维护、价格变化、许可证变化或体验不足时，应能替换而不迁移核心用户数据。
+4. **Knowledge-Centric**：知识点、先修关系、错误类型和学习路径是 Academy 的长期资产，不依赖单一课堂或 Agent 引擎。
+5. **Evidence Before Certificate**：认证只能由可核验项目、测试和真实结果产生，不能由 Provider 的完成页单独发放。
+6. **Open Ecosystem**：未来允许更多课堂、Agent、评测和内容提供方接入，但所有 Provider 必须遵守 Academy 的身份、进度、证据与安全协议。
+
+### 1.12 Academy Plugin SDK（协议草案）
+
+以下是 Academy 的领域接口，不是要求第三方直接执行的代码。每个 Adapter 在自己的服务中实现并转换为第三方 API。
+
+```ts
+interface ClassroomProvider {
+  generateCourse(input: ClassroomSource): Promise<ClassroomDraft>;
+  startLesson(input: LessonLaunch): Promise<ClassroomSession>;
+  submitQuiz(input: QuizSubmission): Promise<AssessmentResult>;
+  getProgress(sessionId: string): Promise<ProviderProgress>;
+  stopLesson(sessionId: string): Promise<void>;
+}
+
+interface AgentProvider {
+  createWorkflow(input: ProjectTemplate): Promise<WorkflowReference>;
+  execute(input: ExecutionRequest): Promise<ExecutionResult>;
+  publish(input: PublishRequest): Promise<PublishResult>;
+}
+
+interface KnowledgeProvider {
+  search(input: KnowledgeQuery): Promise<KnowledgeResult[]>;
+  retrieve(input: KnowledgeReference): Promise<KnowledgeDocument>;
+  recommend(input: LearningContext): Promise<KnowledgeRecommendation[]>;
+}
+```
+
+所有接口都必须携带 Academy 内部的用户、课程版本、项目或会话引用；不得将 Telegram 身份、订阅状态或原始学习证据交由第三方作为唯一事实来源。
+
+### 1.13 Capability Matrix（能力矩阵）
+
+| 能力 | Academy Core | OpenMAIC Adapter | Flowise / Dify Adapter | 外部 Provider |
+|---|---|---|---|---|
+| 用户、订阅、Telegram 身份 | 主责 | 不持有 | 不持有 | 不持有 |
+| Knowledge Hub / Graph | 主责 | 可读取已授权资料 | 可读取已授权资料 | 通过 API 受限访问 |
+| Learning Planner / Agent Coach | 主责 | 提供课堂事件 | 提供项目事件 | 不可直接改路径 |
+| Course Engine | 主责 | 生成或呈现互动课堂 | 不负责 | 可提供内容素材 |
+| Quiz 与能力评估 | 主责 | 回传课堂 Quiz 结果 | 不负责 | 不可单独判定毕业 |
+| Agent Builder | 任务、模板与证据 | 不负责 | 构建工作流 | 可作为实现 |
+| Runtime / 执行审计 | 主责 | 不负责 | 可执行但需回传结果 | 不可持有最终证据 |
+| Marketplace / 发布权限 | 主责 | 不负责 | 可导出工作流 | 不负责 |
 
 ---
 

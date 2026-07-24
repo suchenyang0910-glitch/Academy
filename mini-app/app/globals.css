@@ -1218,10 +1218,23 @@ blockquote {
 
 .catalog-card {
   --course-accent: var(--terracotta);
+  width: 100%;
   padding: 17px;
   border: 1px solid var(--line);
   border-top: 4px solid var(--course-accent);
   background: rgba(251, 248, 241, 0.5);
+  text-align: left;
+  cursor: pointer;
+}
+
+.catalog-card:disabled {
+  cursor: default;
+  opacity: 0.62;
+}
+
+.catalog-card:not(:disabled):active {
+  transform: scale(0.99);
+  background: rgba(251, 248, 241, 0.88);
 }
 
 .catalog-card > span {
@@ -1269,6 +1282,175 @@ blockquote {
 .catalog-card em {
   margin-left: auto;
   color: var(--sage);
+}
+
+.course-path {
+  --course-accent: var(--terracotta);
+  padding: 24px 0 42px;
+}
+
+.path-back {
+  margin: 0 0 24px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.course-path > h1 {
+  margin: 7px 0 7px;
+  font: 500 39px/1.03 Georgia, "Songti SC", serif;
+  letter-spacing: -0.04em;
+}
+
+.course-path > p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.path-progress {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 7px;
+  margin: 26px 0;
+}
+
+.path-progress span,
+.path-progress strong {
+  font-size: 10px;
+}
+
+.path-progress span {
+  color: var(--muted);
+}
+
+.path-progress strong {
+  color: var(--course-accent);
+  font-family: Georgia, serif;
+  letter-spacing: 0.08em;
+}
+
+.path-progress i {
+  grid-column: 1 / -1;
+  height: 4px;
+  overflow: hidden;
+  background: rgba(55, 52, 44, 0.12);
+}
+
+.path-progress i::after {
+  content: "";
+  display: block;
+  width: var(--path-progress);
+  height: 100%;
+  background: var(--course-accent);
+}
+
+.path-current,
+.path-next,
+.continuation-card {
+  padding: 17px;
+  border: 1px solid var(--line);
+  background: rgba(251, 248, 241, 0.56);
+}
+
+.path-current {
+  border-left: 4px solid var(--course-accent);
+}
+
+.path-current > strong {
+  display: block;
+  margin: 8px 0 5px;
+  font: 500 22px/1.2 Georgia, "Songti SC", serif;
+}
+
+.path-current > p,
+.path-next > p,
+.continuation-card > p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.path-current .primary-button {
+  width: 100%;
+  margin-top: 17px;
+}
+
+.path-next,
+.continuation-card {
+  margin-top: 13px;
+}
+
+.path-next:not(.is-open) {
+  opacity: 0.68;
+}
+
+.path-next h2,
+.continuation-card h2 {
+  margin: 6px 0;
+  font: 500 23px/1.1 Georgia, "Songti SC", serif;
+}
+
+.path-next > div {
+  display: grid;
+  gap: 7px;
+  margin-top: 14px;
+}
+
+.path-next > div button {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 11px;
+  border: 1px solid var(--line);
+  background: rgba(244, 240, 231, 0.5);
+  text-align: left;
+  cursor: pointer;
+}
+
+.path-next > div button:disabled {
+  cursor: default;
+}
+
+.path-next > div span,
+.path-next > div i {
+  color: var(--muted);
+  font-size: 9px;
+  font-style: normal;
+}
+
+.path-next > div strong {
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.path-next > div i {
+  color: var(--course-accent);
+}
+
+.continuation-card {
+  background: rgba(185, 99, 69, 0.05);
+}
+
+.continuation-card > strong {
+  display: block;
+  margin-top: 14px;
+  color: var(--terracotta);
+  font-size: 11px;
+}
+
+.continuation-card.is-ready {
+  border-color: var(--course-accent);
+  background: rgba(82, 104, 79, 0.09);
 }
 
 .lesson-page-header {

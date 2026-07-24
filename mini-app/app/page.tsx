@@ -288,6 +288,11 @@ export default function Home() {
                 <CoursesView
                   catalog={data.catalog}
                   enrollments={data.enrollments}
+                  today={data.today}
+                  learningAhead={data.learningAhead}
+                  onSelect={(item) =>
+                    data.access.active ? setSelected(item) : setTab("profile")
+                  }
                   onEdit={openCoursePicker}
                 />
               )}
@@ -753,13 +758,53 @@ function CoursePicker({
 function CoursesView({
   catalog,
   enrollments,
+  today,
+  learningAhead,
+  onSelect,
   onEdit,
 }: {
   catalog: CatalogCourse[];
   enrollments: Enrollment[];
+  today: TodayItem[];
+  learningAhead: TodayItem[];
+  onSelect: (item: TodayItem) => void;
   onEdit: () => void;
 }) {
+  const [focusedCourseId, setFocusedCourseId] = useState<string | null>(null);
   const activeIds = new Set(enrollments.map((item) => item.courseId));
+  const focusedEnrollment = enrollments.find(
+    (item) => item.courseId === focusedCourseId,
+  );
+  const focusedCourse = catalog.find((item) => item.id === focusedCourseId);
+  const currentLesson = today.find(
+    (item) => item.enrollment.courseId === focusedCourseId,
+  );
+  const mainDone =
+    currentLesson?.submission?.status === "completed" &&
+    currentLesson.submission.completionSource !== "extra";
+  const nextLessons = learningAhead.filter(
+    (item) => item.enrollment.courseId === focusedCourseId,
+  );
+
+  if (focusedCourse && focusedEnrollment && currentLesson) {
+    const continuation = continuationFor(focusedCourse.id);
+    const hasGraduated =
+      focusedEnrollment.currentDay >= focusedCourse.durationDays && mainDone;
+    return (
+      <CoursePathView
+        course={focusedCourse}
+        enrollment={focusedEnrollment}
+        currentLesson={currentLesson}
+        nextLessons={nextLessons}
+        mainDone={Boolean(mainDone)}
+        graduated={hasGraduated}
+        continuation={continuation}
+        onBack={() => setFocusedCourseId(null)}
+        onSelect={onSelect}
+      />
+    );
+  }
+
   return (
     <>
       <section className="page-intro">
@@ -771,9 +816,12 @@ function CoursesView({
         {catalog.map((course) => {
           const active = activeIds.has(course.id);
           return (
-            <article
+            <button
+              type="button"
               className="catalog-card"
               key={course.id}
+              onClick={() => active && setFocusedCourseId(course.id)}
+              disabled={!active}
               style={{ "--course-accent": course.accent } as React.CSSProperties}
             >
               <span>{course.subtitle}</span>
@@ -782,9 +830,9 @@ function CoursesView({
               <div>
                 <strong>{course.durationDays} DAYS</strong>
                 <small>{course.dailyMinutes} 分钟／天</small>
-                <em>{active ? "训练中" : "未选择"}</em>
+                <em>{active ? "查看路径 →" : "未选择"}</em>
               </div>
-            </article>
+            </button>
           );
         })}
       </div>
@@ -792,6 +840,111 @@ function CoursesView({
         调整我的课程
       </button>
     </>
+  );
+}
+
+function continuationFor(courseId: string) {
+  const paths: Record<string, { title: string; description: string }> = {
+    english: {
+      title: "English Level 2 · 真实场景沟通",
+      description: "从固定表达进入追问、协作与 10 分钟以上的连续真实交流。",
+    },
+    "ai-command-skills": {
+      title: "AI Level 2 · 工作流与可运行原型",
+      description: "从单个指令进入多工具工作流、评估集与可运行的个人原型。",
+    },
+    business: {
+      title: "Business Extension · 市场验证与成交",
+      description: "把机会判断延展到连续访谈、报价测试和可复核的购买意向。",
+    },
+    "founder-note": {
+      title: "Founder Note Level 2 · 决策系统",
+      description: "从每日记录进入决策复盘、反例库与个人判断 SOP。",
+    },
+    quiz: {
+      title: "Quiz Level 2 · 情景挑战",
+      description: "从知识提取进入跨场景判断、限时作答与错误模式训练。",
+    },
+  };
+  return paths[courseId];
+}
+
+function CoursePathView({
+  course,
+  enrollment,
+  currentLesson,
+  nextLessons,
+  mainDone,
+  graduated,
+  continuation,
+  onBack,
+  onSelect,
+}: {
+  course: CatalogCourse;
+  enrollment: Enrollment;
+  currentLesson: TodayItem;
+  nextLessons: TodayItem[];
+  mainDone: boolean;
+  graduated: boolean;
+  continuation?: { title: string; description: string };
+  onBack: () => void;
+  onSelect: (item: TodayItem) => void;
+}) {
+  return (
+    <section className="course-path" style={{ "--course-accent": course.accent } as React.CSSProperties}>
+      <button className="path-back" type="button" onClick={onBack}>
+        ‹ 返回课程
+      </button>
+      <span className="eyebrow">{course.subtitle.toUpperCase()}</span>
+      <h1>{course.title}</h1>
+      <p>{course.summary}</p>
+
+      <div className="path-progress">
+        <span>60 天主线</span>
+        <strong>DAY {String(enrollment.currentDay).padStart(2, "0")}</strong>
+        <i style={{ "--path-progress": `${Math.min(100, (enrollment.currentDay / course.durationDays) * 100)}%` } as React.CSSProperties} />
+      </div>
+
+      <section className="path-current">
+        <span className="eyebrow">CURRENT REQUIRED</span>
+        <strong>{currentLesson.lesson?.title}</strong>
+        <p>{currentLesson.lesson?.objective}</p>
+        <button className="primary-button" type="button" onClick={() => onSelect(currentLesson)}>
+          {mainDone ? "查看今天的学习证据" : "继续今天的主线 →"}
+        </button>
+      </section>
+
+      {!graduated && (
+        <section className={`path-next ${mainDone ? "is-open" : ""}`}>
+          <span className="eyebrow">OPTIONAL NEXT</span>
+          <h2>继续加学</h2>
+          <p>{mainDone ? "主线完成后，这 3 节可立即继续学习。" : "完成当前主线后解锁，不抢占明天的必修。"}</p>
+          <div>
+            {nextLessons.map((item) => (
+              <button
+                key={item.lesson?.id}
+                type="button"
+                disabled={!mainDone}
+                onClick={() => onSelect(item)}
+              >
+                <span>DAY {String(item.lesson?.day ?? 0).padStart(2, "0")}</span>
+                <strong>{item.lesson?.title}</strong>
+                <i>{item.submission?.status === "completed" ? "已完成" : mainDone ? "开始 →" : "待解锁"}</i>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {continuation && (
+        <section className={`continuation-card ${graduated ? "is-ready" : ""}`}>
+          <span className="eyebrow">AFTER DAY 60</span>
+          <h2>{continuation.title}</h2>
+          <p>{continuation.description}</p>
+          <strong>{graduated ? "已满足解锁条件 · 即将进入下一阶段" : "完成 Day 60 能力验证后解锁"}</strong>
+        </section>
+      )}
+    </section>
   );
 }
 

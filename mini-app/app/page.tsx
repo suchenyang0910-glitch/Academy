@@ -747,6 +747,7 @@ function LessonSheet({
   const lesson = item.lesson!;
   const [answer, setAnswer] = useState("");
   const [submission, setSubmission] = useState(item.submission);
+  const [knowledgeRead, setKnowledgeRead] = useState(Boolean(item.submission));
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -799,13 +800,29 @@ function LessonSheet({
         </section>
 
         <section className="lesson-reading">
-          <span className="eyebrow">必要输入</span>
+          <span className="eyebrow">01 · LEARN FIRST</span>
+          <h2>先学，再做</h2>
           <p>{lesson.content}</p>
+          {!knowledgeRead && (
+            <button
+              className="secondary-button learn-complete-button"
+              type="button"
+              onClick={() => setKnowledgeRead(true)}
+            >
+              我已看完，开始练习 →
+            </button>
+          )}
         </section>
 
         <section className="practice-card">
-          <span className="eyebrow">ACTIVE PRACTICE</span>
+          <span className="eyebrow">02 · ACTIVE PRACTICE</span>
           <h2>必须留下输出</h2>
+          {!knowledgeRead ? (
+            <p className="practice-locked">
+              先完成上方的学习卡。看完句型和示例后，再开始写你的答案。
+            </p>
+          ) : (
+            <>
           <p>{lesson.practicePrompt}</p>
           <div className="criteria-row">
             {lesson.criteria.map((criterion) => (
@@ -826,10 +843,12 @@ function LessonSheet({
             className="primary-button"
             type="button"
             onClick={submit}
-            disabled={submitting}
+            disabled={submitting || !answer.trim()}
           >
             {submitting ? "正在检查…" : submission ? "修正后重新提交" : "提交学习证据"}
           </button>
+            </>
+          )}
         </section>
 
         {submission && (

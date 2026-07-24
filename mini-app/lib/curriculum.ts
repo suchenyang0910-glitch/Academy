@@ -309,6 +309,7 @@ export const AI_LESSONS = Array.from({ length: 60 }, (_, index) =>
 type SpiralLevel = {
   title: string;
   core: string;
+  teaching?: string;
   objective: string;
   practice: string;
   criteria: string[];
@@ -336,7 +337,9 @@ function buildSpiralCourse(
       round,
       title: `Level ${level} · ${definition.title}`,
       objective: definition.objective,
-      content: `${definition.core}。本轮：${roundMeta.name}。${roundMeta.instruction}`,
+      content:
+        definition.teaching ??
+        `先理解这一点：${definition.core}。\n\n本轮学习方式：${roundMeta.name}。${roundMeta.instruction}`,
       practicePrompt: `${definition.practice}\n\n本轮要求：${roundMeta.instruction}`,
       criteria: definition.criteria,
       estimatedMinutes,
@@ -358,6 +361,17 @@ const ENGLISH_LEVELS: SpiralLevel[] = [
   {
     title: "介绍自己",
     core: "先让对方听懂你是谁、在哪里、做什么",
+    teaching: `先学这 4 个可直接使用的句型：
+1. My name is [名字].
+2. I'm from [城市/国家]. 或 I live in [城市/国家].
+3. I work as a [职业].
+4. I'm learning English because [原因].
+
+把信息拆成短句会比写一条很长的句子更清楚。
+
+示例：My name is Faxon. I live in Phnom Penh, Cambodia. I work as a product manager. I'm learning English for work and daily communication.
+
+注意：城市可以用 “I'm from …” 或 “I live in …” 表达，不需要硬写单词 city。`,
     objective: "完成 30 秒基础英文自我介绍，并回答一个追问。",
     practice: "写下并朗读自我介绍：名字、城市、工作、学习英语的原因。",
     criteria: ["name", "city", "work", "English"],

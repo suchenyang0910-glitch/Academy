@@ -1249,6 +1249,27 @@ blockquote {
   margin: 10px 0 0;
   color: #4d4940;
   font: 400 15px/1.8 Georgia, "Songti SC", serif;
+  white-space: pre-line;
+}
+
+.lesson-reading h2 {
+  margin: 5px 0 0;
+  font: 500 25px/1.1 Georgia, "Songti SC", serif;
+}
+
+.learn-complete-button {
+  width: 100%;
+  margin-top: 20px;
+}
+
+.practice-locked {
+  margin: 12px 0 0;
+  padding: 14px;
+  border-left: 3px solid var(--terracotta);
+  background: rgba(185, 99, 69, 0.07);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.65;
 }
 
 .practice-card {

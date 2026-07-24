@@ -1294,7 +1294,8 @@ blockquote {
   border-left: 3px solid var(--terracotta);
   background: rgba(251, 248, 241, 0.66);
   color: var(--ink);
-  font: 400 14px/1.7 Georgia, "Songti SC", serif;
+  /* iOS zooms the entire WebView when a focused input is below 16px. */
+  font: 400 16px/1.7 Georgia, "Songti SC", serif;
 }
 
 .answer-meta {

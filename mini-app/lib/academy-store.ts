@@ -805,14 +805,29 @@ const CRITERION_ALIASES: Record<string, string[]> = {
   验收标准: ["验收", "判断完成", "成功标准", "达到以下", "可交付"],
 };
 
+// A few lesson criteria describe an intent rather than a word learners should
+// literally type. Day 1's `city`, for example, is normally expressed as
+// "I'm from Fuzhou" or "I live in Phnom Penh", not as the word "city".
+// Keep these patterns narrow so the rule score remains explainable.
+const CRITERION_PATTERNS: Record<string, RegExp[]> = {
+  city: [
+    /\b(?:i(?:'m| am) from|from|live in|i(?:'m| am) living in|based in|located in)\s+[a-z][a-z .,'-]{1,48}/,
+  ],
+};
+
 function matchesCriterion(normalizedAnswer: string, criterion: string) {
   const normalizedCriterion = criterion.toLowerCase();
   const candidates = [
     normalizedCriterion,
     ...(CRITERION_ALIASES[normalizedCriterion] ?? []),
   ];
-  return candidates.some((candidate) =>
-    normalizedAnswer.includes(candidate.toLowerCase()),
+  return (
+    candidates.some((candidate) =>
+      normalizedAnswer.includes(candidate.toLowerCase()),
+    ) ||
+    (CRITERION_PATTERNS[normalizedCriterion] ?? []).some((pattern) =>
+      pattern.test(normalizedAnswer),
+    )
   );
 }
 

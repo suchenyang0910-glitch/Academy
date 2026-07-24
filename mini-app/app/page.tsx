@@ -251,6 +251,7 @@ export default function Home() {
             width={36}
             height={36}
             priority
+            unoptimized
           />
           <div className="brand-copy">
             <strong>ACADEMY</strong>
@@ -1049,18 +1050,20 @@ function LessonSheet({
             placeholder="写下你的原始答案。系统会保留它，不让 AI 替你假装学会。"
             maxLength={4000}
           />
-          <div className="answer-meta">
-            <span>{answer.trim().length} 字</span>
-            {error && <strong>{error}</strong>}
+          <div className="lesson-submit-bar">
+            <div className="answer-meta">
+              <span>{answer.trim().length} 字</span>
+              {error && <strong>{error}</strong>}
+            </div>
+            <button
+              className="primary-button"
+              type="button"
+              onClick={submit}
+              disabled={submitting || !answer.trim()}
+            >
+              {submitting ? "正在检查…" : submission ? "修正后重新提交" : "提交学习证据"}
+            </button>
           </div>
-          <button
-            className="primary-button"
-            type="button"
-            onClick={submit}
-            disabled={submitting || !answer.trim()}
-          >
-            {submitting ? "正在检查…" : submission ? "修正后重新提交" : "提交学习证据"}
-          </button>
             </>
           )}
         </section>

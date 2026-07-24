@@ -151,3 +151,22 @@ test("ships PostgreSQL migration and SQLite preservation tools", async () => {
   assert.match(importer, /ACADEMY_SQLITE_SOURCE_PATH/);
   assert.match(envExample, /ACADEMY_PG_POOL_SIZE=5/);
 });
+
+test("keeps the local logo reliable and AI research material reviewable", async () => {
+  const [page, styles, crawler, seeds] = await Promise.all([
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+    readFile(new URL("../scripts/crawl-ai-sources.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../content/ai-source-seeds.json", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(page, /academy-bot-logo\.png/);
+  assert.match(page, /unoptimized/);
+  assert.match(page, /lesson-submit-bar/);
+  assert.match(styles, /\.lesson-submit-bar/);
+  assert.match(styles, /safe-area-inset-bottom/);
+  assert.match(crawler, /pending_human_review/);
+  assert.match(crawler, /不得自动发布为正式课程/);
+  assert.match(crawler, /allowedHosts/);
+  assert.equal(JSON.parse(seeds).length, 3);
+});

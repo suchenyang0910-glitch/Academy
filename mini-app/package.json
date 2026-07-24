@@ -14,7 +14,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node scripts/migrate.mjs",
     "db:migrate:postgres": "node scripts/migrate-postgres.mjs",
-    "db:import:sqlite": "node scripts/import-sqlite-to-postgres.mjs"
+    "db:import:sqlite": "node scripts/import-sqlite-to-postgres.mjs",
+    "content:crawl:ai": "node scripts/crawl-ai-sources.mjs"
   },
   "dependencies": {
     "drizzle-orm": "0.45.2",

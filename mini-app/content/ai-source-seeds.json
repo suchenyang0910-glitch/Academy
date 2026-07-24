@@ -1,0 +1,20 @@
+[
+  {
+    "id": "deepseek-thinking-mode",
+    "courseLevel": 4,
+    "topic": "结构化推理与验证",
+    "url": "https://api-docs.deepseek.com/guides/thinking_mode"
+  },
+  {
+    "id": "gemini-prompt-strategies",
+    "courseLevel": 2,
+    "topic": "进阶 Prompt",
+    "url": "https://ai.google.dev/gemini-api/docs/prompting-strategies"
+  },
+  {
+    "id": "openai-first-api-request",
+    "courseLevel": 1,
+    "topic": "AI User 与 API 基础",
+    "url": "https://developers.openai.com/api/docs/quickstart/"
+  }
+]

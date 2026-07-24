@@ -58,10 +58,12 @@ type Lesson = {
   criteria: string[];
   assessment?: {
     type: "multiple_choice";
-    question: string;
-    options: Array<{ id: string; label: string }>;
-    correctOptionId: string;
-    explanation: string;
+    questions: Array<{
+      question: string;
+      options: Array<{ id: string; label: string }>;
+      correctOptionId: string;
+      explanation: string;
+    }>;
   };
   estimatedMinutes: number;
 };
@@ -967,6 +969,7 @@ function LessonSheet({
 }) {
   const lesson = item.lesson!;
   const [answer, setAnswer] = useState("");
+  const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
   const [submission, setSubmission] = useState(item.submission);
   const [knowledgeRead, setKnowledgeRead] = useState(Boolean(item.submission));
   const [submitting, setSubmitting] = useState(false);
@@ -983,7 +986,7 @@ function LessonSheet({
           body: JSON.stringify({
             enrollmentId: item.enrollment.id,
             lessonId: lesson.id,
-            answer,
+            answer: lesson.assessment ? JSON.stringify(selectedOptions) : answer,
             completionSource: item.isExtra ? "extra" : "self",
           }),
         },
@@ -1047,19 +1050,32 @@ function LessonSheet({
             <>
           <p>{lesson.practicePrompt}</p>
           {lesson.assessment ? (
-            <div className="multiple-choice" role="radiogroup" aria-label={lesson.assessment.question}>
-              {lesson.assessment.options.map((option) => (
-                <button
-                  key={option.id}
-                  className={answer === option.id ? "choice-option selected" : "choice-option"}
-                  type="button"
-                  role="radio"
-                  aria-checked={answer === option.id}
-                  onClick={() => setAnswer(option.id)}
-                >
-                  <span>{option.id.toUpperCase()}</span>
-                  {option.label}
-                </button>
+            <div className="multiple-choice">
+              {lesson.assessment.questions.map((question, questionIndex) => (
+                <div className="choice-question" key={question.question} role="radiogroup" aria-label={question.question}>
+                  <strong>{questionIndex + 1}. {question.question}</strong>
+                  {question.options.map((option) => {
+                    const selected = selectedOptions[String(questionIndex)] === option.id;
+                    return (
+                      <button
+                        key={option.id}
+                        className={selected ? "choice-option selected" : "choice-option"}
+                        type="button"
+                        role="radio"
+                        aria-checked={selected}
+                        onClick={() =>
+                          setSelectedOptions((current) => ({
+                            ...current,
+                            [questionIndex]: option.id,
+                          }))
+                        }
+                      >
+                        <span>{option.id.toUpperCase()}</span>
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
               ))}
             </div>
           ) : (
@@ -1079,14 +1095,23 @@ function LessonSheet({
           )}
           <div className="lesson-submit-bar">
             <div className="answer-meta">
-              <span>{lesson.assessment ? (answer ? "已选择 1 项" : "请选择 1 项") : `${answer.trim().length} 字`}</span>
+              <span>
+                {lesson.assessment
+                  ? `已完成 ${Object.keys(selectedOptions).length}/${lesson.assessment.questions.length} 题`
+                  : `${answer.trim().length} 字`}
+              </span>
               {error && <strong>{error}</strong>}
             </div>
             <button
               className="primary-button"
               type="button"
               onClick={submit}
-              disabled={submitting || !answer.trim()}
+              disabled={
+                submitting ||
+                (lesson.assessment
+                  ? Object.keys(selectedOptions).length !== lesson.assessment.questions.length
+                  : !answer.trim())
+              }
             >
               {submitting ? "正在检查…" : submission ? "修正后重新提交" : "提交学习证据"}
             </button>

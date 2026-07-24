@@ -64,7 +64,7 @@ test("records Telegram profile fields and tracks qualified referrals", async () 
   );
   assert.match(store, /ORDER BY CAST\(ends_at AS TIMESTAMP\) DESC/);
   assert.match(store, /correctOptionId/);
-  assert.match(store, /请选择一个有效答案/);
+  assert.match(store, /请选择每一道题的有效答案/);
   assert.match(schema, /export const invitations/);
   assert.match(migration, /CREATE TABLE `invitations`/);
   assert.match(migration, /ADD `telegram_username`/);

@@ -1577,13 +1577,25 @@ blockquote {
   margin: 16px 0 4px;
 }
 
+.choice-question {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  background: rgba(251, 248, 241, 0.38);
+}
+
+.choice-question > strong {
+  font: 500 15px/1.5 Georgia, "Songti SC", serif;
+}
+
 .choice-option {
   display: flex;
   align-items: flex-start;
   gap: 11px;
   width: 100%;
   padding: 14px;
-  border: 1px solid var(--line);
+  border: 1px solid rgba(118, 113, 100, 0.42);
   background: rgba(251, 248, 241, 0.68);
   color: var(--ink);
   text-align: left;

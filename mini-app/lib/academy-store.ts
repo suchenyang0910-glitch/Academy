@@ -267,7 +267,7 @@ export async function ensureSeedData(identity: AcademyIdentity) {
   const seeded = await d1
     .prepare("SELECT value FROM schema_version WHERE key = 'academy_seed'")
     .first<{ value: string }>();
-  if (seeded?.value === "v5") return;
+  if (seeded?.value === "v6") return;
 
   const statements = [
     ...COURSE_CATALOG.map((course) =>
@@ -347,7 +347,7 @@ export async function ensureSeedData(identity: AcademyIdentity) {
     ),
     d1
       .prepare(
-        `INSERT INTO schema_version (key, value) VALUES ('academy_seed', 'v5')
+        `INSERT INTO schema_version (key, value) VALUES ('academy_seed', 'v6')
          ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
       ),
   ];
@@ -913,12 +913,22 @@ function scoreAnswer(
   assessment?: MultipleChoiceAssessment,
 ) {
   if (assessment) {
-    const correct = answer === assessment.correctOptionId;
+    const answers = JSON.parse(answer) as Record<string, string>;
+    const correctCount = assessment.questions.filter(
+      (question, index) => answers[String(index)] === question.correctOptionId,
+    ).length;
+    const total = assessment.questions.length;
+    const score = Math.round((correctCount / total) * 100);
+    const incorrect = assessment.questions
+      .map((question, index) => ({ question, index }))
+      .filter(({ question, index }) => answers[String(index)] !== question.correctOptionId)
+      .map(({ question, index }) => `第 ${index + 1} 题：${question.explanation}`);
     return {
-      score: correct ? 100 : 0,
-      feedback: correct
-        ? `回答正确。${assessment.explanation}`
-        : `这题还没通过。${assessment.explanation} 请回看正文后重新选择。`,
+      score,
+      feedback:
+        correctCount === total
+          ? `全部答对（${correctCount}/${total}）。关键知识点已掌握。`
+          : `答对 ${correctCount}/${total} 题。${incorrect.join(" ")}`,
     };
   }
 
@@ -973,8 +983,20 @@ export async function submitLesson(
   if (!assessment && answer.length < 20) {
     throw new Response("主动练习至少需要 20 个字", { status: 400 });
   }
-  if (assessment && !assessment.options.some((option) => option.id === answer)) {
-    throw new Response("请选择一个有效答案", { status: 400 });
+  if (assessment) {
+    let selectedAnswers: Record<string, string>;
+    try {
+      selectedAnswers = JSON.parse(answer) as Record<string, string>;
+    } catch {
+      throw new Response("请选择每一道题的有效答案", { status: 400 });
+    }
+
+    const allAnswersValid = assessment.questions.every((question, index) =>
+      question.options.some((option) => option.id === selectedAnswers[String(index)]),
+    );
+    if (!allAnswersValid) {
+      throw new Response("请选择每一道题的有效答案", { status: 400 });
+    }
   }
 
   const rule = scoreAnswer(answer, criteria, assessment);

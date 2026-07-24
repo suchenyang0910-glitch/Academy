@@ -18,15 +18,20 @@ export type AiLevel = {
   objective: string;
   practice: string;
   criteria: string[];
-  assessment: MultipleChoiceAssessment;
+  assessment: MultipleChoiceQuestion;
 };
 
-export type MultipleChoiceAssessment = {
-  type: "multiple_choice";
+export type MultipleChoiceQuestion = {
+  type?: "multiple_choice";
   question: string;
   options: Array<{ id: string; label: string }>;
   correctOptionId: string;
   explanation: string;
+};
+
+export type MultipleChoiceAssessment = {
+  type: "multiple_choice";
+  questions: MultipleChoiceQuestion[];
 };
 
 export const COURSE_CATALOG: CourseDefinition[] = [
@@ -266,6 +271,11 @@ AI 可以帮你生成方案矩阵、反例和检查清单；它不能替你决�
     level: 8,
     title: "知识库与 RAG",
     core: "先检索你的资料，再生成答案；引用必须能回到原文",
+    teaching: `模型并不知道你的公司文档、客户记录或最新 SOP。把资料直接放进对话，只能解决一次问题；知识库（RAG）解决的是“先找到相关片段，再基于片段回答”。
+
+一个可靠的知识库要有三件事：资料来源清楚、回答能标注引用位置、找不到依据时明确说不知道。RAG 不是让 AI 知道一切，而是限制它只在有证据时回答。
+
+课后检查会验证：为什么需要检索、什么叫可追溯引用、什么时候应该拒答。`,
     objective: "理解为什么模型不知道你的业务，并设计一个带引用和拒答机制的最小知识库。",
     practice: "选择一份自己的文档，设计 5 个可验证问题，并检查答案是否引用正确内容或明确说不知道。",
     criteria: ["文档", "测试问题", "引用", "拒答", "检索"],
@@ -285,6 +295,11 @@ AI 可以帮你生成方案矩阵、反例和检查清单；它不能替你决�
     level: 9,
     title: "工作流与 Agent",
     core: "可靠流程比角色数量更重要；自动化前先做清楚人工流程",
+    teaching: `Agent 不是“更聪明的聊天机器人”，而是让模型按步骤调用工具、保存状态并完成任务的流程。一个流程最少要说清：输入从哪里来、每一步做什么、输出交给谁、失败时怎么办。
+
+自动化会放大效率，也会放大错误。因此金额、对外发送、删除数据等关键节点必须保留人工审核。先跑通人工版本，再自动化最稳定的重复部分。
+
+课后检查会验证：自动化前的准备、人工审核的位置，以及为什么不能让 Agent 自由发挥。`,
     objective: "设计输入、步骤、工具、状态、失败处理和人工审核节点。",
     practice: "把一个重复任务拆成至少三个步骤，明确每一步输入、输出、失败处理和必须由人确认的地方。",
     criteria: ["输入", "输出", "步骤", "失败处理", "人工审核"],
@@ -304,6 +319,11 @@ AI 可以帮你生成方案矩阵、反例和检查清单；它不能替你决�
     level: 10,
     title: "数据分析",
     core: "让计算、字段和异常可复核，AI 不能替你编造数据依据",
+    teaching: `AI 可以帮助你读表、写分析思路和生成代码，但“洞察”必须建立在真实字段与可复核计算上。先确认数据来自哪里、每列代表什么、时间范围是否一致，再讨论增长或下降。
+
+异常值、缺失值和重复数据会让漂亮结论失去意义。任何百分比都应能回答：分子是什么、分母是什么、比较的是哪段时间。
+
+课后检查会验证：什么算可复核结论、为什么必须处理异常，以及 AI 在数据分析中不能替代的部分。`,
     objective: "完成数据解释、清洗、计算、异常确认和洞察验证。",
     practice: "使用一份 CSV 找出三个信号，并写出每个结论的字段、计算依据和异常检查。",
     criteria: ["字段", "清洗", "计算", "异常", "依据"],
@@ -323,6 +343,11 @@ AI 可以帮你生成方案矩阵、反例和检查清单；它不能替你决�
     level: 11,
     title: "内容、写作与翻译",
     core: "AI 是初稿作者，你是事实负责人、总编和本地化判断者",
+    teaching: `内容生产可拆成三层：事实是否正确、表达是否适合受众、渠道格式是否合适。AI 擅长帮助起草和改写；人必须确认产品承诺、案例、价格、法律风险和文化语境。
+
+直译追求信息完整；重写追求让目标读者自然理解。两者不是同一件事。对外内容发布前，永远把“是否真实、是否误导”放在“是否好看”之前。
+
+课后检查会验证：谁负责事实、直译和重写的区别，以及发布前的检查重点。`,
     objective: "控制受众、结构、语气、渠道适配与事实检查；区分直译和重写。",
     practice: "选择一段真实业务文本，完成一个初稿和一个面向指定受众的改写，并标出必须人工核实的事实。",
     criteria: ["受众", "结构", "语气", "事实检查", "本地化"],
@@ -342,6 +367,11 @@ AI 可以帮你生成方案矩阵、反例和检查清单；它不能替你决�
     level: 12,
     title: "编程辅助与原型",
     core: "代码能运行、测试能通过、你能解释，才算完成",
+    teaching: `AI 能显著加快写代码、定位错误和生成测试的速度，但它不会自动理解你的真实业务规则。先把需求写成可验证行为，再让 AI 帮你拆分实现；遇到报错时保留错误信息和修改原因。
+
+“能跑一次”不是完成。至少要验证关键输入、错误输入和边界情况；并且你要能解释这段代码处理什么、依赖什么、在哪里可能失败。
+
+课后检查会验证：原型完成的标准、测试的作用，以及为什么不能直接把 AI 代码投入生产。`,
     objective: "使用 AI 完成需求描述、实现、调试、测试和代码解释。",
     practice: "完成一个可运行的小功能，保留需求、错误、修改、测试结果和你自己的解释。",
     criteria: ["需求", "运行结果", "错误", "测试", "解释"],
@@ -361,6 +391,11 @@ AI 可以帮你生成方案矩阵、反例和检查清单；它不能替你决�
     level: 13,
     title: "学习助手与项目设计",
     core: "让 AI 用问题帮助你理解，同时为毕业原型定义真实问题",
+    teaching: `把 AI 当学习助手的正确方式，是让它帮助你暴露不知道的部分，而不是替你写答案。先用自己的话解释，再让 AI 追问、举反例、出小测；这比反复阅读更能检验理解。
+
+毕业原型不需要大而全。它应有一个真实用户、一个明确问题、一种可控输入和一个可检查成功标准。范围越小，越容易完成、测试和复盘。
+
+课后检查会验证：主动回忆为何重要，以及一个好毕业原型的最小组成。`,
     objective: "使用苏格拉底提问、费曼解释和小测检验理解；明确一个可在 60 天内完成的原型范围。",
     practice: "选择一个不熟悉概念，让 AI 只用提问引导你；再写下毕业原型要解决的真实问题、用户、输入和成功标准。",
     criteria: ["提问", "自己的解释", "真实问题", "成功标准"],
@@ -380,6 +415,11 @@ AI 可以帮你生成方案矩阵、反例和检查清单；它不能替你决�
     level: 14,
     title: "周期复盘",
     core: "总结、补漏、升级；熟悉感不等于能力",
+    teaching: `复盘不是写“我学了很多”，而是用证据回答四个问题：我能独立做什么？证据在哪里？我在哪些地方失败？下一轮只改哪一个点？
+
+连续学习能证明习惯，不能单独证明能力。真正的能力证据来自真实任务、可检查的结果、失败记录和修复后的再次尝试。
+
+课后检查会验证：什么算能力证据、失败记录的价值，以及如何把复盘转成下一轮行动。`,
     objective: "根据作品、验证记录和错误判断已经掌握、仍需练习和下一轮升级的能力。",
     practice: "完成本轮复盘：列出一个可证明的能力、一处失败、一个需要回看的概念，以及下一轮一个具体升级目标。",
     criteria: ["掌握证据", "失败记录", "薄弱概念", "升级目标"],
@@ -431,6 +471,35 @@ export type FixedLesson = {
   estimatedMinutes: number;
 };
 
+function buildKnowledgeCheck(definition: AiLevel): MultipleChoiceAssessment {
+  return {
+    type: "multiple_choice",
+    questions: [
+      definition.assessment,
+      {
+        question: "根据本课，以下哪一项是核心原则？",
+        options: [
+          { id: "a", label: definition.core },
+          { id: "b", label: "让 AI 自己决定关键标准，减少人的干预。" },
+          { id: "c", label: "只要输出足够长，就代表理解已经足够。" },
+        ],
+        correctOptionId: "a",
+        explanation: `本课的核心原则是：${definition.core}。`,
+      },
+      {
+        question: "完成本课后，你应当具备哪项能力？",
+        options: [
+          { id: "a", label: "记住更多 AI 营销术语，不需要实际判断。" },
+          { id: "b", label: definition.objective },
+          { id: "c", label: "让 AI 替你承担最终结果和责任。" },
+        ],
+        correctOptionId: "b",
+        explanation: `本课的能力目标是：${definition.objective}`,
+      },
+    ],
+  };
+}
+
 export function buildAiLesson(day: number): FixedLesson {
   if (day < 1 || day > 60) {
     throw new Error("AI lesson day must be between 1 and 60");
@@ -454,9 +523,9 @@ export function buildAiLesson(day: number): FixedLesson {
         definition.teaching
           ? `${definition.teaching}\n\n本轮：${roundMeta.name}。${roundMeta.instruction}\n\n课后检查：读完本课后，完成下方 1 道选择题。答错可以回看正文后重新提交。`
           : `${definition.core}。\n\n本轮：${roundMeta.name}。${roundMeta.instruction}\n\n课后检查：读完本课后，完成下方 1 道选择题。答错可以回看正文后重新提交。`,
-      practicePrompt: `课后检查：${definition.assessment.question}`,
+      practicePrompt: "课后检查：完成下方 3 道选择题。每题对应正文中的一个关键知识点；答对至少 2 题即可通过。",
       criteria: definition.criteria,
-      assessment: definition.assessment,
+      assessment: buildKnowledgeCheck(definition),
       estimatedMinutes: 20,
     };
   }

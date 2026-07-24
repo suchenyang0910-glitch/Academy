@@ -1,0 +1,44 @@
+# Secrets and local environment
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+!**/.dev.vars.example
+**/.dev.vars
+
+# Local learning data
+data/*.db
+data/*.db-*
+
+# Dependencies and package-manager cache
+node_modules/
+.pnpm-store/
+
+# Build and framework output
+dist/
+.next/
+.vinext/
+out/
+coverage/
+outputs/
+work/
+
+# Local Cloudflare runtime state
+.wrangler/
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Logs and editor/OS files
+*.log
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Generated archives
+*.tar.gz
+*.zip

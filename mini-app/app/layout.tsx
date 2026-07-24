@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
+import Script from "next/script";
 import "./globals.css";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -42,6 +43,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-CN">
+      <head>
+        <Script
+          src="https://telegram.org/js/telegram-web-app.js?59"
+          strategy="beforeInteractive"
+        />
+      </head>
       <body>{children}</body>
     </html>
   );

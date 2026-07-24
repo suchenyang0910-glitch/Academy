@@ -171,6 +171,9 @@ async function academyRequest<T>(path: string, init?: RequestInit): Promise<T> {
     },
   });
   if (!response.ok) {
+    if (response.status === 401) {
+      throw new Error("请从 Telegram 内的 Academy 菜单打开，浏览器链接无法完成身份校验。");
+    }
     const body = (await response.json().catch(() => null)) as
       | { error?: string }
       | null;

@@ -1,6 +1,6 @@
 # Academy — 目标模板设计规范
 
-> 版本：v1.0  
+> 版本：v1.1
 > 原则：**Nothing counts unless it is evidenced.（没有证据，就不算完成。）**
 
 ---
@@ -50,7 +50,31 @@
 | Runtime Success | 在规定输入下真实运行 | 测试日志、部署链接、成功率 | 可作为强证据 |
 | Reflection | 能解释选择、失败与改进 | 固定复盘问题 | 否 |
 
-### 3.1 证据权重规则
+### 3.1 Evidence Pyramid（证据金字塔）
+
+```text
+          Mentor Review
+             ▲
+           Peer Review
+             ▲
+        Runtime Evidence
+             ▲
+        Project Evidence
+             ▲
+             Quiz
+```
+
+越向上，证据越接近真实能力与外部可复核结果。MVP 至少达到 **Runtime Evidence**：不仅保存工作流或截图，还要在预设输入下得到可重复的运行结果。Mentor 与 Peer Review 均后置，不能成为首轮 10 人验证的运营前提。
+
+### 3.2 证据采集与验证必须分离
+
+- **Collected（已提交）**：文件、链接、视频或工作流已上传；
+- **Rule-verified（规则验证）**：文件格式、时长、字段、工作流结构和预设运行测试符合规则；
+- **Reviewed（复核通过）**：人工或未来的结构化审查确认质量与解释一致。
+
+README 字数、视频时长、截图存在与 Git Commit 数量只能构成 Collected 或部分 Rule-verified；它们不能单独证明回答正确、引用真实或用户理解设计。
+
+### 3.3 证据权重规则
 
 - 权重属于**模板定义**，不是模型即时判断；
 - 同一类证据不应占某项核心胜任力的 100%；
@@ -78,36 +102,57 @@
 
 禁止把“观看第 3 节课”或“登录某工具”当作胜任力节点。
 
-## 5. 21 天模板骨架：可运行 AI 助手原型
+## 5. 21 天模板骨架：Build a Personal Knowledge Assistant
 
-首个模板的目标：**在 21 天内完成一个可运行、可演示的 AI 助手原型。**
+首个模板的目标：**在 21 天内完成一个可运行、可演示的个人知识助手。**
+
+首版使用 Academy 托管或指定的 **Flowise 无代码模板**；不要求 Git、Docker、LangGraph、Python、Telegram Bot、Webhook 或自行部署。高级技术栈属于后续 Advanced Track，不能污染首个模板的完成率。
 
 | 检查点 | 结果而非学习时长 | 最低证据 |
 |---|---|---|
-| Day 0 — Environment Ready | 环境、账号、仓库和测试样例就绪 | 环境检查、仓库链接、3 个测试问题 |
-| Day 1 — Hello Agent | 能提交输入并获得可解释的模型输出 | 运行截图/日志、概念 Quiz |
-| Day 3 — Task Boundary | 定义 Agent 做什么、不做什么，以及人工介入点 | 输入/输出契约、边界复盘 |
-| Day 5 — Tool / Data Input | 完成一个受控工具或数据输入步骤 | 工作流/代码、成功与失败样例 |
-| Day 7 — First Workflow | 串起最小可重复工作流 | 运行记录、5 个测试结果 |
-| Day 10 — Quality Check | 能识别幻觉、失败或异常输出 | 错误样例、修正策略、Quiz |
-| Day 14 — Usable Prototype | 原型能在指定场景连续运行 | 至少 10 个测试、成功率记录 |
-| Day 18 — Demo Ready | 完成 README、使用说明与演示脚本 | README、Demo 草稿 |
-| Day 21 — Demo Day | 他人可运行、观看并理解该原型 | GitHub、Demo 视频、测试报告、复盘 |
+| Day 0 — Environment Ready | Flowise 模板、模型入口、测试文档与 3 个问题就绪 | 环境检查、测试文档与问题 |
+| Day 1 — Hello Retrieval | 上传指定文档，提出问题并得到回答 | 运行日志、概念 Quiz |
+| Day 3 — Source Boundary | 定义助手只回答哪些资料、何时明确说“不知道” | 输入/输出契约、边界复盘 |
+| Day 5 — Document Ingestion | 上传并索引至少一份可公开验证的文档 | 数据源配置、成功与失败样例 |
+| Day 7 — First Working Prototype | 对 3 个预设问题返回答案与来源引用 | 自动运行测试通过、引用字段记录 |
+| Day 10 — Quality Check | 识别无依据回答、错误引用或异常输出 | 错误样例、修正策略、Quiz |
+| Day 14 — Usable Prototype | 对指定文档集连续回答问题并引用来源 | 至少 10 个测试、成功率记录 |
+| Day 18 — Demo Ready | 完成使用说明与 2 分钟演示脚本 | README/使用说明、Demo 草稿 |
+| Day 21 — Demo Day | 他人可上传文档、提问、查看答案和来源 | Flowise 导出或可访问链接、Demo 视频、测试报告、复盘 |
 
 ### 5.1 Definition of Done
 
 首个模板只有同时满足以下条件才算完成：
 
 - 原型在规定环境中可运行；
+- 可以上传指定文档、提问、回答并显示来源引用；
 - 有明确输入、输出、失败边界与人工介入说明；
 - 通过模板规定的测试集，保存原始测试结果；
-- 提供 README，使第三方能按步骤复现；
+- 提供使用说明，使第三方能按步骤复现；
 - 提供演示视频或现场演示；
-- 代码/工作流版本可追溯；
+- Flowise 工作流导出或模板版本可追溯；
 - 用户能用自己的话解释核心设计、至少一个失败案例和下一步改进；
 - 所有必需证据已记录并通过模板规则或人工复核。
 
 “完成了课程”“打开过 Lab”“AI 说可以”均不构成 Done。
+
+### 5.2 每日 Mission 与 Recovery Loop
+
+首页每天只给出一个 Mission：一个可在当天完成、能直接推进下个检查点的动作。Mission 应展示“为什么是这一步”“完成后解锁什么证据”，而非只展示 Day 编号。
+
+```text
+Evidence Fail / 检查点未完成
+        ↓
+定位固定能力缺口（例如：资料未索引、引用字段缺失、JSON 配置错误）
+        ↓
+Recovery Mission（短讲解 + 一个修复动作 + 重新测试）
+        ↓
+证据重新验证
+        ↓
+通过后回到主路径
+```
+
+MVP 不跳过失败节点，也不永久锁死用户。Recovery Mission 必须来自预先定义的缺口—补救映射；模型可以解释，不得自由发明补课路径或降低通过标准。
 
 ## 6. 模板设计与上线流程
 

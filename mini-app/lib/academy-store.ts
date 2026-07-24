@@ -361,7 +361,7 @@ export async function getBootstrap(identity: AcademyIdentity) {
         .prepare(
           `SELECT id, slug, title, subtitle, summary, daily_minutes AS dailyMinutes,
                   duration_days AS durationDays, accent, status
-           FROM courses ORDER BY rowid`,
+           FROM courses ORDER BY created_at, id`,
         )
         .all(),
       d1
@@ -695,7 +695,7 @@ async function getReferralSummary(
            WHERE s.user_id = ?
              AND s.status = 'completed'
              AND s.completed_on IS NOT NULL
-             AND date(s.completed_on) <= date(?, '+7 day')
+             AND CAST(s.completed_on AS DATE) <= CAST(? AS DATE) + INTERVAL '7 days'
              AND e.active = 1
            GROUP BY s.completed_on
            HAVING COUNT(DISTINCT l.course_id) >= ?

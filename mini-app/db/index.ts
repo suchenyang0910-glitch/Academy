@@ -1,17 +1,17 @@
-import { mkdirSync } from "node:fs";
-import { dirname, resolve } from "node:path";
-import { DatabaseSync } from "node:sqlite";
+import { Pool, type PoolClient, type QueryResult } from "pg";
 
-type SqlValue = string | number | null | Uint8Array;
+type SqlValue = string | number | boolean | null | Uint8Array | Date;
 
 export type D1Result<T = Record<string, unknown>> = { results: T[] };
+
+type QueryExecutor = Pick<Pool, "query"> | Pick<PoolClient, "query">;
 
 export type D1PreparedStatement = {
   bind: (...values: SqlValue[]) => D1PreparedStatement;
   all: <T = Record<string, unknown>>() => Promise<D1Result<T>>;
   first: <T = Record<string, unknown>>() => Promise<T | null>;
-  run: () => Promise<{ meta: { changes: number; last_row_id: number | bigint } }>;
-  execute: () => { changes: number; lastInsertRowid: number | bigint };
+  run: () => Promise<{ meta: { changes: number; last_row_id: number } }>;
+  execute: (executor?: QueryExecutor) => Promise<QueryResult>;
 };
 
 export type D1Database = {
@@ -19,73 +19,97 @@ export type D1Database = {
   batch: (statements: D1PreparedStatement[]) => Promise<unknown[]>;
 };
 
-let database: DatabaseSync | undefined;
+let pool: Pool | undefined;
 let d1: D1Database | undefined;
 
-function databasePath() {
-  return resolve(
-    process.env.ACADEMY_DATABASE_PATH ?? "data/academy.sqlite",
-  );
+function databaseUrl() {
+  const value = process.env.ACADEMY_DATABASE_URL;
+  if (!value) {
+    throw new Error(
+      "ACADEMY_DATABASE_URL is required. SQLite data has not been deleted; finish the PostgreSQL migration before restarting Academy.",
+    );
+  }
+  return value;
 }
 
-function openDatabase() {
-  if (database) return database;
-  const path = databasePath();
-  mkdirSync(dirname(path), { recursive: true });
-  database = new DatabaseSync(path, { enableForeignKeyConstraints: true });
-  database.exec("PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000;");
-  return database;
+function getPool() {
+  if (pool) return pool;
+  pool = new Pool({
+    connectionString: databaseUrl(),
+    max: Number(process.env.ACADEMY_PG_POOL_SIZE ?? 5),
+    idleTimeoutMillis: 20_000,
+    connectionTimeoutMillis: 5_000,
+    query_timeout: 10_000,
+    application_name: "academy-mini-app",
+  });
+  return pool;
+}
+
+// Academy's service layer was deliberately written behind a small D1-like
+// interface. PostgreSQL uses numbered parameters, so translate only bound
+// placeholders. Academy SQL does not embed question marks inside string
+// literals; keeping the conversion here avoids scattering driver specifics.
+function postgresSql(source: string) {
+  let index = 0;
+  return source.replace(/\?/g, () => `$${++index}`);
 }
 
 function prepare(source: string): D1PreparedStatement {
   let values: SqlValue[] = [];
-  const statement = openDatabase().prepare(source);
+  const text = postgresSql(source);
   const query: D1PreparedStatement = {
     bind(...nextValues) {
       values = nextValues;
       return query;
     },
+    async execute(executor = getPool()) {
+      return executor.query(text, values);
+    },
     async all<T = Record<string, unknown>>() {
-      return { results: statement.all(...values) as T[] };
+      const result = await query.execute();
+      return { results: result.rows as T[] };
     },
     async first<T = Record<string, unknown>>() {
-      return (statement.get(...values) as T | undefined) ?? null;
+      const result = await query.execute();
+      return (result.rows[0] as T | undefined) ?? null;
     },
     async run() {
-      const result = statement.run(...values);
+      const result = await query.execute();
       return {
         meta: {
-          changes: Number(result.changes),
-          last_row_id: result.lastInsertRowid,
+          changes: result.rowCount ?? 0,
+          last_row_id: 0,
         },
       };
-    },
-    execute() {
-      return statement.run(...values);
     },
   };
   return query;
 }
 
 /**
- * Small compatibility layer for the D1 statement API already used by the
- * Academy services. It lets the VPS use one local SQLite database without
- * changing every course, payment, reminder, and referral query.
+ * PostgreSQL compatibility layer for Academy's existing data services.
+ * All application data flows through this layer; no route handler opens a
+ * direct database connection.
  */
 export function getD1(): D1Database {
   if (d1) return d1;
   d1 = {
     prepare,
     async batch(statements) {
-      const sqlite = openDatabase();
-      sqlite.exec("BEGIN IMMEDIATE");
+      const client = await getPool().connect();
       try {
-        const results = statements.map((statement) => statement.execute());
-        sqlite.exec("COMMIT");
+        await client.query("BEGIN");
+        const results: QueryResult[] = [];
+        for (const statement of statements) {
+          results.push(await statement.execute(client));
+        }
+        await client.query("COMMIT");
         return results;
       } catch (error) {
-        sqlite.exec("ROLLBACK");
+        await client.query("ROLLBACK").catch(() => undefined);
         throw error;
+      } finally {
+        client.release();
       }
     },
   };

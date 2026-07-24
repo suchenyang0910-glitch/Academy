@@ -53,7 +53,10 @@ test("records Telegram profile fields and tracks qualified referrals", async () 
   assert.match(store, /start_param/);
   assert.match(store, /startapp=ref_/);
   assert.match(store, /status = 'qualified'/);
-  assert.match(store, /date\(s\.completed_on\) <= date\(\?, '\+7 day'\)/);
+  assert.match(
+    store,
+    /CAST\(s\.completed_on AS DATE\) <= CAST\(\? AS DATE\) \+ INTERVAL '7 days'/,
+  );
   assert.match(schema, /export const invitations/);
   assert.match(migration, /CREATE TABLE `invitations`/);
   assert.match(migration, /ADD `telegram_username`/);
@@ -125,4 +128,24 @@ test("uses DeepSeek for AI coaching with Ollama and rules-only fallback", async 
   assert.match(feedback, /return requestOllamaFeedback/);
   assert.match(envExample, /DEEPSEEK_API_KEY=/);
   assert.match(envExample, /DEEPSEEK_TIMEOUT_MS=20000/);
+});
+
+test("ships PostgreSQL migration and SQLite preservation tools", async () => {
+  const [adapter, schema, migrate, importer, envExample] = await Promise.all([
+    readFile(new URL("../db/index.ts", import.meta.url), "utf8"),
+    readFile(new URL("../postgres/0000_academy.sql", import.meta.url), "utf8"),
+    readFile(new URL("../scripts/migrate-postgres.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../scripts/import-sqlite-to-postgres.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../.env.example", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(adapter, /import \{ Pool/);
+  assert.match(adapter, /ACADEMY_DATABASE_URL/);
+  assert.match(adapter, /client\.query\("BEGIN"\)/);
+  assert.match(schema, /CREATE TABLE payment_transactions/);
+  assert.match(schema, /CREATE TABLE submissions/);
+  assert.match(migrate, /__academy_migrations/);
+  assert.match(importer, /DatabaseSync/);
+  assert.match(importer, /ACADEMY_SQLITE_SOURCE_PATH/);
+  assert.match(envExample, /ACADEMY_PG_POOL_SIZE=5/);
 });

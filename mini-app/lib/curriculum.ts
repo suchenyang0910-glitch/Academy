@@ -18,6 +18,15 @@ export type AiLevel = {
   objective: string;
   practice: string;
   criteria: string[];
+  assessment: MultipleChoiceAssessment;
+};
+
+export type MultipleChoiceAssessment = {
+  type: "multiple_choice";
+  question: string;
+  options: Array<{ id: string; label: string }>;
+  correctOptionId: string;
+  explanation: string;
 };
 
 export const COURSE_CATALOG: CourseDefinition[] = [
@@ -93,6 +102,17 @@ export const AI_LEVELS: AiLevel[] = [
     objective: "能用自己的话解释 AI 的工作方式，并区分一个适合交给 AI 的任务和一个必须由人负责的判断。",
     practice: "选择你今天的一件真实工作：写下 AI 可以协助的部分、AI 不该替你决定的部分，以及你准备如何验证它的结果。",
     criteria: ["自己的解释", "可协助部分", "人负责部分", "验证动作"],
+    assessment: {
+      type: "multiple_choice",
+      question: "下面哪种说法最符合本课的 AI 使用原则？",
+      options: [
+        { id: "a", label: "回答写得流畅，就可以直接当成事实使用。" },
+        { id: "b", label: "AI 可以协助产出，但关键方向和事实验证仍由人负责。" },
+        { id: "c", label: "只要给 AI 一个专家角色，它就会自动避免出错。" },
+      ],
+      correctOptionId: "b",
+      explanation: "正确。AI 能放大产出效率，但不能替你承担方向判断或事实验证。",
+    },
   },
   {
     level: 2,
@@ -108,6 +128,17 @@ export const AI_LEVELS: AiLevel[] = [
     objective: "能解释六个基本术语，并说出自己正在使用的 AI 产品包含哪些能力。",
     practice: "打开你常用的一个 AI 产品，按“模型 / 应用 / 输入 / 上下文 / 输出”标注一次真实对话；再写出一个你不确定的功能，并说明准备怎样确认。",
     criteria: ["模型", "应用", "上下文", "输出", "待确认问题"],
+    assessment: {
+      type: "multiple_choice",
+      question: "你在手机上打开 DeepSeek 聊天界面并输入问题，其中“聊天界面”最准确的名称是？",
+      options: [
+        { id: "a", label: "应用；它调用模型并提供输入、文件等交互功能。" },
+        { id: "b", label: "提示词；因为它可以显示对话。" },
+        { id: "c", label: "上下文；因为它能打开网页。" },
+      ],
+      correctOptionId: "a",
+      explanation: "正确。聊天界面是应用；模型是背后生成内容的能力。",
+    },
   },
   {
     level: 3,
@@ -123,6 +154,17 @@ export const AI_LEVELS: AiLevel[] = [
     objective: "能识别 AI 回答中需要验证的主张，并为一个高风险结论设计最小验证动作。",
     practice: "向 AI 提出一个你已经知道部分答案的事实问题。找出两条需要核实的主张，写下你会去看的原始来源或数据，而不是只让 AI 再回答一次。",
     criteria: ["事实问题", "待核实主张", "原始来源", "风险判断"],
+    assessment: {
+      type: "multiple_choice",
+      question: "AI 对一条会影响付款决策的法规给出明确答案，最合适的下一步是？",
+      options: [
+        { id: "a", label: "让 AI 再说一遍，若答案相同就执行。" },
+        { id: "b", label: "先执行，出问题后再修改。" },
+        { id: "c", label: "回到官方法规或专业人士处核实，再做决定。" },
+      ],
+      correctOptionId: "c",
+      explanation: "正确。高风险、时效性或责任相关的事实必须回到原始来源验证。",
+    },
   },
   {
     level: 4,
@@ -136,6 +178,17 @@ export const AI_LEVELS: AiLevel[] = [
     objective: "能用三轮对话把一个粗糙结果改成可用草稿，并说明每一轮补充了什么信息。",
     practice: "选一个低风险任务（例如整理一段笔记）。完成三轮对话：先说明目标；再补充一个缺失背景；最后要求一种明确格式。提交三轮差异和你的判断。",
     criteria: ["初始目标", "补充背景", "明确格式", "三轮差异"],
+    assessment: {
+      type: "multiple_choice",
+      question: "第一版输出太泛泛时，哪种做法最利于稳定改进？",
+      options: [
+        { id: "a", label: "补充一个缺失背景或明确格式，并观察这一个变化带来的差异。" },
+        { id: "b", label: "一次加入二十条新规则，让 AI 自己理解重点。" },
+        { id: "c", label: "立即换模型，不再看原来的任务说明。" },
+      ],
+      correctOptionId: "a",
+      explanation: "正确。每轮只调整关键变量，才知道什么信息真正改善了输出。",
+    },
   },
   {
     level: 5,
@@ -149,6 +202,17 @@ export const AI_LEVELS: AiLevel[] = [
     objective: "能为一个简单、低风险任务写出包含目标、材料、格式和限制的基础提示词。",
     practice: "选择一段你自己的真实材料（笔记、邮件草稿或产品描述），写一条基础提示词，让 AI 把它整理成指定格式。提交原始材料、提示词和输出，并写一句你是否满意。",
     criteria: ["目标", "真实材料", "输出格式", "限制", "验收判断"],
+    assessment: {
+      type: "multiple_choice",
+      question: "下面哪一项不是一条基础工作说明的必要部分？",
+      options: [
+        { id: "a", label: "要完成的目标与可用材料。" },
+        { id: "b", label: "希望得到的格式和限制。" },
+        { id: "c", label: "夸张的头衔，例如“宇宙最强专家”。" },
+      ],
+      correctOptionId: "c",
+      explanation: "正确。先说清目标、材料、格式和限制；角色头衔不是必要条件。",
+    },
   },
   {
     level: 6,
@@ -162,6 +226,17 @@ export const AI_LEVELS: AiLevel[] = [
     objective: "能用示例、视角或任务拆分中的一种方式，提高一个基础提示词的稳定性。",
     practice: "沿用昨天的任务，只增加一种工具：给一个好答案示例、指定一个相关视角，或拆成两步。对比前后输出，并解释它为什么变好或没有变好。",
     criteria: ["基础版本", "新增工具", "前后对比", "自己的解释"],
+    assessment: {
+      type: "multiple_choice",
+      question: "要判断“示例”是否改善了输出，最好的实验方式是？",
+      options: [
+        { id: "a", label: "保留原任务，只增加一个示例，再比较前后结果。" },
+        { id: "b", label: "同时换模型、换任务、换格式，再看最终答案。" },
+        { id: "c", label: "不做比较，直接相信带示例一定更好。" },
+      ],
+      correctOptionId: "a",
+      explanation: "正确。一次只改变一个关键因素，才能知道示例是否真的带来改善。",
+    },
   },
   {
     level: 7,
@@ -175,6 +250,17 @@ AI 可以帮你生成方案矩阵、反例和检查清单；它不能替你决�
     objective: "能把一个真实决策拆成选项、判断标准、风险和最小验证动作。",
     practice: "选择一个真实但不高风险的决定。让 AI 帮你列出三种方案、每种方案的好处/风险和待验证事实；由你写下判断标准与暂定选择。",
     criteria: ["三个方案", "判断标准", "风险", "待验证事实", "人的选择"],
+    assessment: {
+      type: "multiple_choice",
+      question: "在 AI 协助做决策时，哪一项必须由人最终承担？",
+      options: [
+        { id: "a", label: "列出可能的选项。" },
+        { id: "b", label: "设定判断权重并作出最终选择。" },
+        { id: "c", label: "生成一份风险清单。" },
+      ],
+      correctOptionId: "b",
+      explanation: "正确。AI 能协助展开信息，但价值取舍与最终责任必须留在人手中。",
+    },
   },
   {
     level: 8,
@@ -183,6 +269,17 @@ AI 可以帮你生成方案矩阵、反例和检查清单；它不能替你决�
     objective: "理解为什么模型不知道你的业务，并设计一个带引用和拒答机制的最小知识库。",
     practice: "选择一份自己的文档，设计 5 个可验证问题，并检查答案是否引用正确内容或明确说不知道。",
     criteria: ["文档", "测试问题", "引用", "拒答", "检索"],
+    assessment: {
+      type: "multiple_choice",
+      question: "一个可用的最小知识库回答，最应该具备什么？",
+      options: [
+        { id: "a", label: "答不出来时也必须编出完整答案。" },
+        { id: "b", label: "能回到提供的原文引用；没有依据时能明确拒答。" },
+        { id: "c", label: "只要回答足够长，就说明检索成功。" },
+      ],
+      correctOptionId: "b",
+      explanation: "正确。RAG 的关键是证据可追溯，以及没有依据时不编造。",
+    },
   },
   {
     level: 9,
@@ -191,6 +288,17 @@ AI 可以帮你生成方案矩阵、反例和检查清单；它不能替你决�
     objective: "设计输入、步骤、工具、状态、失败处理和人工审核节点。",
     practice: "把一个重复任务拆成至少三个步骤，明确每一步输入、输出、失败处理和必须由人确认的地方。",
     criteria: ["输入", "输出", "步骤", "失败处理", "人工审核"],
+    assessment: {
+      type: "multiple_choice",
+      question: "准备自动化一个重复任务前，正确的第一步是？",
+      options: [
+        { id: "a", label: "先把人工流程的输入、步骤、输出和失败情况说清楚。" },
+        { id: "b", label: "先给流程取一个 Agent 名字。" },
+        { id: "c", label: "直接让 AI 自由决定每一步怎么做。" },
+      ],
+      correctOptionId: "a",
+      explanation: "正确。人工流程都不清楚时，自动化只会放大混乱。",
+    },
   },
   {
     level: 10,
@@ -199,6 +307,17 @@ AI 可以帮你生成方案矩阵、反例和检查清单；它不能替你决�
     objective: "完成数据解释、清洗、计算、异常确认和洞察验证。",
     practice: "使用一份 CSV 找出三个信号，并写出每个结论的字段、计算依据和异常检查。",
     criteria: ["字段", "清洗", "计算", "异常", "依据"],
+    assessment: {
+      type: "multiple_choice",
+      question: "AI 说“销售额增长 30%”时，哪一项最能让这个结论可复核？",
+      options: [
+        { id: "a", label: "确认使用的数据字段、计算方式、时间范围和异常值。" },
+        { id: "b", label: "要求 AI 把结论写得更有说服力。" },
+        { id: "c", label: "只保留增长结论，删除原始数据。" },
+      ],
+      correctOptionId: "a",
+      explanation: "正确。数据结论必须能回到字段、计算和异常检查。",
+    },
   },
   {
     level: 11,
@@ -207,6 +326,17 @@ AI 可以帮你生成方案矩阵、反例和检查清单；它不能替你决�
     objective: "控制受众、结构、语气、渠道适配与事实检查；区分直译和重写。",
     practice: "选择一段真实业务文本，完成一个初稿和一个面向指定受众的改写，并标出必须人工核实的事实。",
     criteria: ["受众", "结构", "语气", "事实检查", "本地化"],
+    assessment: {
+      type: "multiple_choice",
+      question: "AI 生成了一篇面向客户的产品文案，发布前最重要的人类职责是？",
+      options: [
+        { id: "a", label: "检查事实、承诺、受众与语气是否合适。" },
+        { id: "b", label: "只检查字数有没有超过 500 字。" },
+        { id: "c", label: "因为是 AI 生成，所以不需要审核。" },
+      ],
+      correctOptionId: "a",
+      explanation: "正确。内容可以由 AI 起草，真实性、承诺与语境仍需人负责。",
+    },
   },
   {
     level: 12,
@@ -215,6 +345,17 @@ AI 可以帮你生成方案矩阵、反例和检查清单；它不能替你决�
     objective: "使用 AI 完成需求描述、实现、调试、测试和代码解释。",
     practice: "完成一个可运行的小功能，保留需求、错误、修改、测试结果和你自己的解释。",
     criteria: ["需求", "运行结果", "错误", "测试", "解释"],
+    assessment: {
+      type: "multiple_choice",
+      question: "AI 帮你写出一段代码后，什么才算真正完成？",
+      options: [
+        { id: "a", label: "代码看起来很专业。" },
+        { id: "b", label: "代码能运行、关键场景测试通过，而且你能解释它做什么。" },
+        { id: "c", label: "把代码直接复制到生产环境。" },
+      ],
+      correctOptionId: "b",
+      explanation: "正确。可运行、可测试、可解释，缺一项都不是可靠完成。",
+    },
   },
   {
     level: 13,
@@ -223,6 +364,17 @@ AI 可以帮你生成方案矩阵、反例和检查清单；它不能替你决�
     objective: "使用苏格拉底提问、费曼解释和小测检验理解；明确一个可在 60 天内完成的原型范围。",
     practice: "选择一个不熟悉概念，让 AI 只用提问引导你；再写下毕业原型要解决的真实问题、用户、输入和成功标准。",
     criteria: ["提问", "自己的解释", "真实问题", "成功标准"],
+    assessment: {
+      type: "multiple_choice",
+      question: "使用 AI 作为学习助手时，哪种方式更能检验你是否真正理解？",
+      options: [
+        { id: "a", label: "让 AI 直接给结论，然后复制到笔记。" },
+        { id: "b", label: "先用自己的话解释，再让 AI 用追问和小测找漏洞。" },
+        { id: "c", label: "连续阅读 AI 的长回答，不进行任何输出。" },
+      ],
+      correctOptionId: "b",
+      explanation: "正确。主动解释和被追问，才能暴露“以为懂了”的漏洞。",
+    },
   },
   {
     level: 14,
@@ -231,6 +383,17 @@ AI 可以帮你生成方案矩阵、反例和检查清单；它不能替你决�
     objective: "根据作品、验证记录和错误判断已经掌握、仍需练习和下一轮升级的能力。",
     practice: "完成本轮复盘：列出一个可证明的能力、一处失败、一个需要回看的概念，以及下一轮一个具体升级目标。",
     criteria: ["掌握证据", "失败记录", "薄弱概念", "升级目标"],
+    assessment: {
+      type: "multiple_choice",
+      question: "下面哪一项最能证明你真的掌握了一个 AI 能力？",
+      options: [
+        { id: "a", label: "连续打卡很多天。" },
+        { id: "b", label: "看过很多 AI 课程视频。" },
+        { id: "c", label: "在真实任务中完成可检查的结果，并记录失败和修复。" },
+      ],
+      correctOptionId: "c",
+      explanation: "正确。能力证据来自真实任务、结果和复盘，不来自熟悉感或打卡数。",
+    },
   },
 ];
 
@@ -264,6 +427,7 @@ export type FixedLesson = {
   content: string;
   practicePrompt: string;
   criteria: string[];
+  assessment?: MultipleChoiceAssessment;
   estimatedMinutes: number;
 };
 
@@ -288,10 +452,11 @@ export function buildAiLesson(day: number): FixedLesson {
       objective: definition.objective,
       content:
         definition.teaching
-          ? `${definition.teaching}\n\n本轮：${roundMeta.name}。${roundMeta.instruction}`
-          : `${definition.core}。\n\n本轮：${roundMeta.name}。${roundMeta.instruction}`,
-      practicePrompt: `${definition.practice}\n\n本轮要求：${roundMeta.instruction}`,
+          ? `${definition.teaching}\n\n本轮：${roundMeta.name}。${roundMeta.instruction}\n\n课后检查：读完本课后，完成下方 1 道选择题。答错可以回看正文后重新提交。`
+          : `${definition.core}。\n\n本轮：${roundMeta.name}。${roundMeta.instruction}\n\n课后检查：读完本课后，完成下方 1 道选择题。答错可以回看正文后重新提交。`,
+      practicePrompt: `课后检查：${definition.assessment.question}`,
       criteria: definition.criteria,
+      assessment: definition.assessment,
       estimatedMinutes: 20,
     };
   }

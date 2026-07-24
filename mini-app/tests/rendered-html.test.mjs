@@ -28,6 +28,8 @@ test("ships five fixed 60-day curricula and the reminder pool", async () => {
   assert.match(curriculum, /认识 AI：它是什么、不是什麽/);
   assert.match(curriculum, /先建立正确预期，再学习操作/);
   assert.match(curriculum, /AI 给出很像答案的文字，不代表它已经查证过/);
+  assert.match(curriculum, /type: "multiple_choice"/);
+  assert.match(curriculum, /课后检查：读完本课后，完成下方 1 道选择题/);
   assert.match(curriculum, /毕业项目 · 20例测试/);
   assert.match(curriculum, /export const ENGLISH_LESSONS/);
   assert.match(curriculum, /export const BUSINESS_LESSONS/);
@@ -61,6 +63,8 @@ test("records Telegram profile fields and tracks qualified referrals", async () 
     /CAST\(s\.completed_on AS DATE\) <= CAST\(\? AS DATE\) \+ INTERVAL '7 days'/,
   );
   assert.match(store, /ORDER BY CAST\(ends_at AS TIMESTAMP\) DESC/);
+  assert.match(store, /correctOptionId/);
+  assert.match(store, /请选择一个有效答案/);
   assert.match(schema, /export const invitations/);
   assert.match(migration, /CREATE TABLE `invitations`/);
   assert.match(migration, /ADD `telegram_username`/);

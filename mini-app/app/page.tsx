@@ -56,6 +56,13 @@ type Lesson = {
   content: string;
   practicePrompt: string;
   criteria: string[];
+  assessment?: {
+    type: "multiple_choice";
+    question: string;
+    options: Array<{ id: string; label: string }>;
+    correctOptionId: string;
+    explanation: string;
+  };
   estimatedMinutes: number;
 };
 
@@ -1031,7 +1038,7 @@ function LessonSheet({
 
         <section className="practice-card">
           <span className="eyebrow">02 · ACTIVE PRACTICE</span>
-          <h2>必须留下输出</h2>
+          <h2>{lesson.assessment ? "完成本课检查" : "必须留下输出"}</h2>
           {!knowledgeRead ? (
             <p className="practice-locked">
               先完成上方的学习卡。看完句型和示例后，再开始写你的答案。
@@ -1039,20 +1046,40 @@ function LessonSheet({
           ) : (
             <>
           <p>{lesson.practicePrompt}</p>
-          <div className="criteria-row">
-            {lesson.criteria.map((criterion) => (
-              <span key={criterion}>{criterion}</span>
-            ))}
-          </div>
-          <textarea
-            value={answer}
-            onChange={(event) => setAnswer(event.target.value)}
-            placeholder="写下你的原始答案。系统会保留它，不让 AI 替你假装学会。"
-            maxLength={4000}
-          />
+          {lesson.assessment ? (
+            <div className="multiple-choice" role="radiogroup" aria-label={lesson.assessment.question}>
+              {lesson.assessment.options.map((option) => (
+                <button
+                  key={option.id}
+                  className={answer === option.id ? "choice-option selected" : "choice-option"}
+                  type="button"
+                  role="radio"
+                  aria-checked={answer === option.id}
+                  onClick={() => setAnswer(option.id)}
+                >
+                  <span>{option.id.toUpperCase()}</span>
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <>
+              <div className="criteria-row">
+                {lesson.criteria.map((criterion) => (
+                  <span key={criterion}>{criterion}</span>
+                ))}
+              </div>
+              <textarea
+                value={answer}
+                onChange={(event) => setAnswer(event.target.value)}
+                placeholder="写下你的原始答案。系统会保留它，不让 AI 替你假装学会。"
+                maxLength={4000}
+              />
+            </>
+          )}
           <div className="lesson-submit-bar">
             <div className="answer-meta">
-              <span>{answer.trim().length} 字</span>
+              <span>{lesson.assessment ? (answer ? "已选择 1 项" : "请选择 1 项") : `${answer.trim().length} 字`}</span>
               {error && <strong>{error}</strong>}
             </div>
             <button

@@ -1,6 +1,11 @@
 import { getD1 } from "../db";
 import { getRuntimeEnv } from "./runtime-env";
-import { COURSE_CATALOG, FIXED_LESSONS } from "./curriculum";
+import {
+  COURSE_CATALOG,
+  FIXED_LESSONS,
+  type FixedLesson,
+  type MultipleChoiceAssessment,
+} from "./curriculum";
 import { REMINDER_TEMPLATES, selectReminder } from "./reminders";
 import { getPaymentCatalog } from "./telegram-payments";
 import { getAiRuntimeStatus, requestAiFeedback } from "./ai-feedback";
@@ -27,6 +32,33 @@ type RuntimeEnv = {
 
 function runtimeEnv(): RuntimeEnv {
   return getRuntimeEnv<RuntimeEnv>();
+}
+
+type LessonMetadata = {
+  criteria: string[];
+  assessment?: MultipleChoiceAssessment;
+};
+
+function lessonMetadataFromJson(raw: unknown): LessonMetadata {
+  const parsed = JSON.parse(String(raw ?? "[]")) as unknown;
+  if (Array.isArray(parsed)) {
+    return { criteria: parsed.filter((item): item is string => typeof item === "string") };
+  }
+  if (!parsed || typeof parsed !== "object") return { criteria: [] };
+
+  const record = parsed as { criteria?: unknown; assessment?: unknown };
+  const criteria = Array.isArray(record.criteria)
+    ? record.criteria.filter((item): item is string => typeof item === "string")
+    : [];
+  const assessment = record.assessment as MultipleChoiceAssessment | undefined;
+  return assessment?.type === "multiple_choice" ? { criteria, assessment } : { criteria };
+}
+
+function lessonMetadataForStorage(lesson: FixedLesson) {
+  return JSON.stringify({
+    criteria: lesson.criteria,
+    ...(lesson.assessment ? { assessment: lesson.assessment } : {}),
+  });
 }
 
 function localDateKey(timezone = "Asia/Bangkok", date = new Date()) {
@@ -235,7 +267,7 @@ export async function ensureSeedData(identity: AcademyIdentity) {
   const seeded = await d1
     .prepare("SELECT value FROM schema_version WHERE key = 'academy_seed'")
     .first<{ value: string }>();
-  if (seeded?.value === "v4") return;
+  if (seeded?.value === "v5") return;
 
   const statements = [
     ...COURSE_CATALOG.map((course) =>
@@ -290,7 +322,7 @@ export async function ensureSeedData(identity: AcademyIdentity) {
           lesson.objective,
           lesson.content,
           lesson.practicePrompt,
-          JSON.stringify(lesson.criteria),
+          lessonMetadataForStorage(lesson),
           lesson.estimatedMinutes,
         ),
     ),
@@ -315,7 +347,7 @@ export async function ensureSeedData(identity: AcademyIdentity) {
     ),
     d1
       .prepare(
-        `INSERT INTO schema_version (key, value) VALUES ('academy_seed', 'v4')
+        `INSERT INTO schema_version (key, value) VALUES ('academy_seed', 'v5')
          ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
       ),
   ];
@@ -431,7 +463,7 @@ export async function getBootstrap(identity: AcademyIdentity) {
         lesson: lesson
           ? {
               ...lesson,
-              criteria: JSON.parse(String(lesson.criteriaJson ?? "[]")),
+              ...lessonMetadataFromJson(lesson.criteriaJson),
               criteriaJson: undefined,
             }
           : null,
@@ -468,7 +500,7 @@ export async function getBootstrap(identity: AcademyIdentity) {
           enrollment,
           lesson: {
             ...lesson,
-            criteria: JSON.parse(String(lesson.criteriaJson ?? "[]")),
+            ...lessonMetadataFromJson(lesson.criteriaJson),
             criteriaJson: undefined,
           },
           submission: submittedByLesson.get(String(lesson.id)) ?? null,
@@ -875,7 +907,21 @@ function matchesCriterion(normalizedAnswer: string, criterion: string) {
   );
 }
 
-function scoreAnswer(answer: string, criteria: string[]) {
+function scoreAnswer(
+  answer: string,
+  criteria: string[],
+  assessment?: MultipleChoiceAssessment,
+) {
+  if (assessment) {
+    const correct = answer === assessment.correctOptionId;
+    return {
+      score: correct ? 100 : 0,
+      feedback: correct
+        ? `回答正确。${assessment.explanation}`
+        : `这题还没通过。${assessment.explanation} 请回看正文后重新选择。`,
+    };
+  }
+
   const normalized = answer.toLowerCase();
   const matched = criteria.filter((criterion) =>
     matchesCriterion(normalized, criterion),
@@ -906,9 +952,6 @@ export async function submitLesson(
 ) {
   await assertLearningAccess(identity);
   const answer = payload.answer.trim();
-  if (answer.length < 20) {
-    throw new Response("主动练习至少需要 20 个字", { status: 400 });
-  }
 
   const d1 = getD1();
   const lesson = await d1
@@ -926,16 +969,25 @@ export async function submitLesson(
     throw new Response("课程不存在或不属于当前用户", { status: 404 });
   }
 
-  const criteria = JSON.parse(String(lesson.criteriaJson ?? "[]")) as string[];
-  const rule = scoreAnswer(answer, criteria);
-  const aiFeedback = await requestAiFeedback({
-    lessonTitle: String(lesson.title),
-    objective: String(lesson.objective),
-    criteria,
-    answer,
-    ruleScore: rule.score,
-    ruleFeedback: rule.feedback,
-  });
+  const { criteria, assessment } = lessonMetadataFromJson(lesson.criteriaJson);
+  if (!assessment && answer.length < 20) {
+    throw new Response("主动练习至少需要 20 个字", { status: 400 });
+  }
+  if (assessment && !assessment.options.some((option) => option.id === answer)) {
+    throw new Response("请选择一个有效答案", { status: 400 });
+  }
+
+  const rule = scoreAnswer(answer, criteria, assessment);
+  const aiFeedback = assessment
+    ? null
+    : await requestAiFeedback({
+        lessonTitle: String(lesson.title),
+        objective: String(lesson.objective),
+        criteria,
+        answer,
+        ruleScore: rule.score,
+        ruleFeedback: rule.feedback,
+      });
   const status = rule.score >= 60 ? "completed" : "needs_revision";
   const timezoneRow = await d1
     .prepare("SELECT timezone FROM users WHERE id = ?")

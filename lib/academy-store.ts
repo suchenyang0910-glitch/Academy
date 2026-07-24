@@ -7,6 +7,13 @@ export type AcademyIdentity = {
   id: string;
   telegramId: string | null;
   displayName: string;
+  telegramUsername: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  languageCode: string | null;
+  photoUrl: string | null;
+  isPremium: boolean;
+  startParam: string | null;
 };
 
 type RuntimeEnv = {
@@ -15,6 +22,7 @@ type RuntimeEnv = {
   OLLAMA_MODEL?: string;
   ACADEMY_CRON_SECRET?: string;
   ACADEMY_MINI_APP_URL?: string;
+  TELEGRAM_BOT_USERNAME?: string;
 };
 
 function runtimeEnv(): RuntimeEnv {
@@ -89,6 +97,9 @@ async function validateTelegramInitData(initData: string, botToken: string) {
     first_name?: string;
     last_name?: string;
     username?: string;
+    language_code?: string;
+    photo_url?: string;
+    is_premium?: boolean;
   };
   const displayName =
     [user.first_name, user.last_name].filter(Boolean).join(" ") ||
@@ -99,6 +110,13 @@ async function validateTelegramInitData(initData: string, botToken: string) {
     id: `tg:${user.id}`,
     telegramId: String(user.id),
     displayName,
+    telegramUsername: user.username ?? null,
+    firstName: user.first_name ?? null,
+    lastName: user.last_name ?? null,
+    languageCode: user.language_code ?? null,
+    photoUrl: user.photo_url ?? null,
+    isPremium: Boolean(user.is_premium),
+    startParam: params.get("start_param"),
   } satisfies AcademyIdentity;
 }
 
@@ -123,22 +141,80 @@ export async function getIdentity(request: Request): Promise<AcademyIdentity> {
     id: "founder",
     telegramId: null,
     displayName: "路飞",
+    telegramUsername: "founder_preview",
+    firstName: "路飞",
+    lastName: null,
+    languageCode: "zh-hans",
+    photoUrl: null,
+    isPremium: false,
+    startParam: request.headers.get("x-academy-ref"),
   };
+}
+
+async function referralCodeFor(userId: string) {
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(`academy:${userId}`),
+  );
+  return `A${bytesToHex(digest).slice(0, 8).toUpperCase()}`;
 }
 
 export async function ensureSeedData(identity: AcademyIdentity) {
   const d1 = getD1();
+  const referralCode = await referralCodeFor(identity.id);
   await d1
     .prepare(
-      `INSERT INTO users (id, telegram_id, display_name, timezone)
-       VALUES (?, ?, ?, 'Asia/Bangkok')
+      `INSERT INTO users
+         (id, telegram_id, display_name, telegram_username, first_name,
+          last_name, language_code, photo_url, is_premium, referral_code, timezone)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Asia/Bangkok')
        ON CONFLICT(id) DO UPDATE SET
          telegram_id = excluded.telegram_id,
          display_name = excluded.display_name,
+         telegram_username = excluded.telegram_username,
+         first_name = excluded.first_name,
+         last_name = excluded.last_name,
+         language_code = excluded.language_code,
+         photo_url = excluded.photo_url,
+         is_premium = excluded.is_premium,
+         referral_code = COALESCE(users.referral_code, excluded.referral_code),
          updated_at = CURRENT_TIMESTAMP`,
     )
-    .bind(identity.id, identity.telegramId, identity.displayName)
+    .bind(
+      identity.id,
+      identity.telegramId,
+      identity.displayName,
+      identity.telegramUsername,
+      identity.firstName,
+      identity.lastName,
+      identity.languageCode,
+      identity.photoUrl,
+      identity.isPremium ? 1 : 0,
+      referralCode,
+    )
     .run();
+
+  const invitationCode = identity.startParam
+    ?.replace(/^ref_/i, "")
+    .trim()
+    .toUpperCase();
+  if (invitationCode && /^[A-Z0-9]{9}$/.test(invitationCode)) {
+    const inviter = await d1
+      .prepare("SELECT id FROM users WHERE referral_code = ?")
+      .bind(invitationCode)
+      .first<{ id: string }>();
+    if (inviter && inviter.id !== identity.id) {
+      await d1
+        .prepare(
+          `INSERT INTO invitations
+             (inviter_user_id, invited_user_id, invite_code, status)
+           VALUES (?, ?, ?, 'pending')
+           ON CONFLICT(invited_user_id) DO NOTHING`,
+        )
+        .bind(inviter.id, identity.id, invitationCode)
+        .run();
+    }
+  }
 
   const seeded = await d1
     .prepare("SELECT value FROM schema_version WHERE key = 'academy_seed'")
@@ -236,9 +312,29 @@ export async function ensureSeedData(identity: AcademyIdentity) {
 export async function getBootstrap(identity: AcademyIdentity) {
   const d1 = getD1();
   const user = await d1
-    .prepare("SELECT timezone FROM users WHERE id = ?")
+    .prepare(
+      `SELECT id, telegram_id AS telegramId, display_name AS displayName,
+              telegram_username AS telegramUsername, first_name AS firstName,
+              last_name AS lastName, language_code AS languageCode,
+              photo_url AS photoUrl, is_premium AS isPremium,
+              referral_code AS referralCode, timezone, trial_started_at AS trialStartedAt
+       FROM users WHERE id = ?`,
+    )
     .bind(identity.id)
-    .first<{ timezone: string }>();
+    .first<{
+      id: string;
+      telegramId: string | null;
+      displayName: string;
+      telegramUsername: string | null;
+      firstName: string | null;
+      lastName: string | null;
+      languageCode: string | null;
+      photoUrl: string | null;
+      isPremium: number;
+      referralCode: string;
+      timezone: string;
+      trialStartedAt: string;
+    }>();
   const timezone = user?.timezone || "Asia/Bangkok";
   const todayKey = localDateKey(timezone);
   await syncEnrollmentDays(identity.id, todayKey);
@@ -341,8 +437,13 @@ export async function getBootstrap(identity: AcademyIdentity) {
     return Math.max(maximum, Math.max(0, calendarDay - enrollment.currentDay));
   }, 0);
 
+  const referral = await getReferralSummary(identity.id, user?.referralCode);
+
   return {
-    user: identity,
+    user: user
+      ? { ...user, isPremium: Boolean(user.isPremium) }
+      : identity,
+    referral,
     catalog: catalogResult.results,
     enrollments,
     today,
@@ -360,6 +461,89 @@ export async function getBootstrap(identity: AcademyIdentity) {
             ? "behind"
             : "on_track",
     },
+  };
+}
+
+async function getReferralSummary(
+  userId: string,
+  referralCode?: string | null,
+) {
+  const d1 = getD1();
+  const pending = await d1
+    .prepare(
+      `SELECT id, invited_user_id AS invitedUserId, created_at AS createdAt
+       FROM invitations
+       WHERE inviter_user_id = ? AND status = 'pending'`,
+    )
+    .bind(userId)
+    .all<{ id: number; invitedUserId: string; createdAt: string }>();
+
+  for (const invitation of pending.results) {
+    const activeCourses = await d1
+      .prepare(
+        `SELECT COUNT(*) AS count
+         FROM enrollments WHERE user_id = ? AND active = 1`,
+      )
+      .bind(invitation.invitedUserId)
+      .first<{ count: number }>();
+    const activeCount = Number(activeCourses?.count ?? 0);
+    if (activeCount < 1) continue;
+
+    const validDays = await d1
+      .prepare(
+        `SELECT COUNT(*) AS count
+         FROM (
+           SELECT s.completed_on
+           FROM submissions s
+           JOIN lessons l ON l.id = s.lesson_id
+           JOIN enrollments e
+             ON e.user_id = s.user_id AND e.course_id = l.course_id
+           WHERE s.user_id = ?
+             AND s.status = 'completed'
+             AND s.completed_on IS NOT NULL
+             AND date(s.completed_on) <= date(?, '+7 day')
+             AND e.active = 1
+           GROUP BY s.completed_on
+           HAVING COUNT(DISTINCT l.course_id) >= ?
+         ) valid_days`,
+      )
+      .bind(invitation.invitedUserId, invitation.createdAt, activeCount)
+      .first<{ count: number }>();
+
+    if (Number(validDays?.count ?? 0) >= 3) {
+      await d1
+        .prepare(
+          `UPDATE invitations
+           SET status = 'qualified', qualified_at = CURRENT_TIMESTAMP
+           WHERE id = ? AND status = 'pending'`,
+        )
+        .bind(invitation.id)
+        .run();
+    }
+  }
+
+  const stats = await d1
+    .prepare(
+      `SELECT COUNT(*) AS total,
+              SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS pending,
+              SUM(CASE WHEN status = 'qualified' THEN 1 ELSE 0 END) AS qualified
+       FROM invitations WHERE inviter_user_id = ?`,
+    )
+    .bind(userId)
+    .first<{ total: number; pending: number | null; qualified: number | null }>();
+
+  const code = referralCode || (await referralCodeFor(userId));
+  const botUsername = runtimeEnv().TELEGRAM_BOT_USERNAME?.replace(/^@/, "");
+  return {
+    code,
+    total: Number(stats?.total ?? 0),
+    pending: Number(stats?.pending ?? 0),
+    qualified: Number(stats?.qualified ?? 0),
+    rewardTarget: 3,
+    rewardDays: 30,
+    shareUrl: botUsername
+      ? `https://t.me/${botUsername}?startapp=ref_${code}`
+      : null,
   };
 }
 

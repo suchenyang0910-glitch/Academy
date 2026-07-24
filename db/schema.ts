@@ -15,12 +15,22 @@ export const users = sqliteTable(
     id: text("id").primaryKey(),
     telegramId: text("telegram_id"),
     displayName: text("display_name").notNull(),
+    telegramUsername: text("telegram_username"),
+    firstName: text("first_name"),
+    lastName: text("last_name"),
+    languageCode: text("language_code"),
+    photoUrl: text("photo_url"),
+    isPremium: integer("is_premium", { mode: "boolean" }).notNull().default(false),
+    referralCode: text("referral_code"),
     timezone: text("timezone").notNull().default("Asia/Bangkok"),
     trialStartedAt: text("trial_started_at").notNull().default(sql`CURRENT_TIMESTAMP`),
     createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
     updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   },
-  (table) => [uniqueIndex("users_telegram_id_unique").on(table.telegramId)],
+  (table) => [
+    uniqueIndex("users_telegram_id_unique").on(table.telegramId),
+    uniqueIndex("users_referral_code_unique").on(table.referralCode),
+  ],
 );
 
 export const courses = sqliteTable(
@@ -156,6 +166,30 @@ export const reminderEvents = sqliteTable(
     completedAt: text("completed_at"),
   },
   (table) => [index("reminder_events_user_sent_idx").on(table.userId, table.sentAt)],
+);
+
+export const invitations = sqliteTable(
+  "invitations",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    inviterUserId: text("inviter_user_id")
+      .notNull()
+      .references(() => users.id),
+    invitedUserId: text("invited_user_id")
+      .notNull()
+      .references(() => users.id),
+    inviteCode: text("invite_code").notNull(),
+    status: text("status").notNull().default("pending"),
+    qualifiedAt: text("qualified_at"),
+    createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    uniqueIndex("invitations_invited_user_unique").on(table.invitedUserId),
+    index("invitations_inviter_status_idx").on(
+      table.inviterUserId,
+      table.status,
+    ),
+  ],
 );
 
 export const schemaVersion = sqliteTable("schema_version", {

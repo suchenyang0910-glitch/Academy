@@ -407,6 +407,10 @@ blockquote {
   grid-template-columns: repeat(4, 1fr);
 }
 
+.bottom-nav-five {
+  grid-template-columns: repeat(5, 1fr);
+}
+
 .bottom-nav button {
   position: relative;
   display: grid;
@@ -1388,6 +1392,217 @@ blockquote {
 
 .note-timeline {
   padding-bottom: 45px;
+}
+
+.profile-intro {
+  padding-bottom: 20px;
+}
+
+.identity-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 22px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.identity-avatar {
+  width: 58px;
+  height: 58px;
+  flex: 0 0 58px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--ink);
+  border-radius: 50%;
+  background: rgba(82, 104, 79, 0.08);
+  color: var(--sage);
+  font: 500 20px/1 Georgia, "Songti SC", serif;
+}
+
+.identity-copy {
+  min-width: 0;
+}
+
+.identity-copy > span {
+  color: var(--terracotta);
+  font: 500 8px/1 Georgia, serif;
+  letter-spacing: 0.16em;
+}
+
+.identity-copy h2 {
+  margin: 5px 0 3px;
+  font: 500 26px/1.05 Georgia, "Songti SC", serif;
+}
+
+.identity-copy p {
+  margin: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-bottom: 1px solid var(--line);
+}
+
+.profile-facts > div {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+  padding: 15px 12px 15px 0;
+  border-bottom: 1px dashed var(--line);
+}
+
+.profile-facts > div:nth-child(even) {
+  padding-right: 0;
+  padding-left: 14px;
+  border-left: 1px dashed var(--line);
+}
+
+.profile-facts span,
+.invite-code-row span,
+.qualification-note,
+.privacy-note span {
+  color: var(--muted);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+}
+
+.profile-facts strong {
+  overflow: hidden;
+  font: 500 12px/1.3 Georgia, "Songti SC", serif;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.referral-card {
+  margin: 22px 0 0;
+  padding: 19px;
+  border: 1px solid rgba(185, 99, 69, 0.32);
+  background: rgba(185, 99, 69, 0.055);
+}
+
+.referral-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.referral-heading h2 {
+  margin: 5px 0 0;
+  font: 500 23px/1.08 Georgia, "Songti SC", serif;
+}
+
+.referral-heading > strong {
+  color: var(--terracotta);
+  font: 500 26px/1 Georgia, serif;
+}
+
+.referral-card > p {
+  margin: 13px 0;
+  color: #4d4940;
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.referral-progress {
+  height: 5px;
+  overflow: hidden;
+  background: rgba(185, 99, 69, 0.15);
+}
+
+.referral-progress span {
+  display: block;
+  height: 100%;
+  background: var(--terracotta);
+}
+
+.invite-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin-top: 15px;
+  border-top: 1px dashed var(--line);
+  border-bottom: 1px dashed var(--line);
+}
+
+.invite-stats > div {
+  display: grid;
+  gap: 3px;
+  padding: 11px 4px;
+  text-align: center;
+}
+
+.invite-stats > div + div {
+  border-left: 1px dashed var(--line);
+}
+
+.invite-stats strong {
+  font: 500 20px/1 Georgia, serif;
+}
+
+.invite-stats span {
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.invite-code-row {
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.invite-code-row > div {
+  display: grid;
+  gap: 4px;
+}
+
+.invite-code-row strong {
+  font: 500 16px/1 Georgia, serif;
+  letter-spacing: 0.12em;
+}
+
+.invite-code-row button {
+  min-width: 52px;
+  min-height: 36px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--terracotta);
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.share-button {
+  width: 100%;
+}
+
+.qualification-note {
+  display: block;
+  margin-top: 12px;
+  line-height: 1.6;
+}
+
+.privacy-note {
+  margin: 18px 0 30px;
+  padding: 14px 0;
+  border-top: 1px solid var(--line);
+}
+
+.privacy-note > span {
+  color: var(--sage);
+}
+
+.privacy-note p {
+  margin: 7px 0 0;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.7;
 }
 
 .empty-note {

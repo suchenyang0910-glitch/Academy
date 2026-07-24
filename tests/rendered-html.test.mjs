@@ -36,3 +36,25 @@ test("ships five fixed 60-day curricula and the reminder pool", async () => {
   assert.match(reminders, /今天的知识不会自己长进脑子/);
   assert.equal(JSON.parse(hosting).d1, "DB");
 });
+
+test("records Telegram profile fields and tracks qualified referrals", async () => {
+  const [page, store, schema, migration] = await Promise.all([
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../lib/academy-store.ts", import.meta.url), "utf8"),
+    readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
+    readFile(
+      new URL("../drizzle/0002_neat_doctor_octopus.sql", import.meta.url),
+      "utf8",
+    ),
+  ]);
+
+  assert.match(page, /function ProfileView/);
+  assert.match(page, /有效邀请 = Telegram 认证/);
+  assert.match(store, /start_param/);
+  assert.match(store, /startapp=ref_/);
+  assert.match(store, /status = 'qualified'/);
+  assert.match(store, /date\(s\.completed_on\) <= date\(\?, '\+7 day'\)/);
+  assert.match(schema, /export const invitations/);
+  assert.match(migration, /CREATE TABLE `invitations`/);
+  assert.match(migration, /ADD `telegram_username`/);
+});

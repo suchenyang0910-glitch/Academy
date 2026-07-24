@@ -9,6 +9,7 @@ declare global {
         initData?: string;
         ready?: () => void;
         expand?: () => void;
+        openTelegramLink?: (url: string) => void;
       };
     };
   }
@@ -74,7 +75,28 @@ type Note = {
 };
 
 type Bootstrap = {
-  user: { id: string; displayName: string };
+  user: {
+    id: string;
+    telegramId: string | null;
+    displayName: string;
+    telegramUsername: string | null;
+    firstName: string | null;
+    lastName: string | null;
+    languageCode: string | null;
+    photoUrl: string | null;
+    isPremium: boolean;
+    timezone: string;
+    trialStartedAt: string;
+  };
+  referral: {
+    code: string;
+    total: number;
+    pending: number;
+    qualified: number;
+    rewardTarget: number;
+    rewardDays: number;
+    shareUrl: string | null;
+  };
   catalog: CatalogCourse[];
   enrollments: Enrollment[];
   today: TodayItem[];
@@ -88,12 +110,17 @@ type Bootstrap = {
   };
 };
 
-type Tab = "today" | "courses" | "notes" | "progress";
+type Tab = "today" | "courses" | "notes" | "progress" | "profile";
 
 function academyHeaders() {
+  const referralCode =
+    typeof window === "undefined"
+      ? ""
+      : new URLSearchParams(window.location.search).get("ref") ?? "";
   return {
     "content-type": "application/json",
     "x-telegram-init-data": window.Telegram?.WebApp?.initData ?? "",
+    "x-academy-ref": referralCode,
   };
 }
 
@@ -219,11 +246,14 @@ export default function Home() {
                   completedCount={completedCount}
                 />
               )}
+              {tab === "profile" && (
+                <ProfileView data={data} notify={notify} />
+              )}
             </>
           )}
         </div>
 
-        <nav className="bottom-nav bottom-nav-four" aria-label="主要导航">
+        <nav className="bottom-nav bottom-nav-five" aria-label="主要导航">
           <NavButton
             active={tab === "today"}
             icon="⌂"
@@ -247,6 +277,12 @@ export default function Home() {
             icon="▥"
             label="进度"
             onClick={() => setTab("progress")}
+          />
+          <NavButton
+            active={tab === "profile"}
+            icon="○"
+            label="我的"
+            onClick={() => setTab("profile")}
           />
         </nav>
 
@@ -909,6 +945,176 @@ function ProgressView({
             </div>
           );
         })}
+      </section>
+    </>
+  );
+}
+
+function ProfileView({
+  data,
+  notify,
+}: {
+  data: Bootstrap;
+  notify: (message: string) => void;
+}) {
+  const initials =
+    data.user.displayName
+      .split(/\s+/)
+      .map((part) => part[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "A";
+  const referralProgress = Math.min(
+    100,
+    Math.round(
+      (data.referral.qualified / Math.max(1, data.referral.rewardTarget)) * 100,
+    ),
+  );
+
+  function localShareUrl() {
+    if (data.referral.shareUrl) return data.referral.shareUrl;
+    const url = new URL(window.location.href);
+    url.search = "";
+    url.hash = "";
+    url.searchParams.set("ref", data.referral.code);
+    return url.toString();
+  }
+
+  async function shareAcademy() {
+    try {
+      const url = localShareUrl();
+      const text =
+        "我在 Academy 做 60 天能力训练。不是收藏课程，是每天必须留下学习证据。";
+      const telegramShare = `https://t.me/share/url?url=${encodeURIComponent(
+        url,
+      )}&text=${encodeURIComponent(text)}`;
+
+      if (window.Telegram?.WebApp?.openTelegramLink) {
+        window.Telegram.WebApp.openTelegramLink(telegramShare);
+        return;
+      }
+      if (navigator.share) {
+        await navigator.share({ title: "Academy", text, url });
+        return;
+      }
+      await navigator.clipboard.writeText(`${text}\n${url}`);
+      notify("邀请链接已复制");
+    } catch (shareError) {
+      if (
+        shareError instanceof DOMException &&
+        shareError.name === "AbortError"
+      ) {
+        return;
+      }
+      notify("分享没有成功，请复制邀请码");
+    }
+  }
+
+  async function copyCode() {
+    try {
+      await navigator.clipboard.writeText(data.referral.code);
+      notify("邀请码已复制");
+    } catch {
+      notify(`邀请码：${data.referral.code}`);
+    }
+  }
+
+  return (
+    <>
+      <section className="page-intro profile-intro">
+        <span className="eyebrow">TELEGRAM PROFILE</span>
+        <h1>个人中心</h1>
+        <p>身份来自 Telegram 认证，不使用前端填写的信息冒充用户。</p>
+      </section>
+
+      <section className="identity-card">
+        <div className="identity-avatar" aria-hidden="true">
+          {initials}
+        </div>
+        <div className="identity-copy">
+          <span>{data.user.isPremium ? "TELEGRAM PREMIUM" : "ACADEMY LEARNER"}</span>
+          <h2>{data.user.displayName}</h2>
+          <p>
+            {data.user.telegramUsername
+              ? `@${data.user.telegramUsername}`
+              : "未设置 Telegram 用户名"}
+          </p>
+        </div>
+      </section>
+
+      <section className="profile-facts" aria-label="Telegram 个人信息">
+        <div>
+          <span>Telegram ID</span>
+          <strong>{data.user.telegramId ?? "Founder 本地模式"}</strong>
+        </div>
+        <div>
+          <span>语言</span>
+          <strong>{data.user.languageCode ?? "未提供"}</strong>
+        </div>
+        <div>
+          <span>学习时区</span>
+          <strong>{data.user.timezone}</strong>
+        </div>
+        <div>
+          <span>当前课程</span>
+          <strong>{data.enrollments.length} / 3 门</strong>
+        </div>
+      </section>
+
+      <section className="referral-card">
+        <div className="referral-heading">
+          <div>
+            <span className="eyebrow">LEARN WITH FRIENDS</span>
+            <h2>邀请朋友一起训练</h2>
+          </div>
+          <strong>
+            {data.referral.qualified}/{data.referral.rewardTarget}
+          </strong>
+        </div>
+        <p>
+          每邀请 {data.referral.rewardTarget} 位有效学习用户，获得{" "}
+          {data.referral.rewardDays} 天使用时间。只注册不计算。
+        </p>
+        <div className="referral-progress" aria-label={`有效邀请进度 ${referralProgress}%`}>
+          <span style={{ width: `${Math.max(referralProgress, 2)}%` }} />
+        </div>
+        <div className="invite-stats">
+          <div>
+            <strong>{data.referral.total}</strong>
+            <span>已进入</span>
+          </div>
+          <div>
+            <strong>{data.referral.pending}</strong>
+            <span>学习中</span>
+          </div>
+          <div>
+            <strong>{data.referral.qualified}</strong>
+            <span>已有效</span>
+          </div>
+        </div>
+        <div className="invite-code-row">
+          <div>
+            <span>我的邀请码</span>
+            <strong>{data.referral.code}</strong>
+          </div>
+          <button type="button" onClick={copyCode}>
+            复制
+          </button>
+        </div>
+        <button className="primary-button share-button" type="button" onClick={shareAcademy}>
+          分享 Academy Mini App
+        </button>
+        <small className="qualification-note">
+          有效邀请 = Telegram 认证、完成选课，并在 7 天内产生至少 3 个有效学习日。
+        </small>
+      </section>
+
+      <section className="privacy-note">
+        <span>隐私说明</span>
+        <p>
+          Academy 记录 Telegram ID、姓名、用户名、语言与 Premium 状态，用于身份识别、
+          个人中心和邀请防刷。头像地址仅记录，不下载为公开素材。
+        </p>
       </section>
     </>
   );

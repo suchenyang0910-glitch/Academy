@@ -54,6 +54,27 @@ function postgresSql(source: string) {
   return source.replace(/\?/g, () => `$${++index}`);
 }
 
+function aliasesFor(source: string) {
+  return [...source.matchAll(/\bAS\s+(?:"([^"]+)"|([A-Za-z_][A-Za-z0-9_$]*))/gi)]
+    .map((match) => match[1] ?? match[2])
+    .filter((alias) => alias !== "DATE");
+}
+
+function normalizeRows<T>(result: QueryResult, source: string) {
+  const aliases = aliasesFor(source);
+  if (!aliases.length) return result.rows as T[];
+  return result.rows.map((row) => {
+    const normalized = { ...row } as Record<string, unknown>;
+    for (const alias of aliases) {
+      const postgresKey = alias.toLowerCase();
+      if (!(alias in normalized) && postgresKey in normalized) {
+        normalized[alias] = normalized[postgresKey];
+      }
+    }
+    return normalized as T;
+  });
+}
+
 function prepare(source: string): D1PreparedStatement {
   let values: SqlValue[] = [];
   const text = postgresSql(source);
@@ -67,11 +88,11 @@ function prepare(source: string): D1PreparedStatement {
     },
     async all<T = Record<string, unknown>>() {
       const result = await query.execute();
-      return { results: result.rows as T[] };
+      return { results: normalizeRows<T>(result, source) };
     },
     async first<T = Record<string, unknown>>() {
       const result = await query.execute();
-      return (result.rows[0] as T | undefined) ?? null;
+      return normalizeRows<T>(result, source)[0] ?? null;
     },
     async run() {
       const result = await query.execute();

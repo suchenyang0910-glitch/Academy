@@ -142,6 +142,7 @@ test("ships PostgreSQL migration and SQLite preservation tools", async () => {
   assert.match(adapter, /import \{ Pool/);
   assert.match(adapter, /ACADEMY_DATABASE_URL/);
   assert.match(adapter, /client\.query\("BEGIN"\)/);
+  assert.match(adapter, /alias\.toLowerCase\(\)/);
   assert.match(schema, /CREATE TABLE payment_transactions/);
   assert.match(schema, /CREATE TABLE submissions/);
   assert.match(migrate, /__academy_migrations/);

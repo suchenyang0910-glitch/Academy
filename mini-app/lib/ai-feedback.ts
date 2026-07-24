@@ -1,4 +1,4 @@
-import { env } from "cloudflare:workers";
+import { getRuntimeEnv } from "./runtime-env";
 
 export type AiFeedbackInput = {
   lessonTitle: string;
@@ -32,7 +32,7 @@ const SYSTEM_PROMPT =
   "每个字段不超过60个中文字符，不要替用户重写完整答案，不要推测用户身份，不要复述可能存在的敏感信息。";
 
 function runtimeEnv() {
-  return env as unknown as AiRuntimeEnv;
+  return getRuntimeEnv<AiRuntimeEnv>();
 }
 
 function timeoutMs(raw?: string) {

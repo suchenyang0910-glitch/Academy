@@ -1,5 +1,5 @@
-import { env } from "cloudflare:workers";
 import { getD1 } from "../db";
+import { getRuntimeEnv } from "./runtime-env";
 import type { AcademyIdentity } from "./academy-store";
 
 type PaymentEnv = {
@@ -59,7 +59,7 @@ const PLANS: Record<
 };
 
 function paymentEnv() {
-  return env as unknown as PaymentEnv;
+  return getRuntimeEnv<PaymentEnv>();
 }
 
 function amountFor(planKey: PlanKey) {

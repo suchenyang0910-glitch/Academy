@@ -1,5 +1,5 @@
-import { env } from "cloudflare:workers";
 import { getD1 } from "../db";
+import { getRuntimeEnv } from "./runtime-env";
 import { COURSE_CATALOG, FIXED_LESSONS } from "./curriculum";
 import { REMINDER_TEMPLATES, selectReminder } from "./reminders";
 import { getPaymentCatalog } from "./telegram-payments";
@@ -26,7 +26,7 @@ type RuntimeEnv = {
 };
 
 function runtimeEnv(): RuntimeEnv {
-  return env as unknown as RuntimeEnv;
+  return getRuntimeEnv<RuntimeEnv>();
 }
 
 function localDateKey(timezone = "Asia/Bangkok", date = new Date()) {

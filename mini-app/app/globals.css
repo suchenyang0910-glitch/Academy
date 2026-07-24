@@ -224,6 +224,91 @@ textarea:focus-visible {
   padding-top: 25px;
 }
 
+.continue-study {
+  margin: 30px 0 0;
+  padding: 18px;
+  border: 1px solid var(--line);
+  background: rgba(82, 104, 79, 0.045);
+}
+
+.continue-study:not(.is-open) {
+  opacity: 0.72;
+}
+
+.continue-study .section-heading {
+  margin: 0;
+}
+
+.continue-study-time {
+  max-width: 92px;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.45;
+  text-align: right;
+}
+
+.continue-study-copy {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.continue-study-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 15px;
+}
+
+.continue-study-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 3px 12px;
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--line);
+  background: rgba(251, 248, 241, 0.68);
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.continue-study-row > span,
+.continue-study-row > strong,
+.continue-study-row > i {
+  font-size: 9px;
+  font-style: normal;
+}
+
+.continue-study-row > span {
+  color: var(--sage);
+  letter-spacing: 0.08em;
+}
+
+.continue-study-row > strong {
+  color: var(--muted);
+}
+
+.continue-study-row > em {
+  grid-column: 1 / -1;
+  overflow: hidden;
+  color: var(--ink);
+  font: 400 14px/1.35 Georgia, "Songti SC", serif;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.continue-study-row > i {
+  grid-column: 2;
+  grid-row: 3;
+  color: var(--terracotta);
+  text-align: right;
+}
+
+.continue-study-row.is-done {
+  border-color: rgba(82, 104, 79, 0.45);
+}
+
 .section-heading {
   display: flex;
   align-items: end;

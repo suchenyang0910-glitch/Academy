@@ -72,6 +72,7 @@ type TodayItem = {
   enrollment: Enrollment;
   lesson: Lesson | null;
   submission: Submission | null;
+  isExtra?: boolean;
 };
 
 type Note = {
@@ -139,6 +140,7 @@ type Bootstrap = {
   catalog: CatalogCourse[];
   enrollments: Enrollment[];
   today: TodayItem[];
+  learningAhead: TodayItem[];
   notes: Note[];
   supervision: {
     todayKey: string;
@@ -382,6 +384,11 @@ export default function Home() {
                           ? { ...item, submission }
                           : item,
                       ),
+                      learningAhead: current.learningAhead.map((item) =>
+                        item.lesson?.id === selected.lesson?.id
+                          ? { ...item, submission }
+                          : item,
+                      ),
                     }
                   : current,
               );
@@ -389,8 +396,10 @@ export default function Home() {
                 current ? { ...current, submission } : current,
               );
               notify(
-                submission.status === "completed"
-                  ? "这节课有证据了"
+                selected.isExtra && submission.status === "completed"
+                  ? "预习证据已保存；明天仍要完成主线"
+                  : submission.status === "completed"
+                    ? "这节课有证据了"
                   : "已保存，按反馈修正后再提交",
               );
             }}
@@ -462,6 +471,18 @@ function TodayView({
   const minutes = data.enrollments.reduce(
     (sum, item) => sum + item.dailyMinutes,
     0,
+  );
+  const completedCourseIds = new Set(
+    data.today
+      .filter(
+        (item) =>
+          item.submission?.status === "completed" &&
+          item.submission.completionSource !== "extra",
+      )
+      .map((item) => item.enrollment.courseId),
+  );
+  const learningAhead = data.learningAhead.filter((item) =>
+    completedCourseIds.has(item.enrollment.courseId),
   );
 
   return (
@@ -559,6 +580,45 @@ function TodayView({
               );
             })}
           </div>
+        )}
+      </section>
+
+      <section className={`continue-study ${learningAhead.length ? "is-open" : ""}`}>
+        <div className="section-heading">
+          <div>
+            <span className="eyebrow">KEEP GOING</span>
+            <h2>想多学一点？</h2>
+          </div>
+          <span className="continue-study-time">每门再加 15–20 分钟</span>
+        </div>
+        {learningAhead.length ? (
+          <>
+            <p className="continue-study-copy">
+              已完成的课程可以继续向前。下面是该课程接下来的 3 节预习；完成它们会保存为额外学习证据，但不会挤掉未来每天的主线。
+            </p>
+            <div className="continue-study-list">
+              {learningAhead.map((item) => (
+                <button
+                  className={`continue-study-row ${
+                    item.submission?.status === "completed" ? "is-done" : ""
+                  }`}
+                  key={`${item.enrollment.id}-${item.lesson?.id}`}
+                  type="button"
+                  onClick={() => item.lesson && onSelect(item)}
+                  disabled={!item.lesson}
+                >
+                  <span>{item.enrollment.title}</span>
+                  <strong>DAY {String(item.lesson?.day ?? 0).padStart(2, "0")}</strong>
+                  <em>{item.lesson?.title}</em>
+                  <i>{item.submission?.status === "completed" ? "已完成" : "预习 →"}</i>
+                </button>
+              ))}
+            </div>
+          </>
+        ) : (
+          <p className="continue-study-copy">
+            任意完成一门今天的主线练习，就会开放那门课接下来的 3 节。先留下学习证据，再继续向前，不让“多学”变成只浏览不输出。
+          </p>
         )}
       </section>
 
@@ -763,7 +823,7 @@ function LessonSheet({
             enrollmentId: item.enrollment.id,
             lessonId: lesson.id,
             answer,
-            completionSource: "self",
+            completionSource: item.isExtra ? "extra" : "self",
           }),
         },
       );
@@ -785,12 +845,13 @@ function LessonSheet({
           ‹ 返回今日
         </button>
         <span>
-          DAY {String(lesson.day).padStart(2, "0")} · {lesson.estimatedMinutes} MIN
+          {item.isExtra ? "EXTRA · " : ""}DAY {String(lesson.day).padStart(2, "0")} · {lesson.estimatedMinutes} MIN
         </span>
       </header>
       <div className="lesson-page-content">
         <p className="lesson-kicker">
           {item.enrollment.title.toUpperCase()} · ROUND {lesson.round}
+          {item.isExtra ? " · EXTRA STUDY" : ""}
         </p>
         <h1>{lesson.title}</h1>
 

@@ -442,9 +442,49 @@ export async function getBootstrap(identity: AcademyIdentity) {
     }),
   );
 
+  // Required work stays on the daily calendar. Learners who have finished it
+  // can still study ahead without turning a 60-day habit into a 20-day sprint.
+  const learningAhead = (
+    await Promise.all(
+      enrollments.map(async (enrollment) => {
+        const result = await d1
+          .prepare(
+            `SELECT id, course_id AS courseId, day, level, round, title, objective,
+                    content, practice_prompt AS practicePrompt,
+                    criteria_json AS criteriaJson, estimated_minutes AS estimatedMinutes
+             FROM lessons
+             WHERE course_id = ? AND day > ? AND day <= ?
+             ORDER BY day
+             LIMIT 3`,
+          )
+          .bind(
+            enrollment.courseId,
+            enrollment.currentDay,
+            Math.min(60, enrollment.currentDay + 3),
+          )
+          .all();
+
+        return result.results.map((lesson) => ({
+          enrollment,
+          lesson: {
+            ...lesson,
+            criteria: JSON.parse(String(lesson.criteriaJson ?? "[]")),
+            criteriaJson: undefined,
+          },
+          submission: submittedByLesson.get(String(lesson.id)) ?? null,
+          isExtra: true,
+        }));
+      }),
+    )
+  ).flat();
+
   const allCompleted =
     today.length > 0 &&
-    today.every((item) => item.submission?.status === "completed");
+    today.every(
+      (item) =>
+        item.submission?.status === "completed" &&
+        item.submission.completionSource !== "extra",
+    );
   const lagDays = enrollments.reduce((maximum, enrollment) => {
     const calendarDay = Math.min(
       60,
@@ -467,6 +507,7 @@ export async function getBootstrap(identity: AcademyIdentity) {
     catalog: catalogResult.results,
     enrollments,
     today,
+    learningAhead,
     notes: noteResult.results,
     supervision: {
       todayKey,
@@ -708,7 +749,8 @@ async function syncEnrollmentDays(userId: string, todayKey: string) {
   const d1 = getD1();
   const completed = await d1
     .prepare(
-      `SELECT e.id, e.current_day AS currentDay, s.completed_on AS completedOn
+      `SELECT e.id, e.current_day AS currentDay, s.completed_on AS completedOn,
+              s.completion_source AS completionSource
        FROM enrollments e
        JOIN lessons l
          ON l.course_id = e.course_id AND l.day = e.current_day
@@ -721,6 +763,7 @@ async function syncEnrollmentDays(userId: string, todayKey: string) {
       id: number;
       currentDay: number;
       completedOn: string | null;
+      completionSource: string | null;
     }>();
 
   const advances = completed.results
@@ -728,6 +771,7 @@ async function syncEnrollmentDays(userId: string, todayKey: string) {
       (item) =>
         item.currentDay < 60 &&
         Boolean(item.completedOn) &&
+        item.completionSource !== "extra" &&
         String(item.completedOn) < todayKey,
     )
     .map((item) =>

@@ -2,7 +2,7 @@
 
 Academy 是一个运行在 Telegram Bot 与 Telegram Mini App 中的学习监督系统。
 
-当前版本采用“暖白学习手账”界面，通过固定课程、每日主动练习、规则评分、可选 Ollama 点评和灰色幽默提醒，帮助用户在 60 天内留下可验证的学习成果。
+当前版本采用“暖白学习手账”界面，通过固定课程、每日主动练习、规则评分、DeepSeek AI 点评、Ollama 本地降级和灰色幽默提醒，帮助用户在 60 天内留下可验证的学习成果。
 
 ## 已完成
 
@@ -11,8 +11,8 @@ Academy 是一个运行在 Telegram Bot 与 Telegram Mini App 中的学习监督
 - English、AI、Business、Founder Note、Quiz 五门 60 天固定课程
 - 必选 1 门、最多同时启用 3 门，并保留每门课的独立进度
 - 每门课每天约 15–20 分钟
-- 今日课程、主动练习提交、规则评分、Ollama 可选点评
-- Ollama 不可用时自动降级，不影响提交和完成
+- 今日课程、主动练习提交、规则评分与 DeepSeek AI 点评
+- DeepSeek 不可用时尝试本地 Ollama；所有模型不可用时仍保存规则评分
 - 只有完成当天全部已选课程，才形成一个有效学习日
 - 课程完成后等待用户所在时区的下一自然日解锁下一课
 - 中断、落后、今日完成等监督状态
@@ -85,10 +85,14 @@ E:\academy\mini-app\.env.example
 | `ACADEMY_CRON_SECRET` | 保护提醒生成接口 |
 | `ACADEMY_API_BASE_URL` | 默认 `http://localhost:3000` |
 | `ACADEMY_MINI_APP_URL` | 提醒按钮打开的地址 |
-| `OLLAMA_BASE_URL` | 例如 `http://127.0.0.1:11434` |
-| `OLLAMA_MODEL` | 本地或服务器上的 Ollama 模型名 |
+| `DEEPSEEK_API_KEY` | DeepSeek 服务端 API Key，不得暴露到前端 |
+| `DEEPSEEK_BASE_URL` | 默认 `https://api.deepseek.com` |
+| `DEEPSEEK_MODEL` | 默认 `deepseek-v4-flash` |
+| `DEEPSEEK_TIMEOUT_MS` | 点评调用超时，默认 20000ms |
+| `OLLAMA_BASE_URL` | 可选降级，例如 `http://127.0.0.1:11434` |
+| `OLLAMA_MODEL` | 可选本地 Ollama 模型名 |
 
-不要提交真实 Token 或密钥；`.env` 与 `.env.local` 已被忽略。
+不要提交真实 Token 或密钥；`.env` 与 `.env.local` 已被忽略。课程原始回答会发送给 DeepSeek 生成点评，因此不要在学习答案中填写密码、Token、身份证件或其他不必要的敏感信息。
 
 ## 测试 Telegram 提醒
 

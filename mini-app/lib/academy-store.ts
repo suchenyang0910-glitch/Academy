@@ -3,6 +3,7 @@ import { getD1 } from "../db";
 import { COURSE_CATALOG, FIXED_LESSONS } from "./curriculum";
 import { REMINDER_TEMPLATES, selectReminder } from "./reminders";
 import { getPaymentCatalog } from "./telegram-payments";
+import { getAiRuntimeStatus, requestAiFeedback } from "./ai-feedback";
 
 export type AcademyIdentity = {
   id: string;
@@ -19,8 +20,6 @@ export type AcademyIdentity = {
 
 type RuntimeEnv = {
   TELEGRAM_BOT_TOKEN?: string;
-  OLLAMA_BASE_URL?: string;
-  OLLAMA_MODEL?: string;
   ACADEMY_CRON_SECRET?: string;
   ACADEMY_MINI_APP_URL?: string;
   TELEGRAM_BOT_USERNAME?: string;
@@ -463,6 +462,7 @@ export async function getBootstrap(identity: AcademyIdentity) {
       : identity,
     referral,
     access,
+    ai: getAiRuntimeStatus(),
     payment: getPaymentCatalog(),
     catalog: catalogResult.results,
     enrollments,
@@ -836,50 +836,6 @@ function scoreAnswer(answer: string, criteria: string[]) {
   };
 }
 
-async function requestOllamaFeedback(input: {
-  lessonTitle: string;
-  objective: string;
-  criteria: string[];
-  answer: string;
-  ruleScore: number;
-  ruleFeedback: string;
-}) {
-  const env = runtimeEnv();
-  if (!env.OLLAMA_BASE_URL) return null;
-
-  try {
-    const response = await fetch(
-      `${env.OLLAMA_BASE_URL.replace(/\/$/, "")}/api/chat`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          model: env.OLLAMA_MODEL ?? "deepseek-r1:7b",
-          stream: false,
-          messages: [
-            {
-              role: "system",
-              content:
-                "你是 Academy 学习点评教练。只基于课程目标和用户原始回答，输出不超过120字的中文反馈：先指出一个做得好的点，再给一个可以立刻执行的修改。不要替用户重写完整答案。",
-            },
-            {
-              role: "user",
-              content: JSON.stringify(input),
-            },
-          ],
-        }),
-      },
-    );
-    if (!response.ok) return null;
-    const payload = (await response.json()) as {
-      message?: { content?: string };
-    };
-    return payload.message?.content?.trim() || null;
-  } catch {
-    return null;
-  }
-}
-
 export async function submitLesson(
   identity: AcademyIdentity,
   payload: {
@@ -913,7 +869,7 @@ export async function submitLesson(
 
   const criteria = JSON.parse(String(lesson.criteriaJson ?? "[]")) as string[];
   const rule = scoreAnswer(answer, criteria);
-  const aiFeedback = await requestOllamaFeedback({
+  const aiFeedback = await requestAiFeedback({
     lessonTitle: String(lesson.title),
     objective: String(lesson.objective),
     criteria,

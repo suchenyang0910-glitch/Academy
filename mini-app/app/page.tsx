@@ -114,6 +114,12 @@ type Bootstrap = {
     daysRemaining: number;
     planKey: string | null;
   };
+  ai: {
+    enabled: boolean;
+    primary: "deepseek" | "ollama" | "rules_only";
+    model: string | null;
+    fallbackEnabled: boolean;
+  };
   payment: {
     provider: "telegram_stars";
     currency: "XTR";
@@ -829,10 +835,10 @@ function LessonSheet({
             </div>
             <p>{submission.ruleFeedback}</p>
             <div className="ai-feedback">
-              <span>OLLAMA 点评</span>
+              <span>AI 教练点评</span>
               <p>
                 {submission.aiFeedback ||
-                  "本地模型暂时没有回应。规则评分已保存，不影响今天的学习。"}
+                  "AI 教练暂时没有回应。规则评分已保存，不影响今天的学习。"}
               </p>
             </div>
           </section>

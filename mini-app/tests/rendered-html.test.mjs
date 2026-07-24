@@ -106,3 +106,23 @@ test("connects Telegram Stars invoices, payment callbacks, and refunds", async (
   assert.match(migration, /CREATE TABLE `payment_orders`/);
   assert.match(migration, /CREATE TABLE `payment_transactions`/);
 });
+
+test("uses DeepSeek for AI coaching with Ollama and rules-only fallback", async () => {
+  const [page, store, feedback, envExample] = await Promise.all([
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../lib/academy-store.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/ai-feedback.ts", import.meta.url), "utf8"),
+    readFile(new URL("../.env.example", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(page, /AI 教练点评/);
+  assert.match(store, /requestAiFeedback/);
+  assert.match(store, /getAiRuntimeStatus/);
+  assert.match(feedback, /https:\/\/api\.deepseek\.com/);
+  assert.match(feedback, /deepseek-v4-flash/);
+  assert.match(feedback, /response_format: \{ type: "json_object" \}/);
+  assert.match(feedback, /authorization: `Bearer \$\{config\.DEEPSEEK_API_KEY\}`/);
+  assert.match(feedback, /return requestOllamaFeedback/);
+  assert.match(envExample, /DEEPSEEK_API_KEY=/);
+  assert.match(envExample, /DEEPSEEK_TIMEOUT_MS=20000/);
+});

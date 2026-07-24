@@ -1,285 +1,289 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+
+declare global {
+  interface Window {
+    Telegram?: {
+      WebApp?: {
+        initData?: string;
+        ready?: () => void;
+        expand?: () => void;
+      };
+    };
+  }
+}
+
+type CatalogCourse = {
+  id: string;
+  slug: string;
+  title: string;
+  subtitle: string;
+  summary: string;
+  dailyMinutes: number;
+  durationDays: number;
+  accent: string;
+  status: string;
+};
+
+type Enrollment = {
+  id: number;
+  courseId: string;
+  currentDay: number;
+  active: number;
+  title: string;
+  slug: string;
+  accent: string;
+  dailyMinutes: number;
+};
 
 type Lesson = {
   id: string;
-  number: string;
-  subject: string;
+  courseId: string;
+  day: number;
+  level: number;
+  round: number;
   title: string;
-  duration: string;
-  accent: string;
-  prompt: string;
+  objective: string;
+  content: string;
+  practicePrompt: string;
+  criteria: string[];
+  estimatedMinutes: number;
 };
 
-const lessons: Lesson[] = [
-  {
-    id: "english",
-    number: "01",
-    subject: "English",
-    title: "买与卖：把表达说得更自然",
-    duration: "12 分钟",
-    accent: "#bb6748",
-    prompt: "跟读 3 轮，然后用 buy、sell、worth 各造一个句子。",
-  },
-  {
-    id: "ai",
-    number: "02",
-    subject: "AI",
-    title: "Attention：模型如何找到重点",
-    duration: "15 分钟",
-    accent: "#57705b",
-    prompt: "用一句话解释 Attention，再写下一个工作中的类比。",
-  },
-  {
-    id: "management",
-    number: "03",
-    subject: "Management",
-    title: "把目标拆成可执行动作",
-    duration: "12 分钟",
-    accent: "#a48250",
-    prompt: "选择一个本周目标，拆成三个今天能开始的动作。",
-  },
-  {
-    id: "founder",
-    number: "04",
-    subject: "Founder Note",
-    title: "今天最重要的一个决定",
-    duration: "8 分钟",
-    accent: "#68706c",
-    prompt: "记录今天最重要的决定，以及你为什么这样选。",
-  },
-  {
-    id: "quiz",
-    number: "05",
-    subject: "Quiz",
-    title: "今日知识回顾",
-    duration: "10 分钟",
-    accent: "#8f786e",
-    prompt: "完成 5 道题，检验今天的记忆与理解。",
-  },
-];
-
-type Note = { id: number; day: number; content: string; date: string };
-
-const starterNotes: Note[] = [
-  {
-    id: 1,
-    day: 1,
-    content: "Attention 不是记住所有信息，而是动态决定此刻应该关注什么。",
-    date: "今天 · 14:32",
-  },
-  {
-    id: 2,
-    day: 1,
-    content: "把英语例句换成自己的业务语境，会更容易真正记住。",
-    date: "今天 · 10:18",
-  },
-];
-
-const glyphs = {
-  home: "⌂",
-  note: "▤",
-  progress: "▥",
-  back: "‹",
-  play: "▶",
-  check: "✓",
-  arrow: "›",
+type Submission = {
+  lessonId: string;
+  status: string;
+  ruleScore: number;
+  ruleFeedback?: string;
+  aiFeedback?: string | null;
+  completionSource?: string;
 };
+
+type TodayItem = {
+  enrollment: Enrollment;
+  lesson: Lesson | null;
+  submission: Submission | null;
+};
+
+type Note = {
+  id: number;
+  lessonId: string | null;
+  content: string;
+  createdAt: string;
+};
+
+type Bootstrap = {
+  user: { id: string; displayName: string };
+  catalog: CatalogCourse[];
+  enrollments: Enrollment[];
+  today: TodayItem[];
+  notes: Note[];
+};
+
+type Tab = "today" | "courses" | "notes" | "progress";
+
+function academyHeaders() {
+  return {
+    "content-type": "application/json",
+    "x-telegram-init-data": window.Telegram?.WebApp?.initData ?? "",
+  };
+}
+
+async function academyRequest<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(path, {
+    ...init,
+    headers: {
+      ...academyHeaders(),
+      ...(init?.headers ?? {}),
+    },
+  });
+  if (!response.ok) {
+    const body = (await response.json().catch(() => null)) as
+      | { error?: string }
+      | null;
+    throw new Error(body?.error || "请求失败，请稍后重试");
+  }
+  return response.json() as Promise<T>;
+}
 
 export default function Home() {
-  const [tab, setTab] = useState<"today" | "notes" | "progress">("today");
-  const [completed, setCompleted] = useState<string[]>(["english"]);
-  const [selected, setSelected] = useState<Lesson | null>(null);
-  const [notes, setNotes] = useState<Note[]>(starterNotes);
-  const [draft, setDraft] = useState("");
-  const [composerOpen, setComposerOpen] = useState(false);
+  const [data, setData] = useState<Bootstrap | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [tab, setTab] = useState<Tab>("today");
+  const [selected, setSelected] = useState<TodayItem | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [toast, setToast] = useState("");
 
-  useEffect(() => {
-    const saved = window.localStorage.getItem("academy-demo-state");
-    if (!saved) return;
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError("");
     try {
-      const data = JSON.parse(saved);
-      if (Array.isArray(data.completed)) setCompleted(data.completed);
-      if (Array.isArray(data.notes)) setNotes(data.notes);
-    } catch {
-      // Keep the polished demo defaults when local data is invalid.
+      const bootstrap = await academyRequest<Bootstrap>("/api/academy/bootstrap");
+      setData(bootstrap);
+      if (bootstrap.enrollments.length === 0) setPickerOpen(true);
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error ? requestError.message : "加载失败",
+      );
+    } finally {
+      setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    window.localStorage.setItem(
-      "academy-demo-state",
-      JSON.stringify({ completed, notes }),
-    );
-  }, [completed, notes]);
-
-  const progress = Math.round((completed.length / lessons.length) * 100);
-  const completedSubjects = useMemo(
-    () => lessons.filter((lesson) => completed.includes(lesson.id)),
-    [completed],
-  );
+    window.Telegram?.WebApp?.ready?.();
+    window.Telegram?.WebApp?.expand?.();
+    queueMicrotask(() => void load());
+  }, [load]);
 
   function notify(message: string) {
     setToast(message);
     window.setTimeout(() => setToast(""), 1800);
   }
 
-  function toggleLesson(id: string) {
-    setCompleted((current) =>
-      current.includes(id)
-        ? current.filter((item) => item !== id)
-        : [...current, id],
-    );
-  }
-
-  function saveNote() {
-    const content = draft.trim();
-    if (!content) {
-      notify("先写下一点内容");
-      return;
-    }
-    setNotes((current) => [
-      {
-        id: Date.now(),
-        day: 1,
-        content,
-        date: "刚刚",
-      },
-      ...current,
-    ]);
-    setDraft("");
-    setComposerOpen(false);
-    notify("笔记已经收好");
-  }
+  const completedCount =
+    data?.today.filter((item) => item.submission?.status === "completed").length ??
+    0;
+  const totalCount = data?.today.length ?? 0;
+  const progress =
+    totalCount === 0 ? 0 : Math.round((completedCount / totalCount) * 100);
 
   return (
     <main className="app-shell">
       <section className="phone" aria-label="Academy Telegram Mini App">
         <div className="paper-grain" aria-hidden="true" />
-
         <header className="topbar">
           <div className="brand-mark" aria-hidden="true">
             A
           </div>
           <div className="brand-copy">
             <strong>ACADEMY</strong>
-            <span>私人学习手账</span>
+            <span>学习监督系统</span>
           </div>
           <button
             className="day-chip"
             type="button"
             onClick={() => setTab("progress")}
-            aria-label="查看第 1 天学习进度"
           >
-            DAY 01
+            DAY {String(data?.enrollments[0]?.currentDay ?? 1).padStart(2, "0")}
           </button>
         </header>
 
         <div className="content">
-          {tab === "today" && (
-            <TodayView
-              completed={completed}
-              progress={progress}
-              onSelect={setSelected}
-              onToggle={toggleLesson}
-              onOpenNote={() => setComposerOpen(true)}
-            />
-          )}
-          {tab === "notes" && (
-            <NotesView
-              notes={notes}
-              onOpenNote={() => setComposerOpen(true)}
-            />
-          )}
-          {tab === "progress" && (
-            <ProgressView
-              progress={progress}
-              completedSubjects={completedSubjects}
-            />
+          {loading && <LoadingState />}
+          {!loading && error && <ErrorState message={error} onRetry={load} />}
+          {!loading && data && (
+            <>
+              {tab === "today" && (
+                <TodayView
+                  data={data}
+                  progress={progress}
+                  completedCount={completedCount}
+                  onSelect={setSelected}
+                  onOpenPicker={() => setPickerOpen(true)}
+                />
+              )}
+              {tab === "courses" && (
+                <CoursesView
+                  catalog={data.catalog}
+                  enrollments={data.enrollments}
+                  onEdit={() => setPickerOpen(true)}
+                />
+              )}
+              {tab === "notes" && (
+                <NotesView
+                  notes={data.notes}
+                  onSaved={(note) => {
+                    setData((current) =>
+                      current
+                        ? { ...current, notes: [note, ...current.notes] }
+                        : current,
+                    );
+                    notify("笔记已经收好");
+                  }}
+                />
+              )}
+              {tab === "progress" && (
+                <ProgressView
+                  data={data}
+                  progress={progress}
+                  completedCount={completedCount}
+                />
+              )}
+            </>
           )}
         </div>
 
-        <nav className="bottom-nav" aria-label="主要导航">
+        <nav className="bottom-nav bottom-nav-four" aria-label="主要导航">
           <NavButton
             active={tab === "today"}
-            icon={glyphs.home}
+            icon="⌂"
             label="今日"
             onClick={() => setTab("today")}
           />
           <NavButton
+            active={tab === "courses"}
+            icon="≡"
+            label="课程"
+            onClick={() => setTab("courses")}
+          />
+          <NavButton
             active={tab === "notes"}
-            icon={glyphs.note}
+            icon="▤"
             label="笔记"
             onClick={() => setTab("notes")}
           />
           <NavButton
             active={tab === "progress"}
-            icon={glyphs.progress}
+            icon="▥"
             label="进度"
             onClick={() => setTab("progress")}
           />
         </nav>
 
-        {selected && (
-          <LessonSheet
-            lesson={selected}
-            completed={completed.includes(selected.id)}
-            onClose={() => setSelected(null)}
-            onToggle={() => {
-              toggleLesson(selected.id);
-              notify(
-                completed.includes(selected.id)
-                  ? "已标记为待学习"
-                  : "完成一课，继续保持",
-              );
-            }}
-            onNote={() => {
-              setSelected(null);
-              setComposerOpen(true);
+        {data && pickerOpen && (
+          <CoursePicker
+            catalog={data.catalog}
+            initialIds={data.enrollments.map((item) => item.courseId)}
+            required={data.enrollments.length === 0}
+            onClose={() => setPickerOpen(false)}
+            onSaved={(next) => {
+              setData(next);
+              setPickerOpen(false);
+              notify("课程安排已更新");
             }}
           />
         )}
 
-        {composerOpen && (
-          <div
-            className="sheet-backdrop"
-            role="presentation"
-            onMouseDown={(event) => {
-              if (event.target === event.currentTarget) setComposerOpen(false);
+        {selected?.lesson && (
+          <LessonSheet
+            item={selected}
+            onClose={() => setSelected(null)}
+            onSubmitted={(submission) => {
+              setData((current) =>
+                current
+                  ? {
+                      ...current,
+                      today: current.today.map((item) =>
+                        item.lesson?.id === selected.lesson?.id
+                          ? { ...item, submission }
+                          : item,
+                      ),
+                    }
+                  : current,
+              );
+              setSelected((current) =>
+                current ? { ...current, submission } : current,
+              );
+              notify(
+                submission.status === "completed"
+                  ? "这节课有证据了"
+                  : "已保存，按反馈修正后再提交",
+              );
             }}
-          >
-            <section className="composer" aria-label="新建学习笔记">
-              <div className="sheet-handle" aria-hidden="true" />
-              <div className="composer-head">
-                <div>
-                  <span className="eyebrow">DAY 01 · 学习记录</span>
-                  <h2>写下此刻的想法</h2>
-                </div>
-                <button
-                  className="text-button"
-                  type="button"
-                  onClick={() => setComposerOpen(false)}
-                >
-                  取消
-                </button>
-              </div>
-              <textarea
-                autoFocus
-                value={draft}
-                onChange={(event) => setDraft(event.target.value)}
-                placeholder="一个新发现、一句反思，或明天要继续的问题…"
-                maxLength={500}
-              />
-              <div className="composer-foot">
-                <span>{draft.length} / 500</span>
-                <button className="primary-button" type="button" onClick={saveNote}>
-                  保存笔记
-                </button>
-              </div>
-            </section>
-          </div>
+          />
         )}
 
         {toast && <div className="toast">{toast}</div>}
@@ -288,32 +292,73 @@ export default function Home() {
   );
 }
 
-function TodayView({
-  completed,
-  progress,
-  onSelect,
-  onToggle,
-  onOpenNote,
+function LoadingState() {
+  return (
+    <div className="loading-state" role="status">
+      <span className="loading-mark">A</span>
+      <strong>正在整理今天的学习</strong>
+      <p>课程不会自己完成，但页面可以先自己加载。</p>
+    </div>
+  );
+}
+
+function ErrorState({
+  message,
+  onRetry,
 }: {
-  completed: string[];
-  progress: number;
-  onSelect: (lesson: Lesson) => void;
-  onToggle: (id: string) => void;
-  onOpenNote: () => void;
+  message: string;
+  onRetry: () => void;
 }) {
+  return (
+    <div className="error-state">
+      <span>连接暂时走神了</span>
+      <h1>今天的课程还在，数据没跟上。</h1>
+      <p>{message}</p>
+      <button className="primary-button" type="button" onClick={onRetry}>
+        再试一次
+      </button>
+    </div>
+  );
+}
+
+function TodayView({
+  data,
+  progress,
+  completedCount,
+  onSelect,
+  onOpenPicker,
+}: {
+  data: Bootstrap;
+  progress: number;
+  completedCount: number;
+  onSelect: (item: TodayItem) => void;
+  onOpenPicker: () => void;
+}) {
+  const minutes = data.enrollments.reduce(
+    (sum, item) => sum + item.dailyMinutes,
+    0,
+  );
+
   return (
     <>
       <section className="hero">
-        <p className="greeting">晚上好，路飞</p>
+        <p className="greeting">你好，{data.user.displayName}</p>
         <h1>今日学习</h1>
-        <p className="date-line">星期四 · 7 月 23 日</p>
-
+        <p className="date-line">
+          {new Intl.DateTimeFormat("zh-CN", {
+            weekday: "long",
+            month: "long",
+            day: "numeric",
+          }).format(new Date())}
+          {" · "}
+          预计 {minutes} 分钟
+        </p>
         <div className="progress-summary">
           <div className="progress-copy">
             <span>今日完成</span>
             <strong>
-              {completed.length}
-              <small> / 5</small>
+              {completedCount}
+              <small> / {data.today.length}</small>
             </strong>
           </div>
           <div
@@ -326,101 +371,432 @@ function TodayView({
         </div>
       </section>
 
+      <section className="supervision-note">
+        <span>今日监督</span>
+        <p>不要求突然自律，只要求今天的任务别被明天继承。</p>
+      </section>
+
       <section className="lesson-section">
         <div className="section-heading">
           <div>
-            <span className="eyebrow">TODAY&apos;S FOCUS</span>
-            <h2>五节课程</h2>
+            <span className="eyebrow">TODAY&apos;S WORK</span>
+            <h2>{data.today.length ? "必须留下输出" : "先选择课程"}</h2>
           </div>
-          <span className="section-count">{completed.length}/5</span>
+          <button className="text-button" type="button" onClick={onOpenPicker}>
+            调整课程
+          </button>
         </div>
 
-        <div className="lesson-list">
-          {lessons.map((lesson) => {
-            const done = completed.includes(lesson.id);
-            return (
-              <article
-                className={`lesson-row ${done ? "is-done" : ""}`}
-                key={lesson.id}
-                style={{ "--lesson-accent": lesson.accent } as React.CSSProperties}
-              >
-                <button
-                  className="lesson-main"
-                  type="button"
-                  onClick={() => onSelect(lesson)}
-                  aria-label={`打开 ${lesson.subject} 课程`}
+        {data.today.length === 0 ? (
+          <button className="empty-course" type="button" onClick={onOpenPicker}>
+            <strong>选择 1–3 门课程</strong>
+            <span>每门每天 15–20 分钟</span>
+          </button>
+        ) : (
+          <div className="lesson-list">
+            {data.today.map((item, index) => {
+              const done = item.submission?.status === "completed";
+              return (
+                <article
+                  className={`lesson-row ${done ? "is-done" : ""}`}
+                  key={item.enrollment.id}
+                  style={
+                    {
+                      "--lesson-accent": item.enrollment.accent,
+                    } as React.CSSProperties
+                  }
                 >
-                  <span className="lesson-number">{lesson.number}</span>
-                  <span className="lesson-copy">
-                    <strong>{lesson.subject}</strong>
-                    <span>{lesson.title}</span>
+                  <button
+                    className="lesson-main"
+                    type="button"
+                    onClick={() => item.lesson && onSelect(item)}
+                    disabled={!item.lesson}
+                  >
+                    <span className="lesson-number">
+                      {String(index + 1).padStart(2, "0")}
+                    </span>
+                    <span className="lesson-copy">
+                      <strong>{item.enrollment.title}</strong>
+                      <span>
+                        {item.lesson?.title ?? "课程内容正在准备，先别假装完成"}
+                      </span>
+                    </span>
+                    <span className="lesson-arrow" aria-hidden="true">
+                      ›
+                    </span>
+                  </button>
+                  <span className={`evidence-state ${done ? "done" : ""}`}>
+                    {done ? "✓" : "·"}
                   </span>
-                  <span className="lesson-arrow" aria-hidden="true">
-                    {glyphs.arrow}
-                  </span>
-                </button>
-                <button
-                  className="check-button"
-                  type="button"
-                  onClick={() => onToggle(lesson.id)}
-                  aria-label={done ? `取消完成 ${lesson.subject}` : `完成 ${lesson.subject}`}
-                  aria-pressed={done}
-                >
-                  {done ? glyphs.check : ""}
-                </button>
-              </article>
-            );
-          })}
-        </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
       </section>
 
-      <button className="note-cta" type="button" onClick={onOpenNote}>
-        <span className="note-symbol" aria-hidden="true">
-          ✎
-        </span>
-        <span>
-          <small>QUICK NOTE</small>
-          <strong>写下今日笔记</strong>
-        </span>
-        <span className="cta-arrow" aria-hidden="true">
-          {glyphs.arrow}
-        </span>
-      </button>
-
       <blockquote>
-        “每天留下一个可回看的思想，学习才真正属于你。”
+        “完成不是点一下按钮，而是留下一个以后还能检查的结果。”
       </blockquote>
     </>
   );
 }
 
+function CoursePicker({
+  catalog,
+  initialIds,
+  required,
+  onClose,
+  onSaved,
+}: {
+  catalog: CatalogCourse[];
+  initialIds: string[];
+  required: boolean;
+  onClose: () => void;
+  onSaved: (data: Bootstrap) => void;
+}) {
+  const [selectedIds, setSelectedIds] = useState(initialIds);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const selectedCourses = catalog.filter((course) =>
+    selectedIds.includes(course.id),
+  );
+  const minutes = selectedCourses.reduce(
+    (sum, course) => sum + course.dailyMinutes,
+    0,
+  );
+
+  function toggle(courseId: string) {
+    setError("");
+    setSelectedIds((current) => {
+      if (current.includes(courseId)) {
+        return current.filter((id) => id !== courseId);
+      }
+      if (current.length >= 3) {
+        setError("最多同时选择 3 门课程");
+        return current;
+      }
+      return [...current, courseId];
+    });
+  }
+
+  async function save() {
+    if (selectedIds.length < 1) {
+      setError("至少选择 1 门课程");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      const next = await academyRequest<Bootstrap>(
+        "/api/academy/enrollments",
+        {
+          method: "POST",
+          body: JSON.stringify({ courseIds: selectedIds }),
+        },
+      );
+      onSaved(next);
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error ? requestError.message : "保存失败",
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="full-screen-panel">
+      <header className="picker-header">
+        <div>
+          <span className="eyebrow">YOUR 60-DAY PATH</span>
+          <h1>选择训练方向</h1>
+          <p>必选 1 门，最多 3 门，可以中途更换。</p>
+        </div>
+        {!required && (
+          <button className="text-button" type="button" onClick={onClose}>
+            取消
+          </button>
+        )}
+      </header>
+
+      <div className="course-picker-list">
+        {catalog.map((course) => {
+          const checked = selectedIds.includes(course.id);
+          return (
+            <button
+              className={`course-choice ${checked ? "selected" : ""}`}
+              type="button"
+              key={course.id}
+              onClick={() => toggle(course.id)}
+              style={{ "--course-accent": course.accent } as React.CSSProperties}
+              aria-pressed={checked}
+            >
+              <span className="choice-check">{checked ? "✓" : ""}</span>
+              <span className="choice-copy">
+                <small>{course.subtitle}</small>
+                <strong>{course.title}</strong>
+                <span>{course.summary}</span>
+              </span>
+              <span className="choice-time">{course.dailyMinutes} min</span>
+            </button>
+          );
+        })}
+      </div>
+
+      <footer className="picker-footer">
+        <div>
+          <span>已选 {selectedIds.length}/3 门</span>
+          <strong>每天约 {minutes} 分钟</strong>
+        </div>
+        {error && <p>{error}</p>}
+        <button
+          className="primary-button"
+          type="button"
+          onClick={save}
+          disabled={saving}
+        >
+          {saving ? "正在安排…" : "开始 60 天训练"}
+        </button>
+      </footer>
+    </div>
+  );
+}
+
+function CoursesView({
+  catalog,
+  enrollments,
+  onEdit,
+}: {
+  catalog: CatalogCourse[];
+  enrollments: Enrollment[];
+  onEdit: () => void;
+}) {
+  const activeIds = new Set(enrollments.map((item) => item.courseId));
+  return (
+    <>
+      <section className="page-intro">
+        <span className="eyebrow">COURSE CATALOG</span>
+        <h1>课程</h1>
+        <p>每门课程独立计算 Day，换课不会删除过去的证据。</p>
+      </section>
+      <div className="catalog-list">
+        {catalog.map((course) => {
+          const active = activeIds.has(course.id);
+          return (
+            <article
+              className="catalog-card"
+              key={course.id}
+              style={{ "--course-accent": course.accent } as React.CSSProperties}
+            >
+              <span>{course.subtitle}</span>
+              <h2>{course.title}</h2>
+              <p>{course.summary}</p>
+              <div>
+                <strong>{course.durationDays} DAYS</strong>
+                <small>{course.dailyMinutes} 分钟／天</small>
+                <em>{active ? "训练中" : "未选择"}</em>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+      <button className="new-note-button" type="button" onClick={onEdit}>
+        调整我的课程
+      </button>
+    </>
+  );
+}
+
+function LessonSheet({
+  item,
+  onClose,
+  onSubmitted,
+}: {
+  item: TodayItem;
+  onClose: () => void;
+  onSubmitted: (submission: Submission) => void;
+}) {
+  const lesson = item.lesson!;
+  const [answer, setAnswer] = useState("");
+  const [submission, setSubmission] = useState(item.submission);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  async function submit() {
+    setSubmitting(true);
+    setError("");
+    try {
+      const result = await academyRequest<{ submission: Submission }>(
+        "/api/academy/submissions",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            enrollmentId: item.enrollment.id,
+            lessonId: lesson.id,
+            answer,
+            completionSource: "self",
+          }),
+        },
+      );
+      setSubmission(result.submission);
+      onSubmitted(result.submission);
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error ? requestError.message : "提交失败",
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="lesson-page">
+      <header className="lesson-page-header">
+        <button type="button" onClick={onClose}>
+          ‹ 返回今日
+        </button>
+        <span>
+          DAY {String(lesson.day).padStart(2, "0")} · {lesson.estimatedMinutes} MIN
+        </span>
+      </header>
+      <div className="lesson-page-content">
+        <p className="lesson-kicker">
+          {item.enrollment.title.toUpperCase()} · ROUND {lesson.round}
+        </p>
+        <h1>{lesson.title}</h1>
+
+        <section className="objective-block">
+          <span>今天的目标</span>
+          <p>{lesson.objective}</p>
+        </section>
+
+        <section className="lesson-reading">
+          <span className="eyebrow">必要输入</span>
+          <p>{lesson.content}</p>
+        </section>
+
+        <section className="practice-card">
+          <span className="eyebrow">ACTIVE PRACTICE</span>
+          <h2>必须留下输出</h2>
+          <p>{lesson.practicePrompt}</p>
+          <div className="criteria-row">
+            {lesson.criteria.map((criterion) => (
+              <span key={criterion}>{criterion}</span>
+            ))}
+          </div>
+          <textarea
+            value={answer}
+            onChange={(event) => setAnswer(event.target.value)}
+            placeholder="写下你的原始答案。系统会保留它，不让 AI 替你假装学会。"
+            maxLength={4000}
+          />
+          <div className="answer-meta">
+            <span>{answer.trim().length} 字</span>
+            {error && <strong>{error}</strong>}
+          </div>
+          <button
+            className="primary-button"
+            type="button"
+            onClick={submit}
+            disabled={submitting}
+          >
+            {submitting ? "正在检查…" : submission ? "修正后重新提交" : "提交学习证据"}
+          </button>
+        </section>
+
+        {submission && (
+          <section
+            className={`feedback-card ${
+              submission.status === "completed" ? "passed" : ""
+            }`}
+          >
+            <div>
+              <span>规则评分</span>
+              <strong>{Math.round(submission.ruleScore)}</strong>
+            </div>
+            <p>{submission.ruleFeedback}</p>
+            <div className="ai-feedback">
+              <span>OLLAMA 点评</span>
+              <p>
+                {submission.aiFeedback ||
+                  "本地模型暂时没有回应。规则评分已保存，不影响今天的学习。"}
+              </p>
+            </div>
+          </section>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function NotesView({
   notes,
-  onOpenNote,
+  onSaved,
 }: {
   notes: Note[];
-  onOpenNote: () => void;
+  onSaved: (note: Note) => void;
 }) {
+  const [draft, setDraft] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  async function save() {
+    setSaving(true);
+    setError("");
+    try {
+      const result = await academyRequest<{ note: Note }>("/api/academy/notes", {
+        method: "POST",
+        body: JSON.stringify({ content: draft }),
+      });
+      setDraft("");
+      onSaved(result.note);
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error ? requestError.message : "保存失败",
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <>
       <section className="page-intro">
         <span className="eyebrow">LEARNING NOTES</span>
         <h1>学习笔记</h1>
-        <p>把零散想法变成可以再次使用的知识。</p>
+        <p>不是收藏内容，而是保存你自己的判断。</p>
       </section>
-
-      <button className="new-note-button" type="button" onClick={onOpenNote}>
-        <span aria-hidden="true">＋</span>
-        新建一条笔记
-      </button>
-
-      <section className="timeline">
+      <section className="inline-composer">
+        <textarea
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          placeholder="一个发现、一次判断，或明天必须继续的问题…"
+          maxLength={2000}
+        />
+        <div>
+          <span>{draft.length}/2000</span>
+          {error && <strong>{error}</strong>}
+          <button
+            className="primary-button"
+            type="button"
+            onClick={save}
+            disabled={saving || !draft.trim()}
+          >
+            {saving ? "保存中…" : "保存笔记"}
+          </button>
+        </div>
+      </section>
+      <section className="timeline note-timeline">
+        {notes.length === 0 && (
+          <p className="empty-note">还没有笔记。大脑觉得记得住，通常只是它的个人意见。</p>
+        )}
         {notes.map((note) => (
           <article className="note-entry" key={note.id}>
             <div className="timeline-dot" aria-hidden="true" />
             <div className="note-meta">
-              <span>DAY {String(note.day).padStart(2, "0")}</span>
-              <time>{note.date}</time>
+              <span>LEARNING NOTE</span>
+              <time>{formatDate(note.createdAt)}</time>
             </div>
             <p>{note.content}</p>
           </article>
@@ -431,155 +807,92 @@ function NotesView({
 }
 
 function ProgressView({
+  data,
   progress,
-  completedSubjects,
+  completedCount,
 }: {
+  data: Bootstrap;
   progress: number;
-  completedSubjects: Lesson[];
+  completedCount: number;
 }) {
-  const totalProgress = Math.round(((1 - 1) * 5 + completedSubjects.length) / 70 * 100);
+  const evidence = data.today.filter((item) => item.submission).length;
+  const averageScore = data.today.length
+    ? Math.round(
+        data.today.reduce(
+          (sum, item) => sum + (item.submission?.ruleScore ?? 0),
+          0,
+        ) / Math.max(1, evidence),
+      )
+    : 0;
 
   return (
     <>
       <section className="page-intro">
-        <span className="eyebrow">YOUR RHYTHM</span>
+        <span className="eyebrow">EVIDENCE, NOT CHECKBOXES</span>
         <h1>学习进度</h1>
-        <p>不用追赶，只需要看见自己持续向前。</p>
+        <p>这里记录你完成了什么，以及系统为什么相信你完成了。</p>
       </section>
-
       <section className="day-progress-card">
         <div className="big-day">
-          <span>当前进度</span>
-          <strong>01</strong>
-          <small>/ 14 DAYS</small>
+          <span>当前学习日</span>
+          <strong>{String(data.enrollments[0]?.currentDay ?? 1).padStart(2, "0")}</strong>
+          <small>/ 60 DAYS</small>
         </div>
         <div className="overall-line">
           <div>
-            <span>课程周期</span>
-            <strong>{totalProgress}%</strong>
+            <span>今日完成</span>
+            <strong>{progress}%</strong>
           </div>
           <div className="long-progress">
-            <span style={{ width: `${Math.max(totalProgress, 3)}%` }} />
+            <span style={{ width: `${Math.max(progress, 3)}%` }} />
           </div>
         </div>
       </section>
-
       <section className="stat-grid">
         <article>
-          <span>今日完成</span>
-          <strong>{completedSubjects.length}</strong>
-          <small>共 5 节</small>
+          <span>已完成</span>
+          <strong>{completedCount}</strong>
+          <small>共 {data.today.length} 门</small>
         </article>
         <article>
-          <span>连续学习</span>
-          <strong>1</strong>
-          <small>天</small>
+          <span>学习证据</span>
+          <strong>{evidence}</strong>
+          <small>今日提交</small>
         </article>
         <article>
-          <span>今日进度</span>
-          <strong>{progress}%</strong>
-          <small>保持节奏</small>
+          <span>规则均分</span>
+          <strong>{averageScore || "—"}</strong>
+          <small>满分 100</small>
         </article>
       </section>
-
       <section className="subject-progress">
         <div className="section-heading">
           <div>
-            <span className="eyebrow">SUBJECTS</span>
-            <h2>各科学习</h2>
+            <span className="eyebrow">ACTIVE COURSES</span>
+            <h2>独立课程进度</h2>
           </div>
         </div>
-        {lessons.map((lesson) => {
-          const done = completedSubjects.some((item) => item.id === lesson.id);
+        {data.enrollments.map((enrollment) => {
+          const item = data.today.find(
+            (today) => today.enrollment.id === enrollment.id,
+          );
+          const done = item?.submission?.status === "completed";
           return (
-            <div className="subject-line" key={lesson.id}>
+            <div className="subject-line" key={enrollment.id}>
               <span
                 className="subject-swatch"
-                style={{ background: lesson.accent }}
-                aria-hidden="true"
+                style={{ background: enrollment.accent }}
               />
-              <strong>{lesson.subject}</strong>
+              <strong>{enrollment.title}</strong>
               <div className="mini-progress">
                 <span style={{ width: done ? "100%" : "0%" }} />
               </div>
-              <small>{done ? "1/1" : "0/1"}</small>
+              <small>Day {enrollment.currentDay}</small>
             </div>
           );
         })}
       </section>
     </>
-  );
-}
-
-function LessonSheet({
-  lesson,
-  completed,
-  onClose,
-  onToggle,
-  onNote,
-}: {
-  lesson: Lesson;
-  completed: boolean;
-  onClose: () => void;
-  onToggle: () => void;
-  onNote: () => void;
-}) {
-  return (
-    <div
-      className="sheet-backdrop"
-      role="presentation"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
-      }}
-    >
-      <article
-        className="lesson-sheet"
-        style={{ "--lesson-accent": lesson.accent } as React.CSSProperties}
-      >
-        <div className="sheet-handle" aria-hidden="true" />
-        <button className="sheet-back" type="button" onClick={onClose}>
-          <span aria-hidden="true">{glyphs.back}</span> 返回今日
-        </button>
-        <span className="lesson-sheet-number">{lesson.number}</span>
-        <p className="lesson-kicker">{lesson.subject.toUpperCase()}</p>
-        <h2>{lesson.title}</h2>
-        <div className="lesson-meta">
-          <span>DAY 01</span>
-          <span>{lesson.duration}</span>
-          <span>{completed ? "已完成" : "待学习"}</span>
-        </div>
-
-        <section className="learning-block">
-          <span className="eyebrow">TODAY&apos;S PRACTICE</span>
-          <h3>今天要完成什么</h3>
-          <p>{lesson.prompt}</p>
-        </section>
-
-        {lesson.id === "english" && (
-          <button className="audio-row" type="button">
-            <span className="play-button" aria-hidden="true">
-              {glyphs.play}
-            </span>
-            <span>
-              <strong>影子跟读练习</strong>
-              <small>02:36 · 即将加入正式音频</small>
-            </span>
-            <span className="wave" aria-hidden="true">
-              ıııııı
-            </span>
-          </button>
-        )}
-
-        <div className="lesson-actions">
-          <button className="secondary-button" type="button" onClick={onNote}>
-            记下想法
-          </button>
-          <button className="primary-button" type="button" onClick={onToggle}>
-            {completed ? "标记为待学习" : "完成这节课"}
-          </button>
-        </div>
-      </article>
-    </div>
   );
 }
 
@@ -605,4 +918,15 @@ function NavButton({
       {label}
     </button>
   );
+}
+
+function formatDate(value: string) {
+  const parsed = new Date(value.endsWith("Z") ? value : `${value}Z`);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return new Intl.DateTimeFormat("zh-CN", {
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(parsed);
 }

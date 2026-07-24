@@ -11,25 +11,25 @@ export async function generateMetadata(): Promise<Metadata> {
   const protocol =
     requestHeaders.get("x-forwarded-proto") ??
     (host.startsWith("localhost") ? "http" : "https");
-  const imageUrl = `${protocol}://${host}/og.png`;
+  const imageUrl = `${protocol}://${host}/og-v2.png`;
 
   return {
-    title: "Academy · 私人学习手账",
-    description: "把每天的课程、笔记与进度收进一处，随时回看。",
+    title: "Academy · 学习监督系统",
+    description: "每天投喂、监督、反馈，并留下真实能力证据。",
     icons: {
       icon: "/favicon.svg",
       shortcut: "/favicon.svg",
     },
     openGraph: {
-      title: "Academy · 私人学习手账",
-      description: "把每天的学习，收进一本手账。",
+      title: "Academy · 学习监督系统",
+      description: "今天不要求逆袭，只要求别继续原地踏步。",
       type: "website",
-      images: [{ url: imageUrl, width: 1536, height: 1024, alt: "Academy 私人学习手账" }],
+      images: [{ url: imageUrl, width: 1536, height: 1024, alt: "Academy 学习监督系统" }],
     },
     twitter: {
       card: "summary_large_image",
-      title: "Academy · 私人学习手账",
-      description: "把每天的学习，收进一本手账。",
+      title: "Academy · 学习监督系统",
+      description: "今天不要求逆袭，只要求别继续原地踏步。",
       images: [imageUrl],
     },
   };

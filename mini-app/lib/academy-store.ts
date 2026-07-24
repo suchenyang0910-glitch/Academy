@@ -549,7 +549,7 @@ async function grantReferralRewards(userId: string, qualified: number) {
         `SELECT ends_at AS endsAt
          FROM subscriptions
          WHERE user_id = ? AND status = 'active'
-         ORDER BY datetime(ends_at) DESC LIMIT 1`,
+         ORDER BY CAST(ends_at AS TIMESTAMP) DESC LIMIT 1`,
       )
       .bind(userId)
       .first<{ endsAt: string }>();
@@ -605,7 +605,7 @@ async function getLearningAccess(userId: string) {
       `SELECT plan_key AS planKey, source, starts_at AS startsAt, ends_at AS endsAt
        FROM subscriptions
        WHERE user_id = ? AND status = 'active'
-       ORDER BY datetime(ends_at) DESC LIMIT 1`,
+       ORDER BY CAST(ends_at AS TIMESTAMP) DESC LIMIT 1`,
     )
     .bind(userId)
     .first<{

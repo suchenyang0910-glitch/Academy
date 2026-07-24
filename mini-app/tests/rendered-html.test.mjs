@@ -57,6 +57,7 @@ test("records Telegram profile fields and tracks qualified referrals", async () 
     store,
     /CAST\(s\.completed_on AS DATE\) <= CAST\(\? AS DATE\) \+ INTERVAL '7 days'/,
   );
+  assert.match(store, /ORDER BY CAST\(ends_at AS TIMESTAMP\) DESC/);
   assert.match(schema, /export const invitations/);
   assert.match(migration, /CREATE TABLE `invitations`/);
   assert.match(migration, /ADD `telegram_username`/);

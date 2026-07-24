@@ -290,7 +290,7 @@ async function accessBaseFor(userId: string) {
     .prepare(
       `SELECT ends_at AS endsAt FROM subscriptions
        WHERE user_id = ? AND status = 'active'
-       ORDER BY datetime(ends_at) DESC LIMIT 1`,
+       ORDER BY CAST(ends_at AS TIMESTAMP) DESC LIMIT 1`,
     )
     .bind(userId)
     .first<{ endsAt: string }>();

@@ -301,6 +301,7 @@ export default function Home() {
                 <TodayView
                   data={data}
                   copy={copy}
+                  locale={locale}
                   progress={progress}
                   completedCount={completedCount}
                   onSelect={(item) =>
@@ -495,6 +496,7 @@ function ErrorState({
 function TodayView({
   data,
   copy,
+  locale,
   progress,
   completedCount,
   onSelect,
@@ -502,6 +504,7 @@ function TodayView({
 }: {
   data: Bootstrap;
   copy: ReturnType<typeof copyFor>;
+  locale: AppLocale;
   progress: number;
   completedCount: number;
   onSelect: (item: TodayItem) => void;
@@ -530,7 +533,7 @@ function TodayView({
         <p className="greeting">{copy.hello(data.user.displayName)}</p>
         <h1>{copy.todayLearning}</h1>
         <p className="date-line">
-          {new Intl.DateTimeFormat("zh-CN", {
+          {new Intl.DateTimeFormat(dateLocaleFor(locale), {
             weekday: "long",
             month: "long",
             day: "numeric",
@@ -666,6 +669,15 @@ function TodayView({
       </blockquote>
     </>
   );
+}
+
+function dateLocaleFor(locale: AppLocale) {
+  return {
+    "zh-Hans": "zh-CN",
+    vi: "vi-VN",
+    km: "km-KH",
+    th: "th-TH",
+  }[locale];
 }
 
 function CoursePicker({

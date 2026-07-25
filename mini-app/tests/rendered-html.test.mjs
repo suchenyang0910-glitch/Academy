@@ -72,6 +72,18 @@ test("records Telegram profile fields and tracks qualified referrals", async () 
   assert.match(migration, /ADD `telegram_username`/);
 });
 
+test("rejects unsigned identities in production", async () => {
+  const store = await readFile(
+    new URL("../lib/academy-store.ts", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(store, /authDate - nowSeconds > 300/);
+  assert.match(store, /secureEqualHex/);
+  assert.match(store, /process\.env\.NODE_ENV === "production"/);
+  assert.match(store, /Telegram authentication is not configured/);
+});
+
 test("enforces trial access and grants referral subscription rewards", async () => {
   const [page, store, schema, migration, payments] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),

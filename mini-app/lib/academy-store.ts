@@ -127,6 +127,15 @@ function bytesToHex(bytes: ArrayBuffer) {
     .join("");
 }
 
+function secureEqualHex(left: string, right: string) {
+  if (left.length !== right.length) return false;
+  let difference = 0;
+  for (let index = 0; index < left.length; index += 1) {
+    difference |= left.charCodeAt(index) ^ right.charCodeAt(index);
+  }
+  return difference === 0;
+}
+
 async function hmac(key: ArrayBuffer | string, value: string) {
   const keyBytes =
     typeof key === "string" ? new TextEncoder().encode(key) : new Uint8Array(key);
@@ -147,7 +156,12 @@ async function validateTelegramInitData(initData: string, botToken: string) {
 
   params.delete("hash");
   const authDate = Number(params.get("auth_date") ?? "0");
-  if (!Number.isFinite(authDate) || Date.now() / 1000 - authDate > 86400) {
+  const nowSeconds = Date.now() / 1000;
+  if (
+    !Number.isFinite(authDate) ||
+    nowSeconds - authDate > 86400 ||
+    authDate - nowSeconds > 300
+  ) {
     return null;
   }
 
@@ -157,12 +171,12 @@ async function validateTelegramInitData(initData: string, botToken: string) {
     .join("\n");
   const secret = await hmac("WebAppData", botToken);
   const calculated = bytesToHex(await hmac(secret, dataCheckString));
-  if (calculated !== hash.toLowerCase()) return null;
+  if (!secureEqualHex(calculated, hash.toLowerCase())) return null;
 
   const rawUser = params.get("user");
   if (!rawUser) return null;
 
-  const user = JSON.parse(rawUser) as {
+  let user: {
     id: number;
     first_name?: string;
     last_name?: string;
@@ -171,6 +185,12 @@ async function validateTelegramInitData(initData: string, botToken: string) {
     photo_url?: string;
     is_premium?: boolean;
   };
+  try {
+    user = JSON.parse(rawUser) as typeof user;
+  } catch {
+    return null;
+  }
+  if (!Number.isSafeInteger(user.id) || user.id <= 0) return null;
   const displayName =
     [user.first_name, user.last_name].filter(Boolean).join(" ") ||
     user.username ||
@@ -205,8 +225,14 @@ export async function getIdentity(request: Request): Promise<AcademyIdentity> {
     return identity;
   }
 
-  // Founder-only self-test mode. As soon as TELEGRAM_BOT_TOKEN is configured,
-  // unsigned requests are rejected automatically.
+  // Founder-only self-test mode. Production must never silently become an
+  // unsigned shared account because a deployment missed its Bot Token.
+  if (process.env.NODE_ENV === "production") {
+    throw new Response("Telegram authentication is not configured", {
+      status: 503,
+    });
+  }
+
   return {
     id: "founder",
     telegramId: null,

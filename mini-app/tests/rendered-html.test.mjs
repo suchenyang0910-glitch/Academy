@@ -46,7 +46,7 @@ test("ships five fixed 60-day curricula and the reminder pool", async () => {
 });
 
 test("records Telegram profile fields and tracks qualified referrals", async () => {
-  const [page, store, schema, migration] = await Promise.all([
+  const [page, store, schema, migration, i18n] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../lib/academy-store.ts", import.meta.url), "utf8"),
     readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
@@ -54,10 +54,12 @@ test("records Telegram profile fields and tracks qualified referrals", async () 
       new URL("../drizzle/0002_neat_doctor_octopus.sql", import.meta.url),
       "utf8",
     ),
+    readFile(new URL("../lib/i18n.ts", import.meta.url), "utf8"),
   ]);
 
   assert.match(page, /function ProfileView/);
-  assert.match(page, /有效邀请 = Telegram 认证/);
+  assert.match(page, /copy\.referralQualifiedDefinition/);
+  assert.match(i18n, /有效邀请 = Telegram 认证/);
   assert.match(store, /start_param/);
   assert.match(store, /startapp=ref_/);
   assert.match(store, /status = 'qualified'/);
@@ -86,7 +88,7 @@ test("rejects unsigned identities in production", async () => {
 });
 
 test("enforces trial access and grants referral subscription rewards", async () => {
-  const [page, store, schema, migration, payments] = await Promise.all([
+  const [page, store, schema, migration, payments, i18n] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../lib/academy-store.ts", import.meta.url), "utf8"),
     readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
@@ -95,13 +97,15 @@ test("enforces trial access and grants referral subscription rewards", async () 
       "utf8",
     ),
     readFile(new URL("../lib/telegram-payments.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/i18n.ts", import.meta.url), "utf8"),
   ]);
 
-  assert.match(page, /21 天免费试用/);
+  assert.match(page, /copy\.accessTrial/);
+  assert.match(i18n, /21 天免费试用/);
   assert.match(payments, /\$19\.9/);
   assert.match(payments, /\$199/);
   assert.match(store, /export async function assertLearningAccess/);
-  assert.match(store, /referral_30d/);
+  assert.match(store, /referral_reward/);
   assert.match(store, /21 天试用已结束/);
   assert.match(schema, /export const subscriptions/);
   assert.match(migration, /CREATE TABLE `subscriptions`/);
@@ -131,6 +135,48 @@ test("connects Telegram Stars invoices, payment callbacks, and refunds", async (
   assert.match(schema, /export const paymentTransactions/);
   assert.match(migration, /CREATE TABLE `payment_orders`/);
   assert.match(migration, /CREATE TABLE `payment_transactions`/);
+});
+
+test("settles pricing snapshots with credits cap and no-stacking rules", async () => {
+  const [pricing, credits, lockRoute, requirements] = await Promise.all([
+    readFile(new URL("../lib/pricing.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/credits-ledger.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/academy/pricing/lock/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../../REQUIREMENTS.md", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(pricing, /const amountAfterMainDiscount = Math\.max\(0, originalAmountMinor - mainDiscountAmountMinor\)/);
+  assert.match(pricing, /const maxCreditsRedeemableAmountMinor = floorDiv\(amountAfterMainDiscount, 2\)/);
+  assert.match(pricing, /const redeemCredits\s*=\s*[\s\S]*\(mainOffer\.type === "none" \|\| stackableWithCredits\)/);
+  assert.match(pricing, /Math\.min\(balance\.availablePoints, maxCreditsRedeemablePoints\)/);
+  assert.match(pricing, /const cappedCreditsRedeemedAmountMinor = Math\.min\([\s\S]*maxCreditsRedeemableAmountMinor[\s\S]*\)/);
+  assert.match(pricing, /finalPayableAmountMinor[\s\S]*originalAmountMinor - mainDiscountAmountMinor - cappedCreditsRedeemedAmountMinor/);
+  assert.match(pricing, /pricing_rule_version[\s\S]*'preview'/);
+  assert.match(credits, /export const POINTS_PER_USD = 100/);
+  assert.match(lockRoute, /status !== "preview"/);
+  assert.match(requirements, /不可叠加原则/);
+});
+
+test("qualifies referrals and grants laddered credits rewards idempotently", async () => {
+  const [store, ledger, i18n, requirements] = await Promise.all([
+    readFile(new URL("../lib/academy-store.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/credits-ledger.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/i18n.ts", import.meta.url), "utf8"),
+    readFile(new URL("../../REQUIREMENTS.md", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(store, /status = 'qualified' AND qualified_at IS NOT NULL/);
+  assert.match(store, /sequence === 1 \? 10 : sequence === 2 \? 15 : sequence === 3 \? 20 : 10/);
+  assert.match(store, /rewardType: "referral_reward"/);
+  assert.match(store, /entryType: "earn"/);
+  assert.match(store, /businessKey: `referral_reward:\$\{userId\}:\$\{invitation\.id\}`/);
+  assert.match(store, /CAST\(s\.completed_on AS DATE\) <= CAST\(\? AS DATE\) \+ INTERVAL '7 days'/);
+  assert.match(store, /paid\.paidAt.*invitation\.createdAt/);
+  assert.match(store, /Number\(validDays\?\.count.*\) >= 3/);
+  assert.match(store, /nextRewardRemaining: \(3 - \(qualified % 3\)\) % 3/);
+  assert.match(ledger, /ON CONFLICT\(business_key\) DO NOTHING/);
+  assert.match(i18n, /前 3 个有效邀请分别返首单实付金额的 10% \/ 15% \/ 20%/);
+  assert.match(requirements, /前 3.*10%.*15%.*20%/);
 });
 
 test("uses DeepSeek for AI coaching with Ollama and rules-only fallback", async () => {

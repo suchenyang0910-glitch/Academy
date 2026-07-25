@@ -1,47 +1,39 @@
-import sqlite3
-import tempfile
 import unittest
-from contextlib import closing
-from pathlib import Path
 from unittest.mock import patch
 
 from bot.commands import handle_academy_command
 
 
 class CommandTests(unittest.TestCase):
-    def setUp(self):
-        self.temp_dir = tempfile.TemporaryDirectory()
-        self.db_path = str(Path(self.temp_dir.name) / "academy-test.db")
-        self.db_patch = patch("bot.database.DB_PATH", self.db_path)
-        self.db_patch.start()
-        with closing(sqlite3.connect(self.db_path)) as conn:
-            conn.executescript(
-                """
-                CREATE TABLE notes (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    day INTEGER NOT NULL,
-                    note TEXT NOT NULL,
-                    created_at TEXT DEFAULT CURRENT_TIMESTAMP
-                );
-                CREATE TABLE day_counter (current_day INTEGER NOT NULL);
-                INSERT INTO day_counter (current_day) VALUES (4);
-                """
+    def test_note_command_calls_mini_app_api(self):
+        with patch("bot.commands.academy_api.create_note") as create_note:
+            response, needs_write = handle_academy_command(
+                "/academy note 记录一个真实学习证据"
             )
-            conn.commit()
-
-    def tearDown(self):
-        self.db_patch.stop()
-        self.temp_dir.cleanup()
-
-    def test_note_command_persists_without_extra_cli_argument(self):
-        response, needs_write = handle_academy_command(
-            "/academy note 记录一个真实学习证据"
-        )
         self.assertFalse(needs_write)
-        self.assertIn("Day 4", response)
-        with closing(sqlite3.connect(self.db_path)) as conn:
-            row = conn.execute("SELECT day, note FROM notes").fetchone()
-        self.assertEqual(row, (4, "记录一个真实学习证据"))
+        create_note.assert_called_once_with("记录一个真实学习证据")
+        self.assertIn("已记录学习笔记", response)
+
+    def test_next_command_uses_api(self):
+        with patch("bot.commands.academy_api.fetch_summary") as fetch_summary, patch(
+            "bot.commands.academy_api.fetch_day"
+        ) as fetch_day:
+            fetch_summary.return_value = {
+                "today": [{"courseTitle": "English", "currentDay": 4}],
+                "supervision": {"todayKey": "2026-07-25"},
+            }
+            fetch_day.return_value = {
+                "items": [
+                    {
+                        "courseTitle": "English",
+                        "lessonTitle": "Lesson 5",
+                        "preview": "preview",
+                    }
+                ]
+            }
+            response, needs_write = handle_academy_command("/academy next")
+        self.assertFalse(needs_write)
+        self.assertIn("Day 5", response)
 
 
 if __name__ == "__main__":

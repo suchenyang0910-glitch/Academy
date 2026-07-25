@@ -10,6 +10,11 @@ import { REMINDER_TEMPLATES, selectReminder } from "./reminders";
 import { getPaymentCatalog } from "./telegram-payments";
 import { getAiRuntimeStatus, requestAiFeedback } from "./ai-feedback";
 import { resolveAppLocale, type AppLocale } from "./i18n";
+import {
+  ensureCreditsLedgerEntry,
+  getCreditsBalance,
+  POINTS_PER_USD,
+} from "./credits-ledger";
 
 export type AcademyIdentity = {
   id: string;
@@ -611,6 +616,27 @@ export async function getBootstrap(identity: AcademyIdentity) {
 
   const referral = await getReferralSummary(identity.id, user?.referralCode);
   const access = await getLearningAccess(identity.id);
+  const credits = await getCreditsBalance(identity.id);
+  const now = new Date().toISOString().replace("T", " ").slice(0, 19);
+  const campaign = await d1
+    .prepare(
+      `SELECT id, name, reward_mode AS rewardMode,
+              stackable_with_credits AS stackableWithCredits,
+              end_at AS endAt
+       FROM campaign_rewards
+       WHERE status = 'active'
+         AND start_at <= ? AND end_at > ?
+       ORDER BY start_at DESC
+       LIMIT 1`,
+    )
+    .bind(now, now)
+    .first<{
+      id: string;
+      name: string;
+      rewardMode: string;
+      stackableWithCredits: number;
+      endAt: string;
+    }>();
 
   return {
     user: user
@@ -622,6 +648,23 @@ export async function getBootstrap(identity: AcademyIdentity) {
       : identity,
     referral,
     access,
+    credits,
+    pricing: {
+      pointsPerUsd: POINTS_PER_USD,
+      maxCreditsRedeemablePercent: 50,
+    },
+    campaign: campaign
+      ? {
+          mainOffer: {
+            type: "campaign" as const,
+            id: campaign.id,
+            name: campaign.name,
+            rewardMode: campaign.rewardMode,
+            stackableWithCredits: Boolean(campaign.stackableWithCredits),
+            validUntil: campaign.endAt,
+          },
+        }
+      : { mainOffer: null },
     ai: getAiRuntimeStatus(),
     payment: getPaymentCatalog(),
     catalog,
@@ -661,65 +704,91 @@ export async function updateUserLocale(
   return uiLocale;
 }
 
+function parseUsdCents(value: string) {
+  const normalized = value.trim().replace(/^\$/, "");
+  const parsed = Number(normalized);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    throw new Error(`Invalid usdPrice: ${value}`);
+  }
+  return Math.round(parsed * 100);
+}
+
 async function grantReferralRewards(userId: string, qualified: number) {
   const d1 = getD1();
-  const milestoneCount = Math.floor(qualified / 3);
-  if (milestoneCount < 1) return 0;
-
-  const user = await d1
-    .prepare("SELECT trial_started_at AS trialStartedAt FROM users WHERE id = ?")
+  const qualifiedInvitations = await d1
+    .prepare(
+      `SELECT id,
+              invited_user_id AS invitedUserId,
+              qualified_at AS qualifiedAt
+       FROM invitations
+       WHERE inviter_user_id = ? AND status = 'qualified' AND qualified_at IS NOT NULL
+       ORDER BY CAST(qualified_at AS TIMESTAMP) ASC, id ASC`,
+    )
     .bind(userId)
-    .first<{ trialStartedAt: string }>();
-  if (!user) return 0;
+    .all<{ id: number; invitedUserId: string; qualifiedAt: string }>();
 
-  for (let milestone = 1; milestone <= milestoneCount; milestone += 1) {
-    const externalRef = `referral:${userId}:${milestone}`;
-    const exists = await d1
-      .prepare("SELECT id FROM subscriptions WHERE external_ref = ?")
-      .bind(externalRef)
-      .first();
-    if (exists) continue;
+  const catalog = getPaymentCatalog();
+  const plansByKey = new Map(catalog.plans.map((plan) => [plan.key, plan]));
 
-    const latest = await d1
+  for (let index = 0; index < qualifiedInvitations.results.length; index += 1) {
+    const invitation = qualifiedInvitations.results[index];
+    const sequence = index + 1;
+    const rate =
+      sequence === 1 ? 10 : sequence === 2 ? 15 : sequence === 3 ? 20 : 10;
+
+    const paid = await d1
       .prepare(
-        `SELECT ends_at AS endsAt
-         FROM subscriptions
-         WHERE user_id = ? AND status = 'active'
-         ORDER BY CAST(ends_at AS TIMESTAMP) DESC LIMIT 1`,
+        `SELECT pt.order_id AS orderId,
+                pt.amount_stars AS amountStars,
+                pt.paid_at AS paidAt,
+                o.plan_key AS planKey
+         FROM payment_transactions pt
+         JOIN payment_orders o ON o.id = pt.order_id
+         WHERE pt.user_id = ? AND pt.status = 'paid'
+         ORDER BY CAST(pt.paid_at AS TIMESTAMP) ASC
+         LIMIT 1`,
       )
-      .bind(userId)
-      .first<{ endsAt: string }>();
-    const trialEnd = addDays(parseDatabaseDate(user.trialStartedAt), 21);
-    const latestEnd = latest?.endsAt
-      ? parseDatabaseDate(latest.endsAt)
-      : trialEnd;
-    const now = new Date();
-    const startsAt = new Date(
-      Math.max(now.getTime(), trialEnd.getTime(), latestEnd.getTime()),
+      .bind(invitation.invitedUserId)
+      .first<{
+        orderId: number;
+        amountStars: number;
+        paidAt: string;
+        planKey: string;
+      }>();
+    if (!paid) continue;
+
+    const plan = plansByKey.get(paid.planKey);
+    if (!plan) continue;
+    const usdCents = parseUsdCents(plan.usdPrice);
+    const baseStars = plan.stars ?? paid.amountStars;
+    const effectiveUsdCents =
+      baseStars > 0
+        ? Math.round((usdCents * paid.amountStars) / baseStars)
+        : usdCents;
+    const amountPoints = Math.max(
+      0,
+      Math.round((effectiveUsdCents * rate * POINTS_PER_USD) / 100 / 100),
     );
-    const endsAt = addDays(startsAt, 30);
+    if (amountPoints <= 0) continue;
 
-    await d1
-      .prepare(
-        `INSERT INTO subscriptions
-           (user_id, plan_key, status, source, starts_at, ends_at, external_ref)
-         VALUES (?, 'referral_30d', 'active', 'referral', ?, ?, ?)
-         ON CONFLICT(external_ref) DO NOTHING`,
-      )
-      .bind(
-        userId,
-        databaseTimestamp(startsAt),
-        databaseTimestamp(endsAt),
-        externalRef,
-      )
-      .run();
+    await ensureCreditsLedgerEntry({
+      userId,
+      entryType: "earn",
+      rewardType: "referral_reward",
+      amountPoints,
+      status: "posted",
+      businessKey: `referral_reward:${userId}:${invitation.id}`,
+      relatedOrderId: paid.orderId,
+      relatedInvitationId: invitation.id,
+      expiresAt: null,
+    });
   }
 
   const rewards = await d1
     .prepare(
       `SELECT COUNT(*) AS count
-       FROM subscriptions
-       WHERE user_id = ? AND source = 'referral'`,
+       FROM credits_ledger
+       WHERE user_id = ? AND reward_type = 'referral_reward'`,
     )
     .bind(userId)
     .first<{ count: number }>();
@@ -819,11 +888,33 @@ async function getReferralSummary(
     const activeCount = Number(activeCourses?.count ?? 0);
     if (activeCount < 1) continue;
 
+    const paid = await d1
+      .prepare(
+        `SELECT pt.order_id AS orderId,
+                pt.amount_stars AS amountStars,
+                pt.paid_at AS paidAt,
+                o.plan_key AS planKey
+         FROM payment_transactions pt
+         JOIN payment_orders o ON o.id = pt.order_id
+         WHERE pt.user_id = ? AND pt.status = 'paid'
+         ORDER BY CAST(pt.paid_at AS TIMESTAMP) ASC
+         LIMIT 1`,
+      )
+      .bind(invitation.invitedUserId)
+      .first<{
+        orderId: number;
+        amountStars: number;
+        paidAt: string;
+        planKey: string;
+      }>();
+    if (!paid) continue;
+    if (String(paid.paidAt) < String(invitation.createdAt)) continue;
+
     const validDays = await d1
       .prepare(
         `SELECT COUNT(*) AS count
          FROM (
-           SELECT s.completed_on
+           SELECT CAST(s.completed_on AS DATE) AS completedDay
            FROM submissions s
            JOIN lessons l ON l.id = s.lesson_id
            JOIN enrollments e
@@ -831,13 +922,14 @@ async function getReferralSummary(
            WHERE s.user_id = ?
              AND s.status = 'completed'
              AND s.completed_on IS NOT NULL
+             AND CAST(s.completed_on AS DATE) >= CAST(? AS DATE)
              AND CAST(s.completed_on AS DATE) <= CAST(? AS DATE) + INTERVAL '7 days'
              AND e.active = 1
-           GROUP BY s.completed_on
+           GROUP BY CAST(s.completed_on AS DATE)
            HAVING COUNT(DISTINCT l.course_id) >= ?
          ) valid_days`,
       )
-      .bind(invitation.invitedUserId, invitation.createdAt, activeCount)
+      .bind(invitation.invitedUserId, paid.paidAt, paid.paidAt, activeCount)
       .first<{ count: number }>();
 
     if (Number(validDays?.count ?? 0) >= 3) {
@@ -872,9 +964,9 @@ async function getReferralSummary(
     pending: Number(stats?.pending ?? 0),
     qualified,
     rewardTarget: 3,
-    rewardDays: 30,
+    rewardDays: 0,
     earnedRewards,
-    nextRewardRemaining: 3 - (qualified % 3),
+    nextRewardRemaining: (3 - (qualified % 3)) % 3,
     shareUrl: botUsername
       ? `https://t.me/${botUsername}?startapp=ref_${code}`
       : null,
@@ -1234,6 +1326,11 @@ export async function createReminder(
   requestedLevel: 1 | 2 | 3 | 4,
 ) {
   const d1 = getD1();
+  const access = await getLearningAccess(userId);
+  if (!access.active) {
+    return { skipped: true as const, reason: "access_expired" as const };
+  }
+
   const user = await d1
     .prepare("SELECT id, timezone, ui_locale AS uiLocale FROM users WHERE id = ?")
     .bind(userId)
@@ -1272,8 +1369,17 @@ export async function createReminder(
   }
 
   const lagDays = Math.max(0, Number(state?.lagDays ?? 0));
+  const localHour = Number(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: user.timezone,
+      hour: "2-digit",
+      hour12: false,
+    }).format(new Date()),
+  );
+  const baseLevel: 1 | 2 | 3 | 4 =
+    lagDays >= 2 ? 4 : lagDays === 1 ? 2 : requestedLevel;
   const level: 1 | 2 | 3 | 4 =
-    lagDays >= 2 ? 4 : lagDays === 1 ? 3 : requestedLevel;
+    lagDays === 0 && Number.isFinite(localHour) && localHour >= 18 ? 3 : baseLevel;
   const recent = await d1
     .prepare(
       `SELECT template_id AS templateId

@@ -132,6 +132,28 @@ type Bootstrap = {
     daysRemaining: number;
     planKey: string | null;
   };
+  credits: {
+    balancePoints: number;
+    availablePoints: number;
+    pendingPoints: number;
+    anchor: { pointsPerUsd: number; rule: string };
+  };
+  pricing: {
+    pointsPerUsd: number;
+    maxCreditsRedeemablePercent: number;
+  };
+  campaign: {
+    mainOffer:
+      | null
+      | {
+          type: "campaign";
+          id: string;
+          name: string;
+          rewardMode: string;
+          stackableWithCredits: boolean;
+          validUntil: string;
+        };
+  };
   ai: {
     enabled: boolean;
     primary: "deepseek" | "ollama" | "rules_only";
@@ -166,6 +188,26 @@ type Bootstrap = {
     state: "completed" | "interrupted" | "behind" | "on_track";
   };
 };
+
+type PricingPreviewSnapshot = {
+  id: string;
+  status: string;
+  planKey: string;
+  currency: string;
+  originalAmountMinor: number;
+  mainOfferType: string;
+  mainOfferId: string | null;
+  mainDiscountAmountMinor: number;
+  creditsRedeemedPoints: number;
+  creditsRedeemedAmountMinor: number;
+  finalPayableAmountMinor: number;
+  maxCreditsRedeemablePoints: number;
+  pricingRuleVersion: string;
+  anchorRateVersion: string;
+  createdAt: string;
+};
+
+type PricingPreviewResponse = { snapshot: PricingPreviewSnapshot };
 
 type Tab = "today" | "courses" | "notes" | "progress" | "profile";
 
@@ -1396,6 +1438,12 @@ function ProfileView({
   const [payingPlan, setPayingPlan] = useState<string | null>(null);
   const [selectedLocale, setSelectedLocale] = useState<AppLocale>(locale);
   const [savingLocale, setSavingLocale] = useState(false);
+  const [pricingPreview, setPricingPreview] = useState<PricingPreviewSnapshot | null>(null);
+  const [lockingPricing, setLockingPricing] = useState(false);
+  const [redeemCredits, setRedeemCredits] = useState(true);
+  const [paymentResult, setPaymentResult] = useState<
+    "paid" | "pending" | "failed" | "cancelled" | null
+  >(null);
   const initials =
     data.user.displayName
       .split(/\s+/)
@@ -1403,16 +1451,23 @@ function ProfileView({
       .join("")
       .slice(0, 2)
       .toUpperCase() || "A";
-  const qualifiedTowardNext =
-    data.referral.qualified % data.referral.rewardTarget;
+  const qualifiedInvites = data.referral.qualified;
+  const nextReferralRate =
+    qualifiedInvites === 0
+      ? 10
+      : qualifiedInvites === 1
+        ? 15
+        : qualifiedInvites === 2
+          ? 20
+          : 10;
   const referralProgress = Math.round(
-    (qualifiedTowardNext / Math.max(1, data.referral.rewardTarget)) * 100,
+    (Math.min(qualifiedInvites, 3) / 3) * 100,
   );
   const accessLabel = {
-    trial: "21 天免费试用",
-    paid: "付费订阅",
-    reward: "邀请奖励",
-    expired: "已到期",
+    trial: copy.accessTrial,
+    paid: copy.accessPaid,
+    reward: copy.accessReward,
+    expired: copy.accessExpired,
   }[data.access.state];
 
   async function saveLocale() {
@@ -1489,24 +1544,79 @@ function ProfileView({
     }
 
     setPayingPlan(planKey);
+    setPaymentResult(null);
     try {
+      const preview = await academyRequest<PricingPreviewResponse>(
+        "/api/academy/pricing/preview",
+        {
+          method: "POST",
+          body: JSON.stringify({ planKey, redeemCredits }),
+        },
+      );
+      setPricingPreview(preview.snapshot);
+      return;
+    } catch (paymentError) {
+      setPayingPlan(null);
+      notify(
+        paymentError instanceof Error
+          ? paymentError.message
+          : "结算预览失败",
+      );
+    }
+  }
+
+  function cancelPricingPreview() {
+    setPricingPreview(null);
+    setPayingPlan(null);
+    setPaymentResult(null);
+  }
+
+  async function confirmPricingAndPay() {
+    if (!pricingPreview) return;
+    if (!window.Telegram?.WebApp?.openInvoice) return;
+
+    setLockingPricing(true);
+    setPaymentResult(null);
+    try {
+      await academyRequest<{ snapshot: { id: string; status: string } }>(
+        "/api/academy/pricing/lock",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            snapshotId: pricingPreview.id,
+            idempotencyKey: crypto.randomUUID(),
+          }),
+        },
+      );
+
       const invoice = await academyRequest<{ invoiceUrl: string }>(
         "/api/academy/payments/invoice",
         {
           method: "POST",
-          body: JSON.stringify({ planKey }),
+          body: JSON.stringify({ snapshotId: pricingPreview.id }),
         },
       );
       window.Telegram.WebApp.openInvoice(invoice.invoiceUrl, (status) => {
         setPayingPlan(null);
+        setPricingPreview(null);
+        setPaymentResult(status);
         if (status === "paid" || status === "pending") {
           notify(
             status === "paid" ? "Stars 支付成功，正在更新权限" : "支付正在确认",
           );
-          window.setTimeout(() => void onPaymentFinished(), 700);
+          const delays = status === "paid" ? [700, 2000] : [700, 2000, 5000];
+          delays.forEach((delay, index) => {
+            window.setTimeout(() => {
+              void onPaymentFinished();
+              if (index === delays.length - 1) {
+                setPaymentResult(null);
+              }
+            }, delay);
+          });
           return;
         }
         if (status === "failed") notify("Stars 支付失败，请稍后重试");
+        if (status === "cancelled") notify("已取消支付");
       });
     } catch (paymentError) {
       setPayingPlan(null);
@@ -1515,6 +1625,8 @@ function ProfileView({
           ? paymentError.message
           : "Stars 发票创建失败",
       );
+    } finally {
+      setLockingPricing(false);
     }
   }
 
@@ -1588,6 +1700,37 @@ function ProfileView({
         </section>
       )}
 
+      <section className="profile-facts" aria-label={copy.creditsTitle}>
+        <div>
+          <span>{copy.creditsAvailable}</span>
+          <strong>{new Intl.NumberFormat("en-US").format(data.credits.availablePoints)}</strong>
+        </div>
+        <div>
+          <span>{copy.creditsPending}</span>
+          <strong>{new Intl.NumberFormat("en-US").format(data.credits.pendingPoints)}</strong>
+        </div>
+        <div>
+          <span>{copy.creditsAnchor}</span>
+          <strong>{data.pricing.pointsPerUsd} = $1</strong>
+        </div>
+        <div>
+          <span>{copy.creditsMaxRedeem}</span>
+          <strong>{data.pricing.maxCreditsRedeemablePercent}%</strong>
+        </div>
+      </section>
+
+      <small className="payment-note">{copy.creditsRule}</small>
+
+      <section className="content-language-notice" role="status">
+        <p>
+          {copy.campaignTitle}：{" "}
+          {data.campaign.mainOffer ? data.campaign.mainOffer.name : copy.campaignNone}
+        </p>
+        {data.campaign.mainOffer?.validUntil && (
+          <span>{copy.campaignValidUntil(formatShortDate(data.campaign.mainOffer.validUntil))}</span>
+        )}
+      </section>
+
       <section className={`access-card access-${data.access.state}`}>
         <div className="access-heading">
           <div>
@@ -1608,7 +1751,7 @@ function ProfileView({
             <button
               type="button"
               key={plan.key}
-              disabled={payingPlan !== null}
+              disabled={payingPlan !== null || lockingPricing}
               onClick={() => startStarsPayment(plan.key, plan.enabled)}
             >
               <span>
@@ -1623,10 +1766,64 @@ function ProfileView({
             </button>
           ))}
         </div>
+        <div className="invite-code-row" aria-label="积分抵扣开关">
+          <div>
+            <span>{copy.billingUseCredits}</span>
+            <strong>
+              {redeemCredits ? copy.billingUseCreditsOn : copy.billingUseCreditsOff}
+            </strong>
+          </div>
+          <button
+            type="button"
+            onClick={() => setRedeemCredits((current) => !current)}
+            disabled={payingPlan !== null || lockingPricing}
+          >
+            {copy.billingToggle}
+          </button>
+        </div>
+
+        {pricingPreview && (
+          <section className="content-language-notice" role="status">
+            <p>{copy.pricingPreviewTitle}</p>
+            <span>{copy.pricingPreviewLine({
+              original: pricingPreview.originalAmountMinor,
+              mainDiscount: pricingPreview.mainDiscountAmountMinor,
+              creditsDiscount: pricingPreview.creditsRedeemedAmountMinor,
+              payable: pricingPreview.finalPayableAmountMinor,
+            })}</span>
+            <div className="invite-code-row">
+              <button
+                className="secondary-button"
+                type="button"
+                onClick={cancelPricingPreview}
+                disabled={lockingPricing}
+              >
+                {copy.pricingCancel}
+              </button>
+              <button
+                className="primary-button"
+                type="button"
+                onClick={() => void confirmPricingAndPay()}
+                disabled={lockingPricing}
+              >
+                {lockingPricing ? copy.pricingLocking : copy.pricingConfirmPay}
+              </button>
+            </div>
+          </section>
+        )}
         <small className="payment-note">
           {data.payment.enabled
             ? "数字课程通过 Telegram Stars 结算。付款成功回调后才会增加权限。"
             : "Telegram Stars 接口已接好；填写 Bot Token、Webhook Secret 和四档 Stars 数量后启用。"}
+          {paymentResult === "pending"
+            ? ` · ${copy.paymentStatusPending}`
+            : paymentResult === "paid"
+              ? ` · ${copy.paymentStatusPaid}`
+              : paymentResult === "failed"
+                ? ` · ${copy.paymentStatusFailed}`
+                : paymentResult === "cancelled"
+                  ? ` · ${copy.paymentStatusCancelled}`
+                  : ""}
         </small>
       </section>
 
@@ -1634,16 +1831,13 @@ function ProfileView({
         <div className="referral-heading">
           <div>
             <span className="eyebrow">LEARN WITH FRIENDS</span>
-            <h2>邀请朋友一起训练</h2>
+            <h2>{copy.referralTitle}</h2>
           </div>
           <strong>
-            {qualifiedTowardNext}/{data.referral.rewardTarget}
+            {qualifiedInvites} 位
           </strong>
         </div>
-        <p>
-          每邀请 {data.referral.rewardTarget} 位有效学习用户，获得{" "}
-          {data.referral.rewardDays} 天使用时间。只注册不计算。
-        </p>
+        <p>{copy.referralRule}</p>
         <div className="referral-progress" aria-label={`有效邀请进度 ${referralProgress}%`}>
           <span style={{ width: `${Math.max(referralProgress, 2)}%` }} />
         </div>
@@ -1674,9 +1868,7 @@ function ProfileView({
           分享 Academy Mini App
         </button>
         <small className="qualification-note">
-          有效邀请 = Telegram 认证、完成选课，并在 7 天内产生至少 3 个有效学习日。
-          已获得 {data.referral.earnedRewards} 次 30 天奖励；距离下一次还差{" "}
-          {data.referral.nextRewardRemaining} 人。
+          {copy.referralQualifiedDefinition} {copy.referralNextRate(nextReferralRate)}
         </small>
       </section>
 

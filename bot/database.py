@@ -1,17 +1,24 @@
 """
-Academy 数据库操作模块
+LEGACY: Academy 早期 SQLite 数据库操作模块。
+
+这套实现服务于仓库早期的 14 天单机 Bot 原型，和当前 mini-app 主线
+（60 天课程、多用户、Telegram 鉴权、PostgreSQL/D1 兼容层）已经不是同一
+套事实来源。
+
+边界约束：
+1. 不要在这里继续增加产品逻辑或数据模型；
+2. 不要把这里当作 Academy 当前学习记录的权威来源；
+3. 后续应改为只调用 mini-app API，或直接归档整个 legacy bot 路径。
 """
 
-import sqlite3
 import os
 
 DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'academy.db')
 
 def get_conn():
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute("PRAGMA foreign_keys = ON")
-    conn.execute("PRAGMA busy_timeout = 5000")
-    return conn
+    raise RuntimeError(
+        "Legacy SQLite database is disabled. Use mini-app APIs as the single source of truth."
+    )
 
 # ─── 课程操作 ───
 

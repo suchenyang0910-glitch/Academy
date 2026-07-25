@@ -294,6 +294,7 @@ export const paymentOrders = sqliteTable(
       .notNull()
       .references(() => users.id),
     planKey: text("plan_key").notNull(),
+    pricingSnapshotId: text("pricing_snapshot_id"),
     invoicePayload: text("invoice_payload").notNull(),
     amountStars: integer("amount_stars").notNull(),
     recurring: integer("recurring", { mode: "boolean" }).notNull().default(false),
@@ -303,6 +304,9 @@ export const paymentOrders = sqliteTable(
   },
   (table) => [
     uniqueIndex("payment_orders_payload_unique").on(table.invoicePayload),
+    uniqueIndex("payment_orders_pricing_snapshot_unique").on(
+      table.pricingSnapshotId,
+    ),
     index("payment_orders_user_status_idx").on(table.userId, table.status),
   ],
 );
@@ -331,6 +335,112 @@ export const paymentTransactions = sqliteTable(
       table.telegramPaymentChargeId,
     ),
     index("payment_transactions_user_paid_idx").on(table.userId, table.paidAt),
+  ],
+);
+
+export const campaignRewards = sqliteTable(
+  "campaign_rewards",
+  {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    status: text("status").notNull().default("draft"),
+    rewardMode: text("reward_mode").notNull().default("discount"),
+    mainOfferType: text("main_offer_type").notNull().default("campaign"),
+    stackableWithCredits: integer("stackable_with_credits", {
+      mode: "boolean",
+    })
+      .notNull()
+      .default(false),
+    budgetCapMinor: integer("budget_cap_minor"),
+    startAt: text("start_at").notNull(),
+    endAt: text("end_at").notNull(),
+    eligibilityRuleJson: text("eligibility_rule_json").notNull().default("{}"),
+    settlementRuleVersion: text("settlement_rule_version").notNull().default("v1"),
+    createdBy: text("created_by"),
+    createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    index("campaign_rewards_status_window_idx").on(
+      table.status,
+      table.startAt,
+      table.endAt,
+    ),
+    index("campaign_rewards_end_at_idx").on(table.endAt),
+  ],
+);
+
+export const creditsLedger = sqliteTable(
+  "credits_ledger",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id),
+    entryType: text("entry_type").notNull(),
+    rewardType: text("reward_type").notNull(),
+    amountPoints: integer("amount_points").notNull(),
+    status: text("status").notNull().default("posted"),
+    businessKey: text("business_key").notNull(),
+    relatedOrderId: integer("related_order_id").references(() => paymentOrders.id),
+    relatedInvitationId: integer("related_invitation_id").references(
+      () => invitations.id,
+    ),
+    relatedCampaignRewardId: text("related_campaign_reward_id").references(
+      () => campaignRewards.id,
+    ),
+    expiresAt: text("expires_at"),
+    createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    uniqueIndex("credits_ledger_business_key_unique").on(table.businessKey),
+    index("credits_ledger_user_created_idx").on(table.userId, table.createdAt),
+    index("credits_ledger_user_status_expires_idx").on(
+      table.userId,
+      table.status,
+      table.expiresAt,
+    ),
+  ],
+);
+
+export const orderPricingSnapshots = sqliteTable(
+  "order_pricing_snapshots",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id),
+    planKey: text("plan_key").notNull(),
+    currency: text("currency").notNull(),
+    originalAmountMinor: integer("original_amount_minor").notNull(),
+    mainOfferType: text("main_offer_type").notNull().default("none"),
+    mainOfferId: text("main_offer_id"),
+    mainDiscountAmountMinor: integer("main_discount_amount_minor")
+      .notNull()
+      .default(0),
+    creditsRedeemedPoints: integer("credits_redeemed_points").notNull().default(0),
+    creditsRedeemedAmountMinor: integer("credits_redeemed_amount_minor")
+      .notNull()
+      .default(0),
+    finalPayableAmountMinor: integer("final_payable_amount_minor").notNull(),
+    anchorRateVersion: text("anchor_rate_version").notNull(),
+    pricingRuleVersion: text("pricing_rule_version").notNull(),
+    status: text("status").notNull().default("preview"),
+    idempotencyKey: text("idempotency_key"),
+    createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    uniqueIndex("order_pricing_snapshots_idempotency_key_unique").on(
+      table.idempotencyKey,
+    ),
+    index("order_pricing_snapshots_user_created_idx").on(
+      table.userId,
+      table.createdAt,
+    ),
+    index("order_pricing_snapshots_status_created_idx").on(
+      table.status,
+      table.createdAt,
+    ),
   ],
 );
 

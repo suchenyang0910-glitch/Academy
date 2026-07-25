@@ -1,12 +1,13 @@
 """
-Academy Bot — /academy 命令处理器
+LEGACY: Academy Bot 早期命令行包装器。
 
-部署方式：
-1. PM2: pm2 start bot/main.py --interpreter python3 --name academy-bot
-2. 或作为现有 Bot (xiaoguanjia) 的 exec 工具调用
+这个入口仍然连接 bot.commands / bot.database 的旧 14 天原型链路。
+它不是当前 Academy 主线产品入口，不应继续承担新的学习业务逻辑。
 
-作为独立 Bot: 设置环境变量 BOT_TOKEN
-作为 exec 工具: python bot/main.py --cmd "today"
+后续演进方向：
+1. 只保留 Telegram 入口能力；
+2. 通过 HTTP 调用 mini-app API 获取今日状态、进度、提醒和支付结果；
+3. 当 mini-app API 覆盖完成后，归档这套 legacy CLI 路径。
 """
 
 import argparse
@@ -51,14 +52,20 @@ def main():
         print(cmd_notes(args.day))
 
     elif args.cmd == 'reminder':
-        from bot.reminders import choose_and_record_reminder
-
         if not args.level or not args.user_id:
             parser.error("--cmd reminder 需要 --level 1-4 和 --user-id")
-        reminder = choose_and_record_reminder(args.level, args.user_id)
-        print(reminder.content)
-        print(f"\n[按钮] {reminder.button_text}")
-        print(f"[文案ID] {reminder.id}")
+        from bot import academy_api
+        result = academy_api.fetch_reminder(
+            level=int(args.level),
+            telegram_user_id=str(args.user_id),
+        )
+        if result.get("skipped"):
+            print(f"[SKIPPED] {result.get('reason')}")
+            return
+        reminder = result.get("reminder") or {}
+        print(reminder.get("content", ""))
+        print(f"\n[按钮] {reminder.get('buttonText', '')}")
+        print(f"[文案ID] {reminder.get('id', '')}")
 
     else:
         print("📚 Academy 可用命令:\n"

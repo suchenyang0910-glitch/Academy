@@ -1,15 +1,20 @@
 """
-Academy Bot 命令处理模块
-输出格式化的 TG 消息文本
+LEGACY: Academy 早期 Bot 命令处理模块。
+
+这套命令仍依赖 bot.database 中的 14 天 SQLite 原型数据，不代表当前 mini-app
+主线产品状态。当前 Academy 的主学习闭环已经迁移到 mini-app API 与服务层。
+
+维护规则：
+1. 这里只允许做兼容性维护和迁移注释；
+2. 不再新增业务能力、课程规则或进度口径；
+3. 后续目标是让 Bot 只做 Telegram 入口，并调用 mini-app API，而不是继续维护
+   一套并行的学习事实源。
 """
 
 import os
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-from bot.database import (
-    get_day_lessons, get_lesson, get_notes, get_notes_by_day,
-    get_overall_progress, get_current_day, get_latest_lessons, save_note
-)
+from bot import academy_api
 
 SUBJECT_NAMES = {
     'english': '🇬🇧 English',
@@ -21,143 +26,152 @@ SUBJECT_NAMES = {
 
 def cmd_today():
     """今日课程汇总"""
-    day = get_current_day()
-    lessons = get_day_lessons(day)
+    summary = academy_api.fetch_summary()
+    today = summary.get("today") or []
+    supervision = summary.get("supervision") or {}
+    today_key = supervision.get("todayKey") or "today"
 
-    if not lessons:
+    if not today:
         return (
-            f"📚 **Academy — Day {day}**\n\n"
-            f"📭 今日课程尚未推送。\n"
-            f"课程会在每天 10:00~21:00 陆续推送。"
+            f"📚 **Academy — {today_key}**\n\n"
+            f"📭 今日没有激活课程。\n"
+            f"请先在 Mini App 完成选课。"
         )
 
-    lines = [f"📚 **Academy — Day {day} / 14**\n"]
-    for subject, title, _ in lessons:
-        name = SUBJECT_NAMES.get(subject, subject)
-        lines.append(f"✅ **{name}** — {title}")
+    lines = [f"📚 **Academy — {today_key}**\n"]
+    for item in today:
+        course = item.get("courseTitle") or "Course"
+        lesson_title = item.get("lessonTitle") or "Lesson"
+        status = item.get("submissionStatus")
+        icon = "✅" if status == "completed" else "🟡" if status else "⬜"
+        current_day = item.get("currentDay") or "?"
+        lines.append(f"{icon} **{course}** — Day {current_day}: {lesson_title}")
 
-    lines.append(f"\n💡 查看某课详情: `/academy day {day}`")
-    lines.append(f"📝 记笔记: `/academy note 今天学了...`")
-
-    return '\n'.join(lines)
+    lines.append(f"\n📝 记笔记: `/academy note 今天学了...`")
+    lines.append(f"💡 查看某天课程: `/academy day <1-60>`")
+    return "\n".join(lines)
 
 def cmd_day(day):
     """查看某天的完整课程"""
-    lessons = get_day_lessons(day)
-    if not lessons:
-        return f"📭 Day {day} 还没有课程记录。\n最早从 Day 1 开始。"
+    result = academy_api.fetch_day(day)
+    items = result.get("items") or []
+    if not items:
+        return f"📭 Day {day} 没有课程。"
 
     lines = [f"📖 **Day {day} — 全部课程**\n"]
-
-    for subject, title, preview in lessons:
-        name = SUBJECT_NAMES.get(subject, subject)
-        lines.append(f"━━━ {name} ━━━")
+    for item in items:
+        course = item.get("courseTitle") or "Course"
+        title = item.get("lessonTitle") or "Lesson"
+        preview = item.get("preview") or ""
+        status = item.get("submissionStatus")
+        icon = "✅" if status == "completed" else "🟡" if status else "⬜"
+        lines.append(f"━━━ {icon} {course} ━━━")
         lines.append(f"**{title}**")
-
-        # 获取完整内容
-        full = get_lesson(day, subject)
-        if full:
-            content = full[3]
-            # 只显示前 300 字
-            if len(content) > 300:
-                lines.append(content[:300] + "...")
-            else:
-                lines.append(content)
+        if preview:
+            lines.append(str(preview))
         lines.append("")
-
-    return '\n'.join(lines)
+    return "\n".join(lines)
 
 def cmd_history():
     """学习进度"""
-    stats = get_overall_progress()
-    day = get_current_day()
-    latest_days = get_latest_lessons(7)
-
-    days_completed = stats[0] if stats else 0
-    lessons_completed = stats[1] if stats else 0
-    avg_score = stats[2] if stats and stats[2] else '—'
-
-    progress_pct = min(100, round(days_completed / 14 * 100))
-    bar = '█' * (progress_pct // 10) + '░' * (10 - progress_pct // 10)
+    summary = academy_api.fetch_summary()
+    today = summary.get("today") or []
+    supervision = summary.get("supervision") or {}
+    state = supervision.get("state") or "unknown"
+    lag_days = supervision.get("lagDays") or 0
 
     lines = [
         "📊 **Academy 学习进度**\n",
-        f"当前进度: Day {day} / 14",
-        f"完成天数: {days_completed} / 14",
-        f"已完成课次: {lessons_completed}",
-        f"Quiz 均分: {avg_score}",
-        f"",
-        f"总体进度: [{bar}] {progress_pct}%",
-        f"",
-        f"📌 最近课程:"
+        f"今日状态: {state}",
+        f"落后天数: {lag_days}",
+        "",
+        "📌 当前进行中课程:",
     ]
+    for item in today:
+        course = item.get("courseTitle") or "Course"
+        current_day = item.get("currentDay") or "?"
+        status = item.get("submissionStatus")
+        icon = "✅" if status == "completed" else "🟡" if status else "⬜"
+        lines.append(f"  {icon} {course}: Day {current_day}/60")
 
-    for d in latest_days:
-        lessons = get_day_lessons(d)
-        count = len(lessons)
-        subjects = ' · '.join([SUBJECT_NAMES.get(s, s) for s, _, _ in lessons])
-        lines.append(f"  Day {d}: {count}/5 课 — {subjects}")
-
-    lines.append(f"\n💡 查看某天: `/academy day <N>`")
-
-    return '\n'.join(lines)
+    return "\n".join(lines)
 
 def cmd_notes(day=None):
     """查看笔记"""
     if day:
-        rows = get_notes_by_day(day)
         title = f"📝 **Day {day} 的笔记**\n"
     else:
-        rows = get_notes(limit=20)
         title = "📝 **学习笔记（最近 20 条）**\n"
 
+    result = academy_api.fetch_notes(limit=20)
+    rows = result.get("items") or []
     if not rows:
         return title + "\n📭 还没有笔记。试试 `/academy note 今天学了xxx`"
 
     lines = [title]
     for row in rows:
-        if day:
-            nid, note, created = row
-            lines.append(f"  {note}")
-            lines.append(f"  _· {created}_\n")
-        else:
-            nid, d, note, created = row
-            lines.append(f"**Day {d}**")
-            lines.append(f"  {note}")
-            lines.append(f"  _· {created}_\n")
+        note = row.get("content") or ""
+        created = row.get("createdAt") or ""
+        course = row.get("courseTitle") or ""
+        day_value = row.get("day")
+        tag = f"{course} Day {day_value}" if course and day_value else "Note"
+        lines.append(f"**{tag}**")
+        lines.append(f"  {note}")
+        lines.append(f"  _· {created}_\n")
 
-    return '\n'.join(lines)
+    return "\n".join(lines)
 
 def cmd_next():
     """明日预告"""
-    day = get_current_day()
-    tomorrow = day + 1
+    summary = academy_api.fetch_summary()
+    today = summary.get("today") or []
+    supervision = summary.get("supervision") or {}
+    today_key = supervision.get("todayKey") or "today"
 
-    from datetime import datetime, timezone, timedelta
-    tz = timezone(timedelta(hours=7))
+    current_days = []
+    for item in today:
+        value = item.get("currentDay")
+        try:
+            current_days.append(int(value))
+        except (TypeError, ValueError):
+            continue
 
-    subjects_day_next = [
-        ("🇬🇧 English", "10:00", "等待上课"),
-        ("🤖 AI", "14:00", "等待上课"),
-        ("🏢 Management", "16:00", "等待上课"),
-        ("✍️ FounderNote", "20:00", "等待上课"),
-        ("📝 Quiz", "21:00", "等待上课"),
-    ]
+    if not current_days:
+        return (
+            f"🔮 **Academy — 下一步预告**\n\n"
+            f"📭 当前没有激活课程。\n"
+            f"请先在 Mini App 完成选课。"
+        )
+
+    max_day = max(current_days)
+    if max_day >= 60:
+        return (
+            f"🎉 **Academy — 已完成**\n\n"
+            f"你已经完成 Day 60。"
+        )
+
+    next_day = max_day + 1
+    result = academy_api.fetch_day(next_day)
+    items = result.get("items") or []
+    if not items:
+        return f"📭 Day {next_day} 没有课程。"
 
     lines = [
-        f"🔮 **Academy — 明日课程预告**\n",
-        f"明天是 **Day {tomorrow} / 14**\n",
-        f"📅 {datetime.now(tz).strftime('%A, %Y-%m-%d')}\n",
-        "| 科目 | 时间 | 状态 |",
-        "|------|------|------|"
+        "🔮 **Academy — 下一步预告**\n",
+        f"📅 {today_key} → Day {next_day}/60\n",
     ]
+    for item in items:
+        course = item.get("courseTitle") or "Course"
+        title = item.get("lessonTitle") or "Lesson"
+        preview = item.get("preview") or ""
+        lines.append(f"━━━ {course} ━━━")
+        lines.append(f"**Day {next_day}: {title}**")
+        if preview:
+            lines.append(str(preview))
+        lines.append("")
 
-    for name, time, status in subjects_day_next:
-        lines.append(f"| {name} | {time} | ⏳ {status} |")
-
-    lines.append(f"\n💡 明天见！")
-
-    return '\n'.join(lines)
+    lines.append(f"💡 查看 Day {next_day}: `/academy day {next_day}`")
+    return "\n".join(lines)
 
 def handle_academy_command(text):
     """
@@ -201,9 +215,8 @@ def handle_academy_command(text):
     if text.startswith('/academy note '):
         note_text = text[len('/academy note '):].strip().strip('"').strip("'")
         if note_text:
-            day = get_current_day()
-            save_note(day, note_text)
-            return f"📝 已记录 Day {day} 的笔记 ✅", False
+            academy_api.create_note(note_text)
+            return f"📝 已记录学习笔记 ✅", False
         else:
             return "❌ 笔记内容不能为空。格式: `/academy note 今天学了xxx`", False
 

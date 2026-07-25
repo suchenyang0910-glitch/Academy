@@ -1,17 +1,13 @@
 """Academy 灰色幽默提醒文案与随机选择。
 
 cron 可调用 ``python bot/main.py --cmd reminder --level 1 --user-id <telegram_id>``。
-同一用户最近 5 次收到的文案会被排除，发送后写入 SQLite 历史。
+同一用户最近 5 次收到的文案会被排除。
 """
 
 from __future__ import annotations
 
 import random
-from contextlib import closing
 from dataclasses import dataclass
-from datetime import datetime, timezone
-
-from bot.database import get_conn
 
 
 @dataclass(frozen=True)
@@ -93,44 +89,16 @@ REMINDER_TEMPLATES = tuple(
 )
 
 
-def _ensure_tables() -> None:
-    with closing(get_conn()) as conn:
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS reminder_events (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id TEXT NOT NULL,
-                template_id TEXT NOT NULL,
-                level INTEGER NOT NULL CHECK(level BETWEEN 1 AND 4),
-                sent_at TEXT NOT NULL,
-                clicked_at TEXT,
-                completed_at TEXT
-            )
-            """
-        )
-        conn.execute(
-            """
-            CREATE INDEX IF NOT EXISTS idx_reminder_events_user_sent
-            ON reminder_events(user_id, sent_at DESC)
-            """
-        )
-        conn.commit()
+_RECENT_TEMPLATE_IDS_BY_USER: dict[str, list[str]] = {}
+
+
+def reset_reminder_state() -> None:
+    _RECENT_TEMPLATE_IDS_BY_USER.clear()
 
 
 def recent_template_ids(user_id: str, limit: int = 5) -> list[str]:
-    _ensure_tables()
-    with closing(get_conn()) as conn:
-        rows = conn.execute(
-            """
-            SELECT template_id
-            FROM reminder_events
-            WHERE user_id = ?
-            ORDER BY id DESC
-            LIMIT ?
-            """,
-            (str(user_id), limit),
-        ).fetchall()
-    return [str(row[0]) for row in rows]
+    recent = _RECENT_TEMPLATE_IDS_BY_USER.get(str(user_id), [])
+    return list(reversed(recent[-limit:]))
 
 
 def select_reminder(
@@ -158,17 +126,11 @@ def select_reminder(
 
 
 def record_reminder(user_id: str, template: ReminderTemplate) -> None:
-    _ensure_tables()
-    sent_at = datetime.now(timezone.utc).isoformat()
-    with closing(get_conn()) as conn:
-        conn.execute(
-            """
-            INSERT INTO reminder_events (user_id, template_id, level, sent_at)
-            VALUES (?, ?, ?, ?)
-            """,
-            (str(user_id), template.id, template.level, sent_at),
-        )
-        conn.commit()
+    key = str(user_id)
+    recent = _RECENT_TEMPLATE_IDS_BY_USER.setdefault(key, [])
+    recent.append(template.id)
+    if len(recent) > 50:
+        del recent[:-50]
 
 
 def choose_and_record_reminder(level: int, user_id: str) -> ReminderTemplate:

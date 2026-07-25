@@ -1,6 +1,7 @@
 import { getD1 } from "../db";
 import { getRuntimeEnv } from "./runtime-env";
 import type { AcademyIdentity } from "./academy-store";
+import { ensureCreditsLedgerEntry } from "./credits-ledger";
 
 type PaymentEnv = {
   TELEGRAM_BOT_TOKEN?: string;
@@ -135,35 +136,69 @@ export function getPaymentCatalog() {
 
 export async function createStarsInvoice(
   identity: AcademyIdentity,
-  planKeyInput: string,
+  snapshotId: string,
 ) {
   if (!identity.telegramId) {
     throw new Response("请从 Telegram Mini App 内发起 Stars 支付", {
       status: 400,
     });
   }
-  if (!(planKeyInput in PLANS)) {
+  const d1 = getD1();
+  const snapshot = await d1
+    .prepare(
+      `SELECT id,
+              plan_key AS planKey,
+              final_payable_amount_minor AS finalPayableAmountMinor,
+              status
+       FROM order_pricing_snapshots
+       WHERE id = ? AND user_id = ?`,
+    )
+    .bind(snapshotId, identity.id)
+    .first<{
+      id: string;
+      planKey: string;
+      finalPayableAmountMinor: number;
+      status: string;
+    }>();
+  if (!snapshot) throw new Response("结算快照不存在", { status: 404 });
+  if (snapshot.status !== "locked") {
+    throw new Response("请先锁定结算快照后再发起支付", { status: 409 });
+  }
+  if (!(snapshot.planKey in PLANS)) {
     throw new Response("订阅方案不存在", { status: 400 });
   }
-
-  const planKey = planKeyInput as PlanKey;
+  const planKey = snapshot.planKey as PlanKey;
   const plan = PLANS[planKey];
-  const amountStars = amountFor(planKey);
-  if (!amountStars) {
-    throw new Response("该方案尚未配置 Stars 价格", { status: 503 });
+  const amountStars = Number(snapshot.finalPayableAmountMinor);
+  if (!Number.isInteger(amountStars) || amountStars <= 0) {
+    throw new Response("结算金额无效，请重新发起支付", { status: 409 });
+  }
+
+  const existing = await d1
+    .prepare(
+      `SELECT invoice_payload AS invoicePayload, status
+       FROM payment_orders
+       WHERE pricing_snapshot_id = ?`,
+    )
+    .bind(snapshot.id)
+    .first<{ invoicePayload: string; status: string }>();
+  if (existing) {
+    throw new Response("该结算快照已创建过订单，请重新生成结算预览", {
+      status: 409,
+    });
   }
 
   const invoicePayload = `academy:${crypto.randomUUID()}`;
-  const d1 = getD1();
   await d1
     .prepare(
       `INSERT INTO payment_orders
-         (user_id, plan_key, invoice_payload, amount_stars, recurring, status)
-       VALUES (?, ?, ?, ?, ?, 'pending')`,
+         (user_id, plan_key, pricing_snapshot_id, invoice_payload, amount_stars, recurring, status)
+       VALUES (?, ?, ?, ?, ?, ?, 'pending')`,
     )
     .bind(
       identity.id,
       planKey,
+      snapshot.id,
       invoicePayload,
       amountStars,
       plan.recurring ? 1 : 0,
@@ -324,6 +359,7 @@ async function handleSuccessfulPayment(
     .prepare(
       `SELECT o.id, o.user_id AS userId, o.plan_key AS planKey,
               o.amount_stars AS amountStars, o.recurring,
+              o.pricing_snapshot_id AS pricingSnapshotId,
               u.telegram_id AS telegramId
        FROM payment_orders o
        JOIN users u ON u.id = o.user_id
@@ -336,6 +372,7 @@ async function handleSuccessfulPayment(
       planKey: PlanKey;
       amountStars: number;
       recurring: number;
+      pricingSnapshotId: string | null;
       telegramId: string;
     }>();
   if (
@@ -357,6 +394,17 @@ async function handleSuccessfulPayment(
       ? telegramExpiration
       : addDays(startsAt, plan.durationDays);
   const externalRef = `telegram:${payment.telegram_payment_charge_id}`;
+
+  const snapshot = order.pricingSnapshotId
+    ? await d1
+        .prepare(
+          `SELECT credits_redeemed_points AS creditsRedeemedPoints
+           FROM order_pricing_snapshots
+           WHERE id = ? AND user_id = ?`,
+        )
+        .bind(order.pricingSnapshotId, order.userId)
+        .first<{ creditsRedeemedPoints: number }>()
+    : null;
 
   await d1.batch([
     d1
@@ -396,7 +444,35 @@ async function handleSuccessfulPayment(
          WHERE id = ?`,
       )
       .bind(Boolean(order.recurring) ? "active" : "paid", order.id),
+    order.pricingSnapshotId
+      ? d1
+          .prepare(
+            `UPDATE order_pricing_snapshots
+             SET status = 'paid'
+             WHERE id = ? AND user_id = ?`,
+          )
+          .bind(order.pricingSnapshotId, order.userId)
+      : d1.prepare("SELECT 1"),
   ]);
+
+  const creditsRedeemedPoints = Math.max(
+    0,
+    Number(snapshot?.creditsRedeemedPoints ?? 0),
+  );
+  if (order.pricingSnapshotId && creditsRedeemedPoints > 0) {
+    await ensureCreditsLedgerEntry({
+      userId: order.userId,
+      entryType: "redeem",
+      rewardType: "campaign_reward",
+      amountPoints: -creditsRedeemedPoints,
+      status: "posted",
+      businessKey: `credits_redeem:${order.userId}:${order.pricingSnapshotId}`,
+      relatedOrderId: order.id,
+      relatedInvitationId: null,
+      relatedCampaignRewardId: null,
+      expiresAt: null,
+    });
+  }
 
   return {
     type: "successful_payment",
@@ -410,6 +486,24 @@ async function handleSuccessfulPayment(
 async function handleRefund(payment: TelegramRefundedPayment) {
   const d1 = getD1();
   const externalRef = `telegram:${payment.telegram_payment_charge_id}`;
+  const transaction = await d1
+    .prepare(
+      `SELECT order_id AS orderId, user_id AS userId
+       FROM payment_transactions
+       WHERE telegram_payment_charge_id = ?`,
+    )
+    .bind(payment.telegram_payment_charge_id)
+    .first<{ orderId: number; userId: string }>();
+  const order = transaction
+    ? await d1
+        .prepare(
+          `SELECT pricing_snapshot_id AS pricingSnapshotId
+           FROM payment_orders
+           WHERE id = ? AND user_id = ?`,
+        )
+        .bind(transaction.orderId, transaction.userId)
+        .first<{ pricingSnapshotId: string | null }>()
+    : null;
   await d1.batch([
     d1
       .prepare(
@@ -425,6 +519,15 @@ async function handleRefund(payment: TelegramRefundedPayment) {
          WHERE external_ref = ?`,
       )
       .bind(externalRef),
+    order?.pricingSnapshotId
+      ? d1
+          .prepare(
+            `UPDATE order_pricing_snapshots
+             SET status = 'refunded'
+             WHERE id = ? AND user_id = ?`,
+          )
+          .bind(order.pricingSnapshotId, transaction?.userId ?? "")
+      : d1.prepare("SELECT 1"),
   ]);
   return { type: "refunded_payment" };
 }

@@ -10,7 +10,6 @@ import argparse
 import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-from bot.database import save_lesson
 
 def main():
     parser = argparse.ArgumentParser(description='保存 Academy 课程内容')
@@ -31,8 +30,9 @@ def main():
         print("❌ 错误：未提供课程内容")
         sys.exit(1)
 
-    save_lesson(args.day, args.subject, args.title, content)
-    print(f"✅ 已保存 Day {args.day} {args.subject}: {args.title}")
+    print("❌ Legacy SQLite 写入已禁用。")
+    print("当前课程内容以 mini-app 的 seed 与课程表为准，不再通过脚本写入。")
+    sys.exit(2)
 
 if __name__ == '__main__':
     main()

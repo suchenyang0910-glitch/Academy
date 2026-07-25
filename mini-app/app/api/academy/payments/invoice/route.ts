@@ -8,12 +8,12 @@ export async function POST(request: Request) {
   try {
     const identity = await getIdentity(request);
     await ensureSeedData(identity);
-    const payload = (await request.json()) as { planKey?: string };
-    if (!payload.planKey) {
-      return Response.json({ error: "planKey 为必填项" }, { status: 400 });
+    const payload = (await request.json()) as { snapshotId?: string };
+    if (!payload.snapshotId) {
+      return Response.json({ error: "snapshotId 为必填项" }, { status: 400 });
     }
     return Response.json(
-      await createStarsInvoice(identity, payload.planKey),
+      await createStarsInvoice(identity, payload.snapshotId),
       { status: 201 },
     );
   } catch (error) {

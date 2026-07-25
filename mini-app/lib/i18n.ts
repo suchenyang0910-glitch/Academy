@@ -15,6 +15,41 @@ type Copy = {
   saveLanguage: string;
   saving: string;
   saved: string;
+  accessTrial: string;
+  accessPaid: string;
+  accessReward: string;
+  accessExpired: string;
+  creditsTitle: string;
+  creditsAvailable: string;
+  creditsPending: string;
+  creditsAnchor: string;
+  creditsMaxRedeem: string;
+  creditsRule: string;
+  campaignValidUntil: (date: string) => string;
+  campaignTitle: string;
+  campaignNone: string;
+  billingUseCredits: string;
+  billingUseCreditsOn: string;
+  billingUseCreditsOff: string;
+  billingToggle: string;
+  pricingPreviewTitle: string;
+  pricingPreviewLine: (input: {
+    original: number;
+    mainDiscount: number;
+    creditsDiscount: number;
+    payable: number;
+  }) => string;
+  pricingCancel: string;
+  pricingConfirmPay: string;
+  pricingLocking: string;
+  paymentStatusPending: string;
+  paymentStatusPaid: string;
+  paymentStatusFailed: string;
+  paymentStatusCancelled: string;
+  referralTitle: string;
+  referralRule: string;
+  referralQualifiedDefinition: string;
+  referralNextRate: (rate: number) => string;
   contentNotice: string;
   contentNoticeAction: string;
   telegramLanguage: string;
@@ -65,6 +100,40 @@ const COPY: Record<AppLocale, Copy> = {
     saveLanguage: "保存语言",
     saving: "正在保存…",
     saved: "界面语言已更新",
+    accessTrial: "21 天免费试用",
+    accessPaid: "付费订阅",
+    accessReward: "奖励权益",
+    accessExpired: "已到期",
+    creditsTitle: "积分与优惠",
+    creditsAvailable: "可用积分",
+    creditsPending: "待入账",
+    creditsAnchor: "锚定比例",
+    creditsMaxRedeem: "单次抵扣",
+    creditsRule: "积分仅用于抵扣下一单，单次最多抵扣 50%。",
+    campaignValidUntil: (date) => `截止 ${date}`,
+    campaignTitle: "当前活动",
+    campaignNone: "无",
+    billingUseCredits: "使用积分抵扣",
+    billingUseCreditsOn: "已开启",
+    billingUseCreditsOff: "未开启",
+    billingToggle: "切换",
+    pricingPreviewTitle: "结算预览",
+    pricingPreviewLine: ({ original, mainDiscount, creditsDiscount, payable }) =>
+      `原价 ⭐ ${original} · 主优惠 -⭐ ${mainDiscount} · 积分 -⭐ ${creditsDiscount} · 应付 ⭐ ${payable}`,
+    pricingCancel: "取消",
+    pricingConfirmPay: "确认并支付",
+    pricingLocking: "正在锁定…",
+    paymentStatusPending: "支付正在确认…",
+    paymentStatusPaid: "支付成功，正在刷新权限…",
+    paymentStatusFailed: "支付失败",
+    paymentStatusCancelled: "已取消",
+    referralTitle: "邀请朋友一起训练",
+    referralRule:
+      "邀请奖励统一返积分：前 3 个有效邀请分别返首单实付金额的 10% / 15% / 20% 积分，第 4 个起固定 10%。",
+    referralQualifiedDefinition:
+      "有效邀请 = Telegram 认证、完成选课、首单付费成功，并在首单后 7 天内产生至少 3 个有效学习日。",
+    referralNextRate: (rate) =>
+      `当前下一位有效邀请预计返 ${rate}% 积分；积分仅用于抵扣下一单，单次最多抵扣 50%。`,
     contentNotice: "本课程正文暂以中文提供；翻译版本会单独发布，不会用机器翻译覆盖审核内容。",
     contentNoticeAction: "我知道了",
     telegramLanguage: "Telegram 语言",
@@ -113,6 +182,40 @@ const COPY: Record<AppLocale, Copy> = {
     saveLanguage: "Lưu ngôn ngữ",
     saving: "Đang lưu…",
     saved: "Đã cập nhật ngôn ngữ giao diện",
+    accessTrial: "Dùng thử 21 ngày",
+    accessPaid: "Đã đăng ký",
+    accessReward: "Quyền lợi thưởng",
+    accessExpired: "Hết hạn",
+    creditsTitle: "Tín dụng & ưu đãi",
+    creditsAvailable: "Tín dụng khả dụng",
+    creditsPending: "Chờ ghi nhận",
+    creditsAnchor: "Tỷ lệ quy đổi",
+    creditsMaxRedeem: "Giảm tối đa",
+    creditsRule: "Tín dụng chỉ dùng cho đơn tiếp theo, tối đa giảm 50% mỗi đơn.",
+    campaignValidUntil: (date) => `Hết hạn ${date}`,
+    campaignTitle: "Ưu đãi hiện tại",
+    campaignNone: "Không có",
+    billingUseCredits: "Dùng tín dụng",
+    billingUseCreditsOn: "Bật",
+    billingUseCreditsOff: "Tắt",
+    billingToggle: "Chuyển",
+    pricingPreviewTitle: "Xem trước giá",
+    pricingPreviewLine: ({ original, mainDiscount, creditsDiscount, payable }) =>
+      `Giá gốc ⭐ ${original} · Ưu đãi -⭐ ${mainDiscount} · Tín dụng -⭐ ${creditsDiscount} · Cần trả ⭐ ${payable}`,
+    pricingCancel: "Hủy",
+    pricingConfirmPay: "Xác nhận & trả",
+    pricingLocking: "Đang khóa…",
+    paymentStatusPending: "Đang xác nhận thanh toán…",
+    paymentStatusPaid: "Thanh toán thành công, đang cập nhật…",
+    paymentStatusFailed: "Thanh toán thất bại",
+    paymentStatusCancelled: "Đã hủy",
+    referralTitle: "Mời bạn cùng học",
+    referralRule:
+      "Thưởng mời bạn bằng tín dụng: 3 lời mời hiệu lực đầu tiên nhận 10% / 15% / 20%, từ lời mời thứ 4 cố định 10%.",
+    referralQualifiedDefinition:
+      "Lời mời hiệu lực = xác thực Telegram, chọn khóa, thanh toán đơn đầu và trong 7 ngày sau đó có ít nhất 3 ngày học hiệu lực.",
+    referralNextRate: (rate) =>
+      `Lời mời hiệu lực tiếp theo dự kiến nhận ${rate}% tín dụng; tín dụng chỉ dùng cho đơn sau, tối đa giảm 50%.`,
     contentNotice: "Nội dung bài học hiện có bằng tiếng Trung; bản dịch được kiểm duyệt sẽ phát hành riêng.",
     contentNoticeAction: "Đã hiểu",
     telegramLanguage: "Ngôn ngữ Telegram",
@@ -161,6 +264,40 @@ const COPY: Record<AppLocale, Copy> = {
     saveLanguage: "រក្សាទុកភាសា",
     saving: "កំពុងរក្សាទុក…",
     saved: "បានប្ដូរភាសាផ្ទាំងកម្មវិធី",
+    accessTrial: "សាកល្បង 21 ថ្ងៃ",
+    accessPaid: "បានជាវ",
+    accessReward: "អត្ថប្រយោជន៍រង្វាន់",
+    accessExpired: "ផុតកំណត់",
+    creditsTitle: "ពិន្ទុ និងអត្ថប្រយោជន៍",
+    creditsAvailable: "ពិន្ទុអាចប្រើបាន",
+    creditsPending: "កំពុងរង់ចាំបញ្ចូល",
+    creditsAnchor: "អត្រាបម្លែង",
+    creditsMaxRedeem: "បញ្ចុះអតិបរមា",
+    creditsRule: "ពិន្ទុប្រើសម្រាប់បញ្ចុះតម្លៃការបង់លើកក្រោយ បញ្ចុះបានអតិបរមា 50% ក្នុងមួយការបង់។",
+    campaignValidUntil: (date) => `ផុតកំណត់ ${date}`,
+    campaignTitle: "ព្រឹត្តិការណ៍បច្ចុប្បន្ន",
+    campaignNone: "គ្មាន",
+    billingUseCredits: "ប្រើពិន្ទុបញ្ចុះតម្លៃ",
+    billingUseCreditsOn: "បើក",
+    billingUseCreditsOff: "បិទ",
+    billingToggle: "ប្ដូរ",
+    pricingPreviewTitle: "មើលតម្លៃជាមុន",
+    pricingPreviewLine: ({ original, mainDiscount, creditsDiscount, payable }) =>
+      `តម្លៃដើម ⭐ ${original} · បញ្ចុះ -⭐ ${mainDiscount} · ពិន្ទុ -⭐ ${creditsDiscount} · ត្រូវបង់ ⭐ ${payable}`,
+    pricingCancel: "បោះបង់",
+    pricingConfirmPay: "បញ្ជាក់ និងបង់",
+    pricingLocking: "កំពុងចាក់សោ…",
+    paymentStatusPending: "កំពុងបញ្ជាក់ការបង់ប្រាក់…",
+    paymentStatusPaid: "បានបង់ប្រាក់ ហើយកំពុងធ្វើបច្ចុប្បន្នភាព…",
+    paymentStatusFailed: "បង់ប្រាក់បរាជ័យ",
+    paymentStatusCancelled: "បានបោះបង់",
+    referralTitle: "អញ្ជើញមិត្តរួមហ្វឹកហាត់",
+    referralRule:
+      "រង្វាន់អញ្ជើញជាពិន្ទុ៖ អញ្ជើញមានសុពលភាព 3 ដំបូង 10% / 15% / 20% និងចាប់ពីលើកទី 4 ថេរ 10%។",
+    referralQualifiedDefinition:
+      "អញ្ជើញមានសុពលភាព = បញ្ជាក់ Telegram, ជ្រើសវគ្គ, បង់ប្រាក់លើកដំបូង និងក្នុង 7 ថ្ងៃបន្ទាប់មានយ៉ាងហោចណាស់ 3 ថ្ងៃសិក្សាមានសុពលភាព។",
+    referralNextRate: (rate) =>
+      `អញ្ជើញមានសុពលភាពបន្ទាប់ រំពឹងបាន ${rate}% ពិន្ទុ; ពិន្ទុប្រើបានលើការបង់លើកក្រោយ បញ្ចុះអតិបរមា 50%។`,
     contentNotice: "ខ្លឹមសារមេរៀនបច្ចុប្បន្នជាភាសាចិន។ ការបកប្រែដែលបានពិនិត្យនឹងចេញផ្សាយដាច់ដោយឡែក។",
     contentNoticeAction: "ខ្ញុំយល់ហើយ",
     telegramLanguage: "ភាសា Telegram",
@@ -209,6 +346,40 @@ const COPY: Record<AppLocale, Copy> = {
     saveLanguage: "บันทึกภาษา",
     saving: "กำลังบันทึก…",
     saved: "อัปเดตภาษาของแอปแล้ว",
+    accessTrial: "ทดลองใช้ฟรี 21 วัน",
+    accessPaid: "สมาชิกแบบชำระเงิน",
+    accessReward: "สิทธิประโยชน์รางวัล",
+    accessExpired: "หมดอายุ",
+    creditsTitle: "เครดิตและโปรโมชัน",
+    creditsAvailable: "เครดิตที่ใช้ได้",
+    creditsPending: "รอเข้าบัญชี",
+    creditsAnchor: "อัตราแลกเปลี่ยน",
+    creditsMaxRedeem: "ลดสูงสุด",
+    creditsRule: "เครดิตใช้ลดค่าใช้จ่ายครั้งถัดไป ลดได้สูงสุด 50% ต่อคำสั่งซื้อ",
+    campaignValidUntil: (date) => `หมดเขต ${date}`,
+    campaignTitle: "โปรโมชันปัจจุบัน",
+    campaignNone: "ไม่มี",
+    billingUseCredits: "ใช้เครดิต",
+    billingUseCreditsOn: "เปิด",
+    billingUseCreditsOff: "ปิด",
+    billingToggle: "สลับ",
+    pricingPreviewTitle: "พรีวิวราคา",
+    pricingPreviewLine: ({ original, mainDiscount, creditsDiscount, payable }) =>
+      `ราคาเดิม ⭐ ${original} · โปรโมชัน -⭐ ${mainDiscount} · เครดิต -⭐ ${creditsDiscount} · ต้องจ่าย ⭐ ${payable}`,
+    pricingCancel: "ยกเลิก",
+    pricingConfirmPay: "ยืนยันและจ่าย",
+    pricingLocking: "กำลังล็อก…",
+    paymentStatusPending: "กำลังยืนยันการชำระเงิน…",
+    paymentStatusPaid: "ชำระเงินสำเร็จ กำลังอัปเดต…",
+    paymentStatusFailed: "ชำระเงินล้มเหลว",
+    paymentStatusCancelled: "ยกเลิกแล้ว",
+    referralTitle: "ชวนเพื่อนมาฝึกด้วยกัน",
+    referralRule:
+      "รางวัลชวนเพื่อนเป็นเครดิต: 3 คำเชิญที่มีผลแรกได้ 10% / 15% / 20% หลังจากนั้นคงที่ 10%",
+    referralQualifiedDefinition:
+      "คำเชิญที่มีผล = ยืนยัน Telegram, เลือกคอร์ส, ชำระเงินครั้งแรก และภายใน 7 วันหลังชำระมีอย่างน้อย 3 วันเรียนที่มีผล",
+    referralNextRate: (rate) =>
+      `คำเชิญที่มีผลถัดไปคาดว่าจะได้ ${rate}% เครดิต; เครดิตใช้ได้กับคำสั่งซื้อถัดไป ลดได้สูงสุด 50%`,
     contentNotice: "เนื้อหาบทเรียนปัจจุบันเป็นภาษาจีน เวอร์ชันแปลที่ผ่านการตรวจสอบจะเผยแพร่แยกต่างหาก",
     contentNoticeAction: "เข้าใจแล้ว",
     telegramLanguage: "ภาษา Telegram",

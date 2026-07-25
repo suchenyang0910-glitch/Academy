@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import pg from "pg";
 
 const { Client } = pg;
@@ -15,10 +16,10 @@ try {
     checksum TEXT NOT NULL,
     applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP::text
   )`);
-  const directory = new URL("../postgres/", import.meta.url);
+  const directory = fileURLToPath(new URL("../postgres/", import.meta.url));
   const names = (await readdir(directory)).filter((name) => name.endsWith(".sql")).sort();
   for (const name of names) {
-    const sql = await readFile(join(directory.pathname, name), "utf8");
+    const sql = await readFile(join(directory, name), "utf8");
     const checksum = createHash("sha256").update(sql).digest("hex");
     const applied = await client.query("SELECT checksum FROM __academy_migrations WHERE name = $1", [name]);
     if (applied.rowCount) {

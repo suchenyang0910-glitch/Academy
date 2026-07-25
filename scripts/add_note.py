@@ -7,7 +7,6 @@ import argparse
 import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-from bot.database import save_note
 
 def main():
     parser = argparse.ArgumentParser(description='添加 Academy 学习笔记')
@@ -24,8 +23,9 @@ def main():
         print("❌ 错误：未提供笔记内容")
         sys.exit(1)
 
-    save_note(args.day, note)
-    print(f"✅ 已保存 Day {args.day} 的笔记")
+    print("❌ Legacy SQLite 写入已禁用。")
+    print("请使用 `/academy note ...`（Bot → mini-app API）或直接调用 mini-app /api/academy/notes。")
+    sys.exit(2)
 
 if __name__ == '__main__':
     main()

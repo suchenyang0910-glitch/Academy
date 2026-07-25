@@ -1,28 +1,15 @@
 import random
-import tempfile
 import unittest
-from pathlib import Path
-from unittest.mock import patch
 
 from bot import reminders
 
 
 class ReminderTests(unittest.TestCase):
     def setUp(self):
-        self.temp_dir = tempfile.TemporaryDirectory()
-        self.db_path = str(Path(self.temp_dir.name) / "academy-test.db")
-        self.db_patch = patch("bot.database.DB_PATH", self.db_path)
-        self.reminder_db_patch = patch("bot.reminders.get_conn")
-        self.db_patch.start()
-
-        from bot.database import get_conn
-
-        self.reminder_db_patch.start().side_effect = get_conn
+        reminders.reset_reminder_state()
 
     def tearDown(self):
-        self.reminder_db_patch.stop()
-        self.db_patch.stop()
-        self.temp_dir.cleanup()
+        reminders.reset_reminder_state()
 
     def test_has_34_templates(self):
         self.assertEqual(len(reminders.REMINDER_TEMPLATES), 34)

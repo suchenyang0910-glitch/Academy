@@ -80,7 +80,7 @@ test("rejects unsigned identities in production", async () => {
 
   assert.match(store, /authDate - nowSeconds > 300/);
   assert.match(store, /secureEqualHex/);
-  assert.match(store, /process\.env\.NODE_ENV === "production"/);
+  assert.match(store, /ACADEMY_ALLOW_FOUNDER_PREVIEW !== "true"/);
   assert.match(store, /Telegram authentication is not configured/);
 });
 

@@ -80,6 +80,7 @@ E:\academy\mini-app\.env.example
 | 名称 | 用途 |
 |---|---|
 | `TELEGRAM_BOT_TOKEN` | Telegram 身份校验与 Bot 发消息 |
+| `ACADEMY_ALLOW_FOUNDER_PREVIEW` | 仅本地开发可设为 `true`；生产服务器必须保持 `false` 或不设置 |
 | `TELEGRAM_BOT_USERNAME` | 生成带 `startapp` 邀请参数的 Mini App 分享链接 |
 | `TELEGRAM_CHAT_ID` | 接收本地测试提醒的聊天 ID |
 | `ACADEMY_CRON_SECRET` | 保护提醒生成接口 |

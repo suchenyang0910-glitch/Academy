@@ -26,6 +26,7 @@ export type AcademyIdentity = {
 
 type RuntimeEnv = {
   TELEGRAM_BOT_TOKEN?: string;
+  ACADEMY_ALLOW_FOUNDER_PREVIEW?: string;
   ACADEMY_CRON_SECRET?: string;
   ACADEMY_MINI_APP_URL?: string;
   TELEGRAM_BOT_USERNAME?: string;
@@ -225,9 +226,9 @@ export async function getIdentity(request: Request): Promise<AcademyIdentity> {
     return identity;
   }
 
-  // Founder-only self-test mode. Production must never silently become an
-  // unsigned shared account because a deployment missed its Bot Token.
-  if (process.env.NODE_ENV === "production") {
+  // Founder-only self-test mode is opt-in. A missing Bot Token must never
+  // silently turn any deployment into an unsigned shared account.
+  if (env.ACADEMY_ALLOW_FOUNDER_PREVIEW !== "true") {
     throw new Response("Telegram authentication is not configured", {
       status: 503,
     });

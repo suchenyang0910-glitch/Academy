@@ -181,12 +181,13 @@ test("keeps the local logo reliable and AI research material reviewable", async 
 });
 
 test("ships a persisted four-language interface foundation", async () => {
-  const [page, store, schema, postgresMigration, localeModule] = await Promise.all([
+  const [page, store, schema, postgresMigration, localeModule, reminders] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../lib/academy-store.ts", import.meta.url), "utf8"),
     readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
     readFile(new URL("../postgres/0001_localized_spectrum.sql", import.meta.url), "utf8"),
     readFile(new URL("../lib/i18n.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/reminders.ts", import.meta.url), "utf8"),
   ]);
 
   assert.match(page, /api\/academy\/preferences/);
@@ -199,4 +200,9 @@ test("ships a persisted four-language interface foundation", async () => {
   assert.match(localeModule, /Tiếng Việt/);
   assert.match(localeModule, /ខ្មែរ/);
   assert.match(localeModule, /ไทย/);
+  assert.match(store, /course_localizations/);
+  assert.match(store, /lesson_localizations/);
+  assert.match(store, /resolveAppLocale\(user\.uiLocale\)/);
+  assert.match(reminders, /LOCALIZED_COPY/);
+  assert.match(reminders, /locale: "zh-Hans"/);
 });

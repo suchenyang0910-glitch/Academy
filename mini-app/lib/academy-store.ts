@@ -62,6 +62,27 @@ function lessonMetadataForStorage(lesson: FixedLesson) {
   });
 }
 
+async function localizedLesson(
+  lesson: Record<string, unknown>,
+  locale: AppLocale,
+) {
+  if (locale === "zh-Hans") {
+    return { ...lesson, contentLocale: "zh-Hans", isContentFallback: false };
+  }
+  const translation = await getD1()
+    .prepare(
+      `SELECT title, objective, content, practice_prompt AS practicePrompt,
+              criteria_json AS criteriaJson
+       FROM lesson_localizations
+       WHERE lesson_id = ? AND locale = ? AND review_status = 'approved'`,
+    )
+    .bind(String(lesson.id), locale)
+    .first<Record<string, unknown>>();
+  return translation
+    ? { ...lesson, ...translation, contentLocale: locale, isContentFallback: false }
+    : { ...lesson, contentLocale: "zh-Hans", isContentFallback: true };
+}
+
 function localDateKey(timezone = "Asia/Bangkok", date = new Date()) {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: timezone,
@@ -269,7 +290,7 @@ export async function ensureSeedData(identity: AcademyIdentity) {
   const seeded = await d1
     .prepare("SELECT value FROM schema_version WHERE key = 'academy_seed'")
     .first<{ value: string }>();
-  if (seeded?.value === "v6") return;
+  if (seeded?.value === "v7") return;
 
   const statements = [
     ...COURSE_CATALOG.map((course) =>
@@ -349,7 +370,7 @@ export async function ensureSeedData(identity: AcademyIdentity) {
     ),
     d1
       .prepare(
-        `INSERT INTO schema_version (key, value) VALUES ('academy_seed', 'v6')
+        `INSERT INTO schema_version (key, value) VALUES ('academy_seed', 'v7')
          ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
       ),
   ];
@@ -387,6 +408,7 @@ export async function getBootstrap(identity: AcademyIdentity) {
       trialStartedAt: string;
     }>();
   const timezone = user?.timezone || "Asia/Bangkok";
+  const uiLocale = resolveAppLocale(user?.uiLocale ?? identity.languageCode);
   const todayKey = localDateKey(timezone);
   await syncEnrollmentDays(identity.id, todayKey);
 
@@ -428,6 +450,34 @@ export async function getBootstrap(identity: AcademyIdentity) {
         .all(),
     ]);
 
+  const courseTranslations =
+    uiLocale === "zh-Hans"
+      ? []
+      : (
+          await d1
+            .prepare(
+              `SELECT course_id AS courseId, title, subtitle, summary
+               FROM course_localizations
+               WHERE locale = ? AND review_status = 'approved'`,
+            )
+            .bind(uiLocale)
+            .all<{
+              courseId: string;
+              title: string;
+              subtitle: string;
+              summary: string;
+            }>()
+        ).results;
+  const localizedCourses = new Map(
+    courseTranslations.map((translation) => [translation.courseId, translation]),
+  );
+  const catalog = catalogResult.results.map((course) => ({
+    ...course,
+    ...(localizedCourses.get(String(course.id)) ?? {}),
+    contentLocale: localizedCourses.has(String(course.id)) ? uiLocale : "zh-Hans",
+    isContentFallback: uiLocale !== "zh-Hans" && !localizedCourses.has(String(course.id)),
+  }));
+
   const enrollments = enrollmentResult.results as Array<{
     id: number;
     courseId: string;
@@ -461,12 +511,13 @@ export async function getBootstrap(identity: AcademyIdentity) {
         .bind(enrollment.courseId, enrollment.currentDay)
         .first();
 
+      const localized = lesson ? await localizedLesson(lesson, uiLocale) : null;
       return {
         enrollment,
-        lesson: lesson
+        lesson: localized
           ? {
-              ...lesson,
-              ...lessonMetadataFromJson(lesson.criteriaJson),
+              ...localized,
+              ...lessonMetadataFromJson(localized.criteriaJson),
               criteriaJson: undefined,
             }
           : null,
@@ -499,15 +550,18 @@ export async function getBootstrap(identity: AcademyIdentity) {
           )
           .all();
 
-        return result.results.map((lesson) => ({
+        return Promise.all(result.results.map(async (lesson) => {
+          const localized = await localizedLesson(lesson, uiLocale);
+          return {
           enrollment,
           lesson: {
-            ...lesson,
-            ...lessonMetadataFromJson(lesson.criteriaJson),
+            ...localized,
+            ...lessonMetadataFromJson(localized.criteriaJson),
             criteriaJson: undefined,
           },
           submission: submittedByLesson.get(String(lesson.id)) ?? null,
           isExtra: true,
+          };
         }));
       }),
     )
@@ -543,7 +597,7 @@ export async function getBootstrap(identity: AcademyIdentity) {
     access,
     ai: getAiRuntimeStatus(),
     payment: getPaymentCatalog(),
-    catalog: catalogResult.results,
+    catalog,
     enrollments,
     today,
     learningAhead,
@@ -1118,9 +1172,9 @@ export async function createReminder(
 ) {
   const d1 = getD1();
   const user = await d1
-    .prepare("SELECT id, timezone FROM users WHERE id = ?")
+    .prepare("SELECT id, timezone, ui_locale AS uiLocale FROM users WHERE id = ?")
     .bind(userId)
-    .first<{ id: string; timezone: string }>();
+    .first<{ id: string; timezone: string; uiLocale: string | null }>();
   if (!user) throw new Response("User not found", { status: 404 });
 
   const todayKey = localDateKey(user.timezone);
@@ -1170,6 +1224,7 @@ export async function createReminder(
   const template = selectReminder(
     level,
     recent.results.map((item) => item.templateId),
+    resolveAppLocale(user.uiLocale),
   );
 
   await d1

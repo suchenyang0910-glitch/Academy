@@ -1,6 +1,7 @@
 export type ReminderTemplate = {
   id: string;
   level: 1 | 2 | 3 | 4;
+  locale: "zh-Hans" | "vi" | "km" | "th";
   content: string;
   buttonText: string;
   weight: number;
@@ -63,6 +64,7 @@ export const REMINDER_TEMPLATES: ReminderTemplate[] = [
   ...L1.map((content, index) => ({
     id: `l1-${String(index + 1).padStart(2, "0")}`,
     level: 1 as const,
+    locale: "zh-Hans" as const,
     content,
     buttonText: BUTTONS[1],
     weight: 100,
@@ -70,6 +72,7 @@ export const REMINDER_TEMPLATES: ReminderTemplate[] = [
   ...L2.map((content, index) => ({
     id: `l2-${String(index + 1).padStart(2, "0")}`,
     level: 2 as const,
+    locale: "zh-Hans" as const,
     content,
     buttonText: BUTTONS[2],
     weight: 100,
@@ -77,6 +80,7 @@ export const REMINDER_TEMPLATES: ReminderTemplate[] = [
   ...L3.map((content, index) => ({
     id: `l3-${String(index + 1).padStart(2, "0")}`,
     level: 3 as const,
+    locale: "zh-Hans" as const,
     content,
     buttonText: BUTTONS[3],
     weight: 100,
@@ -84,20 +88,67 @@ export const REMINDER_TEMPLATES: ReminderTemplate[] = [
   ...L4.map((content, index) => ({
     id: `l4-${String(index + 1).padStart(2, "0")}`,
     level: 4 as const,
+    locale: "zh-Hans" as const,
     content,
     buttonText: BUTTONS[4],
     weight: 100,
   })),
 ];
 
+const LOCALIZED_COPY = {
+  vi: {
+    buttons: ["Bắt đầu bài học", "Hoàn thành ngay", "Giữ ngày hôm nay", "Quay lại học"],
+    messages: [
+      ["Kiến thức hôm nay không tự đi vào đầu bạn. Hãy dành 15 phút cho nó.", "Một nhiệm vụ nhỏ hôm nay tốt hơn một kế hoạch lớn ngày mai."],
+      ["Nhiệm vụ hôm nay vẫn đang chờ. Hoàn thành một bước để tiếp tục.", "Đừng để việc nhỏ hôm nay trở thành gánh nặng ngày mai."],
+      ["Ngày sắp kết thúc, nhưng bạn vẫn có thể giữ lại tiến độ hôm nay.", "Hoàn thành nhiệm vụ hiện tại trước khi ngày hôm nay khép lại."],
+      ["Chuỗi học đã bị gián đoạn. Hãy hoàn thành nhiệm vụ hiện tại để quay lại.", "Bài tiếp theo đang chờ sau khi bạn xử lý phần còn lại."],
+    ],
+  },
+  km: {
+    buttons: ["ចាប់ផ្តើមមេរៀន", "បំពេញឥឡូវនេះ", "រក្សាថ្ងៃនេះ", "ត្រឡប់មកសិក្សា"],
+    messages: [
+      ["ចំណេះដឹងថ្ងៃនេះមិនចូលក្នុងក្បាលដោយខ្លួនឯងទេ។ សូមទុកពេល 15 នាទី។", "បំពេញជំហានតូចមួយថ្ងៃនេះ ប្រសើរជាងផែនការធំមួយថ្ងៃស្អែក។"],
+      ["កិច្ចការថ្ងៃនេះនៅតែរង់ចាំ។ បំពេញមួយជំហានដើម្បីបន្ត។", "កុំឱ្យកិច្ចការតូចថ្ងៃនេះក្លាយជាបន្ទុកថ្ងៃស្អែក។"],
+      ["ថ្ងៃជិតចប់ហើយ ប៉ុន្តែអ្នកនៅតែអាចរក្សាវឌ្ឍនភាពថ្ងៃនេះបាន។", "បំពេញកិច្ចការបច្ចុប្បន្នមុនថ្ងៃនេះបិទ។"],
+      ["ការសិក្សាបានផ្អាក។ បំពេញកិច្ចការបច្ចុប្បន្នដើម្បីត្រឡប់មកវិញ។", "មេរៀនបន្ទាប់កំពុងរង់ចាំ បន្ទាប់ពីអ្នកដោះស្រាយកិច្ចការដែលនៅសល់។"],
+    ],
+  },
+  th: {
+    buttons: ["เริ่มบทเรียน", "ทำตอนนี้", "รักษาวันนี้ไว้", "กลับมาเรียนต่อ"],
+    messages: [
+      ["ความรู้วันนี้จะไม่เข้าหัวเอง ใช้เวลา 15 นาทีให้มันหน่อย", "ทำก้าวเล็ก ๆ วันนี้ ดีกว่าแผนใหญ่ในวันพรุ่งนี้"],
+      ["ภารกิจวันนี้ยังรออยู่ ทำหนึ่งขั้นให้เสร็จแล้วไปต่อ", "อย่าปล่อยให้งานเล็กวันนี้กลายเป็นภาระของพรุ่งนี้"],
+      ["วันกำลังจะจบ แต่คุณยังรักษาความคืบหน้าของวันนี้ได้", "ทำภารกิจปัจจุบันให้เสร็จก่อนวันนี้จะปิด"],
+      ["การเรียนขาดช่วงแล้ว ทำภารกิจปัจจุบันเพื่อกลับมาเริ่มต่อ", "บทเรียนถัดไปรออยู่หลังจากจัดการงานที่ค้าง"],
+    ],
+  },
+} as const;
+
+for (const [locale, copy] of Object.entries(LOCALIZED_COPY)) {
+  copy.messages.forEach((messages, levelIndex) => {
+    messages.forEach((content, messageIndex) => {
+      REMINDER_TEMPLATES.push({
+        id: `${locale}-l${levelIndex + 1}-${String(messageIndex + 1).padStart(2, "0")}`,
+        level: (levelIndex + 1) as 1 | 2 | 3 | 4,
+        locale: locale as "vi" | "km" | "th",
+        content,
+        buttonText: copy.buttons[levelIndex],
+        weight: 100,
+      });
+    });
+  });
+}
+
 export function selectReminder(
   level: 1 | 2 | 3 | 4,
   recentTemplateIds: string[],
+  locale: ReminderTemplate["locale"] = "zh-Hans",
   random = Math.random,
 ) {
   const recent = new Set(recentTemplateIds.slice(0, 5));
   const levelTemplates = REMINDER_TEMPLATES.filter(
-    (template) => template.level === level,
+    (template) => template.level === level && template.locale === locale,
   );
   const candidates = levelTemplates.filter((template) => !recent.has(template.id));
   const pool = candidates.length > 0 ? candidates : levelTemplates;

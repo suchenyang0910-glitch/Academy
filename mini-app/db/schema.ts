@@ -188,6 +188,27 @@ export const notes = sqliteTable(
   (table) => [index("notes_user_created_idx").on(table.userId, table.createdAt)],
 );
 
+export const feedback = sqliteTable(
+  "feedback",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id),
+    category: text("category").notNull(),
+    content: text("content").notNull(),
+    pageContext: text("page_context"),
+    appVersion: text("app_version"),
+    status: text("status").notNull().default("open"),
+    createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    index("feedback_status_created_idx").on(table.status, table.createdAt),
+    index("feedback_user_created_idx").on(table.userId, table.createdAt),
+  ],
+);
+
 export const reminderTemplates = sqliteTable("reminder_templates", {
   id: text("id").primaryKey(),
   level: integer("level").notNull(),

@@ -1654,7 +1654,79 @@ function ProfileView({
         </small>
       </section>
 
+      <FeedbackPanel copy={copy} notify={notify} />
+
     </>
+  );
+}
+
+function FeedbackPanel({
+  copy,
+  notify,
+}: {
+  copy: ReturnType<typeof copyFor>;
+  notify: (message: string) => void;
+}) {
+  const [category, setCategory] = useState<"bug" | "content" | "idea" | "other">("bug");
+  const [content, setContent] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function submitFeedback() {
+    setSaving(true);
+    try {
+      await academyRequest("/api/academy/feedback", {
+        method: "POST",
+        body: JSON.stringify({
+          category,
+          content,
+          pageContext: "profile",
+          appVersion: "mini-app",
+        }),
+      });
+      setContent("");
+      notify(copy.feedbackSent);
+    } catch (requestError) {
+      notify(requestError instanceof Error ? requestError.message : "Unable to send feedback");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <section className="feedback-card">
+      <div>
+        <span className="eyebrow">FEEDBACK</span>
+        <h2>{copy.feedbackTitle}</h2>
+        <p>{copy.feedbackDescription}</p>
+      </div>
+      <div className="feedback-categories" role="group" aria-label={copy.feedbackTitle}>
+        {(["bug", "content", "idea", "other"] as const).map((value) => (
+          <button
+            className={category === value ? "selected" : ""}
+            type="button"
+            key={value}
+            onClick={() => setCategory(value)}
+            aria-pressed={category === value}
+          >
+            {copy.feedbackCategory(value)}
+          </button>
+        ))}
+      </div>
+      <textarea
+        value={content}
+        onChange={(event) => setContent(event.target.value)}
+        placeholder={copy.feedbackPlaceholder}
+        maxLength={2000}
+      />
+      <button
+        className="secondary-button"
+        type="button"
+        onClick={() => void submitFeedback()}
+        disabled={saving || content.trim().length < 5}
+      >
+        {saving ? copy.saving : copy.sendFeedback}
+      </button>
+    </section>
   );
 }
 

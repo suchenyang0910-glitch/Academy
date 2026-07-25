@@ -1156,6 +1156,42 @@ export async function saveNote(
     .first();
 }
 
+export async function createFeedback(
+  identity: AcademyIdentity,
+  payload: {
+    category: string;
+    content: string;
+    pageContext?: string | null;
+    appVersion?: string | null;
+  },
+) {
+  const category = payload.category.trim().toLowerCase();
+  const content = payload.content.trim();
+  if (!new Set(["bug", "content", "idea", "other"]).has(category)) {
+    throw new Response("Feedback category is invalid", { status: 400 });
+  }
+  if (content.length < 5) {
+    throw new Response("请至少描述 5 个字，方便定位问题", { status: 400 });
+  }
+  if (content.length > 2_000) {
+    throw new Response("反馈不能超过 2000 个字", { status: 400 });
+  }
+  return getD1()
+    .prepare(
+      `INSERT INTO feedback (user_id, category, content, page_context, app_version)
+       VALUES (?, ?, ?, ?, ?)
+       RETURNING id, category, content, status, created_at AS createdAt`,
+    )
+    .bind(
+      identity.id,
+      category,
+      content,
+      payload.pageContext?.slice(0, 120) ?? null,
+      payload.appVersion?.slice(0, 80) ?? null,
+    )
+    .first();
+}
+
 export function verifyCronSecret(request: Request) {
   const expected = runtimeEnv().ACADEMY_CRON_SECRET;
   const supplied = request.headers

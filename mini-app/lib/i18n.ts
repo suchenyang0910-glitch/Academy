@@ -24,6 +24,12 @@ type Copy = {
   todayComplete: string;
   minutes: (count: number) => string;
   hello: (name: string) => string;
+  feedbackTitle: string;
+  feedbackDescription: string;
+  feedbackPlaceholder: string;
+  sendFeedback: string;
+  feedbackSent: string;
+  feedbackCategory: (value: "bug" | "content" | "idea" | "other") => string;
 };
 
 const COPY: Record<AppLocale, Copy> = {
@@ -49,6 +55,12 @@ const COPY: Record<AppLocale, Copy> = {
     todayComplete: "今日完成",
     minutes: (count) => `预计 ${count} 分钟`,
     hello: (name) => `你好，${name}`,
+    feedbackTitle: "问题、建议或内容纠错",
+    feedbackDescription: "直接告诉我们。反馈会关联你的当前页面，优先处理阻断学习的问题。",
+    feedbackPlaceholder: "发生了什么？你期待什么结果？",
+    sendFeedback: "发送反馈",
+    feedbackSent: "反馈已收到",
+    feedbackCategory: (value) => ({ bug: "Bug", content: "内容问题", idea: "产品建议", other: "其他" })[value],
   },
   vi: {
     brandSubtitle: "Hệ thống đồng hành học tập",
@@ -72,6 +84,12 @@ const COPY: Record<AppLocale, Copy> = {
     todayComplete: "Hoàn thành hôm nay",
     minutes: (count) => `Khoảng ${count} phút`,
     hello: (name) => `Xin chào, ${name}`,
+    feedbackTitle: "Sự cố, góp ý hoặc lỗi nội dung",
+    feedbackDescription: "Hãy nói trực tiếp với chúng tôi. Phản hồi sẽ gắn với trang hiện tại để ưu tiên lỗi cản trở việc học.",
+    feedbackPlaceholder: "Điều gì đã xảy ra? Bạn mong đợi điều gì?",
+    sendFeedback: "Gửi phản hồi",
+    feedbackSent: "Đã nhận phản hồi",
+    feedbackCategory: (value) => ({ bug: "Lỗi", content: "Nội dung", idea: "Đề xuất", other: "Khác" })[value],
   },
   km: {
     brandSubtitle: "ប្រព័ន្ធជួយតាមដានការសិក្សា",
@@ -95,6 +113,12 @@ const COPY: Record<AppLocale, Copy> = {
     todayComplete: "សម្រេចថ្ងៃនេះ",
     minutes: (count) => `ប្រហែល ${count} នាទី`,
     hello: (name) => `សួស្តី ${name}`,
+    feedbackTitle: "បញ្ហា យោបល់ ឬកំហុសខ្លឹមសារ",
+    feedbackDescription: "ប្រាប់យើងដោយផ្ទាល់។ មតិកែលម្អនឹងភ្ជាប់នឹងទំព័របច្ចុប្បន្ន ដើម្បីដោះស្រាយបញ្ហាដែលរារាំងការសិក្សាជាមុន។",
+    feedbackPlaceholder: "តើមានអ្វីកើតឡើង? តើអ្នករំពឹងអ្វី?",
+    sendFeedback: "ផ្ញើមតិកែលម្អ",
+    feedbackSent: "បានទទួលមតិកែលម្អ",
+    feedbackCategory: (value) => ({ bug: "កំហុស", content: "ខ្លឹមសារ", idea: "យោបល់", other: "ផ្សេងទៀត" })[value],
   },
   th: {
     brandSubtitle: "ระบบติดตามการเรียนรู้",
@@ -118,6 +142,12 @@ const COPY: Record<AppLocale, Copy> = {
     todayComplete: "เสร็จวันนี้",
     minutes: (count) => `ประมาณ ${count} นาที`,
     hello: (name) => `สวัสดี ${name}`,
+    feedbackTitle: "ปัญหา ข้อเสนอแนะ หรือข้อผิดพลาดของเนื้อหา",
+    feedbackDescription: "บอกเราได้โดยตรง ความเห็นจะผูกกับหน้าปัจจุบันเพื่อแก้ปัญหาที่ขัดขวางการเรียนก่อน",
+    feedbackPlaceholder: "เกิดอะไรขึ้น และคุณคาดหวังอะไร?",
+    sendFeedback: "ส่งข้อเสนอแนะ",
+    feedbackSent: "ได้รับข้อเสนอแนะแล้ว",
+    feedbackCategory: (value) => ({ bug: "ข้อผิดพลาด", content: "เนื้อหา", idea: "ข้อเสนอแนะ", other: "อื่น ๆ" })[value],
   },
 };
 

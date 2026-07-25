@@ -206,3 +206,20 @@ test("ships a persisted four-language interface foundation", async () => {
   assert.match(reminders, /LOCALIZED_COPY/);
   assert.match(reminders, /locale: "zh-Hans"/);
 });
+
+test("records structured in-app feedback for seed-user triage", async () => {
+  const [page, store, schema, migration, route] = await Promise.all([
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../lib/academy-store.ts", import.meta.url), "utf8"),
+    readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
+    readFile(new URL("../postgres/0002_feedback_and_preferences.sql", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/academy/feedback/route.ts", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(page, /function FeedbackPanel/);
+  assert.match(page, /api\/academy\/feedback/);
+  assert.match(store, /export async function createFeedback/);
+  assert.match(schema, /export const feedback/);
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS feedback/);
+  assert.match(route, /createFeedback/);
+});

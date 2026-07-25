@@ -290,8 +290,8 @@ export default function Home() {
         </header>
 
         <div className="content">
-          {loading && <LoadingState />}
-          {!loading && error && <ErrorState message={error} onRetry={load} />}
+          {loading && <LoadingState copy={copy} />}
+          {!loading && error && <ErrorState copy={copy} message={error} onRetry={load} />}
           {!loading && data && (
             <>
               {!data.access.active && tab !== "profile" && (
@@ -312,6 +312,7 @@ export default function Home() {
               )}
               {tab === "courses" && (
                 <CoursesView
+                  copy={copy}
                   catalog={data.catalog}
                   enrollments={data.enrollments}
                   today={data.today}
@@ -324,6 +325,7 @@ export default function Home() {
               )}
               {tab === "notes" && (
                 <NotesView
+                  copy={copy}
                   notes={data.notes}
                   accessActive={data.access.active}
                   onSaved={(note) => {
@@ -338,6 +340,7 @@ export default function Home() {
               )}
               {tab === "progress" && (
                 <ProgressView
+                  copy={copy}
                   data={data}
                   progress={progress}
                   completedCount={completedCount}
@@ -396,6 +399,7 @@ export default function Home() {
 
         {data && pickerOpen && (
           <CoursePicker
+            copy={copy}
             catalog={data.catalog}
             initialIds={data.enrollments.map((item) => item.courseId)}
             required={data.enrollments.length === 0}
@@ -450,12 +454,12 @@ export default function Home() {
   );
 }
 
-function LoadingState() {
+function LoadingState({ copy }: { copy: ReturnType<typeof copyFor> }) {
   return (
     <div className="loading-state" role="status">
       <span className="loading-mark">A</span>
-      <strong>正在整理今天的学习</strong>
-      <p>课程不会自己完成，但页面可以先自己加载。</p>
+      <strong>{copy.ui.loadingTitle}</strong>
+      <p>{copy.ui.loadingDescription}</p>
     </div>
   );
 }
@@ -475,19 +479,21 @@ function ExpiredBanner({ onOpenPlans }: { onOpenPlans: () => void }) {
 }
 
 function ErrorState({
+  copy,
   message,
   onRetry,
 }: {
+  copy: ReturnType<typeof copyFor>;
   message: string;
   onRetry: () => void;
 }) {
   return (
     <div className="error-state">
-      <span>连接暂时走神了</span>
-      <h1>今天的课程还在，数据没跟上。</h1>
+      <span>{copy.ui.errorLabel}</span>
+      <h1>{copy.ui.errorTitle}</h1>
       <p>{message}</p>
       <button className="primary-button" type="button" onClick={onRetry}>
-        再试一次
+        {copy.ui.retry}
       </button>
     </div>
   );
@@ -570,10 +576,10 @@ function TodayView({
         <div className="section-heading">
           <div>
             <span className="eyebrow">TODAY&apos;S WORK</span>
-            <h2>{data.today.length ? "必须留下输出" : "先选择课程"}</h2>
+            <h2>{data.today.length ? copy.ui.mustLeaveOutput : copy.ui.selectCourse}</h2>
           </div>
           <button className="text-button" type="button" onClick={onOpenPicker}>
-            调整课程
+            {copy.ui.adjustCourses}
           </button>
         </div>
 
@@ -681,12 +687,14 @@ function dateLocaleFor(locale: AppLocale) {
 }
 
 function CoursePicker({
+  copy,
   catalog,
   initialIds,
   required,
   onClose,
   onSaved,
 }: {
+  copy: ReturnType<typeof copyFor>;
   catalog: CatalogCourse[];
   initialIds: string[];
   required: boolean;
@@ -748,8 +756,8 @@ function CoursePicker({
       <header className="picker-header">
         <div>
           <span className="eyebrow">YOUR 60-DAY PATH</span>
-          <h1>选择训练方向</h1>
-          <p>必选 1 门，最多 3 门，可以中途更换。</p>
+          <h1>{copy.ui.coursePickerTitle}</h1>
+          <p>{copy.ui.coursePickerDescription}</p>
         </div>
         {!required && (
           <button className="text-button" type="button" onClick={onClose}>
@@ -802,6 +810,7 @@ function CoursePicker({
 }
 
 function CoursesView({
+  copy,
   catalog,
   enrollments,
   today,
@@ -809,6 +818,7 @@ function CoursesView({
   onSelect,
   onEdit,
 }: {
+  copy: ReturnType<typeof copyFor>;
   catalog: CatalogCourse[];
   enrollments: Enrollment[];
   today: TodayItem[];
@@ -856,7 +866,7 @@ function CoursesView({
       <section className="page-intro">
         <span className="eyebrow">COURSE CATALOG</span>
         <h1>课程</h1>
-        <p>每门课程独立计算 Day，换课不会删除过去的证据。</p>
+        <p>{copy.ui.courseCatalogDescription}</p>
       </section>
       <div className="catalog-list">
         {catalog.map((course) => {
@@ -883,7 +893,7 @@ function CoursesView({
         })}
       </div>
       <button className="new-note-button" type="button" onClick={onEdit}>
-        调整我的课程
+        {copy.ui.changeMyCourses}
       </button>
     </>
   );
@@ -1182,10 +1192,12 @@ function LessonSheet({
 }
 
 function NotesView({
+  copy,
   notes,
   accessActive,
   onSaved,
 }: {
+  copy: ReturnType<typeof copyFor>;
   notes: Note[];
   accessActive: boolean;
   onSaved: (note: Note) => void;
@@ -1217,8 +1229,8 @@ function NotesView({
     <>
       <section className="page-intro">
         <span className="eyebrow">LEARNING NOTES</span>
-        <h1>学习笔记</h1>
-        <p>不是收藏内容，而是保存你自己的判断。</p>
+        <h1>{copy.ui.notesTitle}</h1>
+        <p>{copy.ui.notesDescription}</p>
       </section>
       {accessActive ? (
         <section className="inline-composer">
@@ -1237,7 +1249,7 @@ function NotesView({
               onClick={save}
               disabled={saving || !draft.trim()}
             >
-              {saving ? "保存中…" : "保存笔记"}
+              {saving ? copy.saving : copy.ui.saveNote}
             </button>
           </div>
         </section>
@@ -1266,10 +1278,12 @@ function NotesView({
 }
 
 function ProgressView({
+  copy,
   data,
   progress,
   completedCount,
 }: {
+  copy: ReturnType<typeof copyFor>;
   data: Bootstrap;
   progress: number;
   completedCount: number;
@@ -1288,8 +1302,8 @@ function ProgressView({
     <>
       <section className="page-intro">
         <span className="eyebrow">EVIDENCE, NOT CHECKBOXES</span>
-        <h1>学习进度</h1>
-        <p>这里记录你完成了什么，以及系统为什么相信你完成了。</p>
+        <h1>{copy.ui.progressTitle}</h1>
+        <p>{copy.ui.progressDescription}</p>
       </section>
       <section className="day-progress-card">
         <div className="big-day">

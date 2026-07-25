@@ -30,6 +30,25 @@ type Copy = {
   sendFeedback: string;
   feedbackSent: string;
   feedbackCategory: (value: "bug" | "content" | "idea" | "other") => string;
+  ui: {
+    loadingTitle: string;
+    loadingDescription: string;
+    errorLabel: string;
+    errorTitle: string;
+    retry: string;
+    mustLeaveOutput: string;
+    selectCourse: string;
+    adjustCourses: string;
+    coursePickerTitle: string;
+    coursePickerDescription: string;
+    courseCatalogDescription: string;
+    changeMyCourses: string;
+    notesTitle: string;
+    notesDescription: string;
+    saveNote: string;
+    progressTitle: string;
+    progressDescription: string;
+  };
 };
 
 const COPY: Record<AppLocale, Copy> = {
@@ -61,6 +80,25 @@ const COPY: Record<AppLocale, Copy> = {
     sendFeedback: "发送反馈",
     feedbackSent: "反馈已收到",
     feedbackCategory: (value) => ({ bug: "Bug", content: "内容问题", idea: "产品建议", other: "其他" })[value],
+    ui: {
+      loadingTitle: "正在整理今天的学习",
+      loadingDescription: "课程不会自己完成，但页面可以先自己加载。",
+      errorLabel: "连接暂时走神了",
+      errorTitle: "今天的课程还在，数据没跟上。",
+      retry: "再试一次",
+      mustLeaveOutput: "必须留下输出",
+      selectCourse: "先选择课程",
+      adjustCourses: "调整课程",
+      coursePickerTitle: "选择训练方向",
+      coursePickerDescription: "必选 1 门，最多 3 门，可以中途更换。",
+      courseCatalogDescription: "每门课程独立计算 Day，换课不会删除过去的证据。",
+      changeMyCourses: "调整我的课程",
+      notesTitle: "学习笔记",
+      notesDescription: "不是收藏内容，而是保存你自己的判断。",
+      saveNote: "保存笔记",
+      progressTitle: "学习进度",
+      progressDescription: "这里记录你完成了什么，以及系统为什么相信你完成了。",
+    },
   },
   vi: {
     brandSubtitle: "Hệ thống đồng hành học tập",
@@ -90,6 +128,25 @@ const COPY: Record<AppLocale, Copy> = {
     sendFeedback: "Gửi phản hồi",
     feedbackSent: "Đã nhận phản hồi",
     feedbackCategory: (value) => ({ bug: "Lỗi", content: "Nội dung", idea: "Đề xuất", other: "Khác" })[value],
+    ui: {
+      loadingTitle: "Đang chuẩn bị việc học hôm nay",
+      loadingDescription: "Khóa học không tự hoàn thành, nhưng trang có thể tải trước.",
+      errorLabel: "Kết nối đang mất tập trung",
+      errorTitle: "Bài học hôm nay vẫn ở đây, nhưng dữ liệu chưa theo kịp.",
+      retry: "Thử lại",
+      mustLeaveOutput: "Cần có kết quả đầu ra",
+      selectCourse: "Chọn khóa học trước",
+      adjustCourses: "Điều chỉnh khóa học",
+      coursePickerTitle: "Chọn hướng luyện tập",
+      coursePickerDescription: "Chọn ít nhất 1, tối đa 3 khóa; có thể đổi giữa chừng.",
+      courseCatalogDescription: "Mỗi khóa có số ngày riêng; đổi khóa không xóa bằng chứng đã có.",
+      changeMyCourses: "Điều chỉnh khóa học của tôi",
+      notesTitle: "Ghi chú học tập",
+      notesDescription: "Không phải lưu nội dung — đây là nơi lưu nhận định của bạn.",
+      saveNote: "Lưu ghi chú",
+      progressTitle: "Tiến độ học tập",
+      progressDescription: "Nơi lưu những gì bạn đã làm và lý do hệ thống xác nhận điều đó.",
+    },
   },
   km: {
     brandSubtitle: "ប្រព័ន្ធជួយតាមដានការសិក្សា",
@@ -119,6 +176,25 @@ const COPY: Record<AppLocale, Copy> = {
     sendFeedback: "ផ្ញើមតិកែលម្អ",
     feedbackSent: "បានទទួលមតិកែលម្អ",
     feedbackCategory: (value) => ({ bug: "កំហុស", content: "ខ្លឹមសារ", idea: "យោបល់", other: "ផ្សេងទៀត" })[value],
+    ui: {
+      loadingTitle: "កំពុងរៀបចំការសិក្សាថ្ងៃនេះ",
+      loadingDescription: "វគ្គសិក្សាមិនអាចបញ្ចប់ដោយខ្លួនឯងទេ ប៉ុន្តែទំព័រអាចផ្ទុកជាមុន។",
+      errorLabel: "ការតភ្ជាប់កំពុងរវល់",
+      errorTitle: "មេរៀនថ្ងៃនេះនៅទីនេះ ប៉ុន្តែទិន្នន័យមិនទាន់មកដល់។",
+      retry: "សាកល្បងម្ដងទៀត",
+      mustLeaveOutput: "ត្រូវមានលទ្ធផល",
+      selectCourse: "ជ្រើសរើសវគ្គជាមុន",
+      adjustCourses: "កែសម្រួលវគ្គ",
+      coursePickerTitle: "ជ្រើសទិសដៅហ្វឹកហាត់",
+      coursePickerDescription: "ត្រូវជ្រើស 1 វគ្គ អតិបរមា 3 វគ្គ ហើយអាចប្ដូរបានពេលក្រោយ។",
+      courseCatalogDescription: "វគ្គនីមួយៗមាន Day ដាច់ដោយឡែក; ការប្ដូរវគ្គមិនលុបភស្តុតាងចាស់ទេ។",
+      changeMyCourses: "កែសម្រួលវគ្គរបស់ខ្ញុំ",
+      notesTitle: "កំណត់ត្រាសិក្សា",
+      notesDescription: "មិនមែនសម្រាប់រក្សាទុកខ្លឹមសារ ប៉ុន្តែសម្រាប់រក្សាទុកការវិនិច្ឆ័យរបស់អ្នក។",
+      saveNote: "រក្សាទុកកំណត់ត្រា",
+      progressTitle: "វឌ្ឍនភាពការសិក្សា",
+      progressDescription: "នៅទីនេះកត់ត្រាអ្វីដែលអ្នកបានធ្វើ និងមូលហេតុដែលប្រព័ន្ធទទួលស្គាល់វា។",
+    },
   },
   th: {
     brandSubtitle: "ระบบติดตามการเรียนรู้",
@@ -148,6 +224,25 @@ const COPY: Record<AppLocale, Copy> = {
     sendFeedback: "ส่งข้อเสนอแนะ",
     feedbackSent: "ได้รับข้อเสนอแนะแล้ว",
     feedbackCategory: (value) => ({ bug: "ข้อผิดพลาด", content: "เนื้อหา", idea: "ข้อเสนอแนะ", other: "อื่น ๆ" })[value],
+    ui: {
+      loadingTitle: "กำลังเตรียมการเรียนของวันนี้",
+      loadingDescription: "คอร์สเรียนทำเองไม่ได้ แต่หน้าแอปโหลดให้ก่อนได้",
+      errorLabel: "การเชื่อมต่อกำลังหลุดโฟกัส",
+      errorTitle: "บทเรียนวันนี้ยังอยู่ แต่ข้อมูลตามมาไม่ทัน",
+      retry: "ลองอีกครั้ง",
+      mustLeaveOutput: "ต้องมีผลงานที่ตรวจสอบได้",
+      selectCourse: "เลือกคอร์สก่อน",
+      adjustCourses: "ปรับคอร์ส",
+      coursePickerTitle: "เลือกทิศทางการฝึก",
+      coursePickerDescription: "ต้องเลือกอย่างน้อย 1 คอร์ส สูงสุด 3 คอร์ส และเปลี่ยนได้ระหว่างทาง",
+      courseCatalogDescription: "แต่ละคอร์สนับ Day แยกกัน การเปลี่ยนคอร์สไม่ลบหลักฐานที่ผ่านมา",
+      changeMyCourses: "ปรับคอร์สของฉัน",
+      notesTitle: "บันทึกการเรียน",
+      notesDescription: "ไม่ใช่ที่เก็บเนื้อหา แต่เป็นที่เก็บข้อสรุปของคุณเอง",
+      saveNote: "บันทึกโน้ต",
+      progressTitle: "ความคืบหน้าการเรียน",
+      progressDescription: "บันทึกสิ่งที่คุณทำ และเหตุผลที่ระบบยืนยันว่าคุณทำสำเร็จ",
+    },
   },
 };
 

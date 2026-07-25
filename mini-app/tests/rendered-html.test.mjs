@@ -14,7 +14,8 @@ test("builds the Academy product shell without starter content", async () => {
   assert.match(page, /Academy Telegram Mini App/);
   assert.match(page, /copy\.brandSubtitle/);
   assert.match(i18n, /学习监督系统/);
-  assert.match(page, /正在整理今天的学习/);
+  assert.match(i18n, /正在整理今天的学习/);
+  assert.match(page, /copy\.ui\.loadingTitle/);
   assert.doesNotMatch(page, /codex-preview|Your site is taking shape/i);
 });
 

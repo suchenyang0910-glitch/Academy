@@ -9,6 +9,7 @@ import {
 import { REMINDER_TEMPLATES, selectReminder } from "./reminders";
 import { getPaymentCatalog } from "./telegram-payments";
 import { getAiRuntimeStatus, requestAiFeedback } from "./ai-feedback";
+import { resolveAppLocale, type AppLocale } from "./i18n";
 
 export type AcademyIdentity = {
   id: string;
@@ -214,8 +215,8 @@ export async function ensureSeedData(identity: AcademyIdentity) {
     .prepare(
       `INSERT INTO users
          (id, telegram_id, display_name, telegram_username, first_name,
-          last_name, language_code, photo_url, is_premium, referral_code, timezone)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Asia/Bangkok')
+          last_name, language_code, ui_locale, photo_url, is_premium, referral_code, timezone)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Asia/Bangkok')
        ON CONFLICT(id) DO UPDATE SET
          telegram_id = excluded.telegram_id,
          display_name = excluded.display_name,
@@ -236,6 +237,7 @@ export async function ensureSeedData(identity: AcademyIdentity) {
       identity.firstName,
       identity.lastName,
       identity.languageCode,
+      resolveAppLocale(identity.languageCode),
       identity.photoUrl,
       identity.isPremium ? 1 : 0,
       referralCode,
@@ -363,7 +365,7 @@ export async function getBootstrap(identity: AcademyIdentity) {
     .prepare(
       `SELECT id, telegram_id AS telegramId, display_name AS displayName,
               telegram_username AS telegramUsername, first_name AS firstName,
-              last_name AS lastName, language_code AS languageCode,
+              last_name AS lastName, language_code AS languageCode, ui_locale AS uiLocale,
               photo_url AS photoUrl, is_premium AS isPremium,
               referral_code AS referralCode, timezone, trial_started_at AS trialStartedAt
        FROM users WHERE id = ?`,
@@ -377,6 +379,7 @@ export async function getBootstrap(identity: AcademyIdentity) {
       firstName: string | null;
       lastName: string | null;
       languageCode: string | null;
+      uiLocale: string | null;
       photoUrl: string | null;
       isPremium: number;
       referralCode: string;
@@ -530,7 +533,11 @@ export async function getBootstrap(identity: AcademyIdentity) {
 
   return {
     user: user
-      ? { ...user, isPremium: Boolean(user.isPremium) }
+      ? {
+          ...user,
+          uiLocale: resolveAppLocale(user.uiLocale ?? identity.languageCode),
+          isPremium: Boolean(user.isPremium),
+        }
       : identity,
     referral,
     access,
@@ -555,6 +562,22 @@ export async function getBootstrap(identity: AcademyIdentity) {
             : "on_track",
     },
   };
+}
+
+export async function updateUserLocale(
+  identity: AcademyIdentity,
+  locale: string,
+): Promise<AppLocale> {
+  const uiLocale = resolveAppLocale(locale);
+  await getD1()
+    .prepare(
+      `UPDATE users
+       SET ui_locale = ?, updated_at = CURRENT_TIMESTAMP
+       WHERE id = ?`,
+    )
+    .bind(uiLocale, identity.id)
+    .run();
+  return uiLocale;
 }
 
 async function grantReferralRewards(userId: string, qualified: number) {

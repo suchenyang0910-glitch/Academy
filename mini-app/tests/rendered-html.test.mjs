@@ -3,15 +3,17 @@ import { access, readFile } from "node:fs/promises";
 import test from "node:test";
 
 test("builds the Academy product shell without starter content", async () => {
-  const [page, layout] = await Promise.all([
+  const [page, layout, i18n] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../lib/i18n.ts", import.meta.url), "utf8"),
     access(new URL("../dist/server/index.js", import.meta.url)),
   ]);
 
   assert.match(layout, /Academy · 学习监督系统/);
   assert.match(page, /Academy Telegram Mini App/);
-  assert.match(page, /学习监督系统/);
+  assert.match(page, /copy\.brandSubtitle/);
+  assert.match(i18n, /学习监督系统/);
   assert.match(page, /正在整理今天的学习/);
   assert.doesNotMatch(page, /codex-preview|Your site is taking shape/i);
 });
@@ -176,4 +178,25 @@ test("keeps the local logo reliable and AI research material reviewable", async 
   assert.match(crawler, /不得自动发布为正式课程/);
   assert.match(crawler, /allowedHosts/);
   assert.equal(JSON.parse(seeds).length, 3);
+});
+
+test("ships a persisted four-language interface foundation", async () => {
+  const [page, store, schema, postgresMigration, localeModule] = await Promise.all([
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../lib/academy-store.ts", import.meta.url), "utf8"),
+    readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
+    readFile(new URL("../postgres/0001_localized_spectrum.sql", import.meta.url), "utf8"),
+    readFile(new URL("../lib/i18n.ts", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(page, /api\/academy\/preferences/);
+  assert.match(page, /interfaceLanguage/);
+  assert.match(store, /updateUserLocale/);
+  assert.match(store, /ui_locale AS uiLocale/);
+  assert.match(schema, /uiLocale: text\("ui_locale"\)/);
+  assert.match(postgresMigration, /ADD COLUMN IF NOT EXISTS ui_locale/);
+  assert.match(localeModule, /"zh-Hans", "vi", "km", "th"/);
+  assert.match(localeModule, /Tiếng Việt/);
+  assert.match(localeModule, /ខ្មែរ/);
+  assert.match(localeModule, /ไทย/);
 });

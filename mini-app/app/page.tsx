@@ -2,6 +2,12 @@
 
 import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
+import {
+  LOCALE_LABELS,
+  copyFor,
+  resolveAppLocale,
+  type AppLocale,
+} from "../lib/i18n";
 
 declare global {
   interface Window {
@@ -100,6 +106,7 @@ type Bootstrap = {
     firstName: string | null;
     lastName: string | null;
     languageCode: string | null;
+    uiLocale: AppLocale;
     photoUrl: string | null;
     isPremium: boolean;
     timezone: string;
@@ -202,6 +209,8 @@ export default function Home() {
   const [selected, setSelected] = useState<TodayItem | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [toast, setToast] = useState("");
+  const [locale, setLocale] = useState<AppLocale>("zh-Hans");
+  const copy = copyFor(locale);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -209,6 +218,7 @@ export default function Home() {
     try {
       const bootstrap = await academyRequest<Bootstrap>("/api/academy/bootstrap");
       setData(bootstrap);
+      setLocale(resolveAppLocale(bootstrap.user.uiLocale ?? bootstrap.user.languageCode));
       if (bootstrap.enrollments.length === 0 && bootstrap.access.active) {
         setPickerOpen(true);
       }
@@ -226,6 +236,10 @@ export default function Home() {
     window.Telegram?.WebApp?.expand?.();
     queueMicrotask(() => void load());
   }, [load]);
+
+  useEffect(() => {
+    document.documentElement.lang = locale;
+  }, [locale]);
 
   function notify(message: string) {
     setToast(message);
@@ -264,7 +278,7 @@ export default function Home() {
           />
           <div className="brand-copy">
             <strong>ACADEMY</strong>
-            <span>学习监督系统</span>
+            <span>{copy.brandSubtitle}</span>
           </div>
           <button
             className="day-chip"
@@ -286,6 +300,7 @@ export default function Home() {
               {tab === "today" && (
                 <TodayView
                   data={data}
+                  copy={copy}
                   progress={progress}
                   completedCount={completedCount}
                   onSelect={(item) =>
@@ -330,43 +345,50 @@ export default function Home() {
               {tab === "profile" && (
                 <ProfileView
                   data={data}
+                  locale={locale}
+                  copy={copy}
                   notify={notify}
                   onPaymentFinished={load}
+                  onLocaleSaved={(next) => {
+                    setData(next);
+                    setLocale(resolveAppLocale(next.user.uiLocale));
+                    notify(copyFor(resolveAppLocale(next.user.uiLocale)).saved);
+                  }}
                 />
               )}
             </>
           )}
         </div>
 
-        <nav className="bottom-nav bottom-nav-five" aria-label="主要导航">
+        <nav className="bottom-nav bottom-nav-five" aria-label="Academy navigation">
           <NavButton
             active={tab === "today"}
             icon="⌂"
-            label="今日"
+            label={copy.today}
             onClick={() => setTab("today")}
           />
           <NavButton
             active={tab === "courses"}
             icon="≡"
-            label="课程"
+            label={copy.courses}
             onClick={() => setTab("courses")}
           />
           <NavButton
             active={tab === "notes"}
             icon="▤"
-            label="笔记"
+            label={copy.notes}
             onClick={() => setTab("notes")}
           />
           <NavButton
             active={tab === "progress"}
             icon="▥"
-            label="进度"
+            label={copy.progress}
             onClick={() => setTab("progress")}
           />
           <NavButton
             active={tab === "profile"}
             icon="○"
-            label="我的"
+            label={copy.profile}
             onClick={() => setTab("profile")}
           />
         </nav>
@@ -472,12 +494,14 @@ function ErrorState({
 
 function TodayView({
   data,
+  copy,
   progress,
   completedCount,
   onSelect,
   onOpenPicker,
 }: {
   data: Bootstrap;
+  copy: ReturnType<typeof copyFor>;
   progress: number;
   completedCount: number;
   onSelect: (item: TodayItem) => void;
@@ -503,8 +527,8 @@ function TodayView({
   return (
     <>
       <section className="hero">
-        <p className="greeting">你好，{data.user.displayName}</p>
-        <h1>今日学习</h1>
+        <p className="greeting">{copy.hello(data.user.displayName)}</p>
+        <h1>{copy.todayLearning}</h1>
         <p className="date-line">
           {new Intl.DateTimeFormat("zh-CN", {
             weekday: "long",
@@ -512,11 +536,11 @@ function TodayView({
             day: "numeric",
           }).format(new Date())}
           {" · "}
-          预计 {minutes} 分钟
+          {copy.minutes(minutes)}
         </p>
         <div className="progress-summary">
           <div className="progress-copy">
-            <span>今日完成</span>
+            <span>{copy.todayComplete}</span>
             <strong>
               {completedCount}
               <small> / {data.today.length}</small>
@@ -1330,14 +1354,22 @@ function ProgressView({
 
 function ProfileView({
   data,
+  locale,
+  copy,
   notify,
   onPaymentFinished,
+  onLocaleSaved,
 }: {
   data: Bootstrap;
+  locale: AppLocale;
+  copy: ReturnType<typeof copyFor>;
   notify: (message: string) => void;
   onPaymentFinished: () => Promise<void>;
+  onLocaleSaved: (data: Bootstrap) => void;
 }) {
   const [payingPlan, setPayingPlan] = useState<string | null>(null);
+  const [selectedLocale, setSelectedLocale] = useState<AppLocale>(locale);
+  const [savingLocale, setSavingLocale] = useState(false);
   const initials =
     data.user.displayName
       .split(/\s+/)
@@ -1356,6 +1388,21 @@ function ProfileView({
     reward: "邀请奖励",
     expired: "已到期",
   }[data.access.state];
+
+  async function saveLocale() {
+    setSavingLocale(true);
+    try {
+      const next = await academyRequest<Bootstrap>("/api/academy/preferences", {
+        method: "POST",
+        body: JSON.stringify({ uiLocale: selectedLocale }),
+      });
+      onLocaleSaved(next);
+    } catch (requestError) {
+      notify(requestError instanceof Error ? requestError.message : "Unable to save language");
+    } finally {
+      setSavingLocale(false);
+    }
+  }
 
   function localShareUrl() {
     if (data.referral.shareUrl) return data.referral.shareUrl;
@@ -1468,18 +1515,52 @@ function ProfileView({
           <strong>{data.user.telegramId ?? "Founder 本地模式"}</strong>
         </div>
         <div>
-          <span>语言</span>
+          <span>{copy.telegramLanguage}</span>
           <strong>{data.user.languageCode ?? "未提供"}</strong>
         </div>
         <div>
-          <span>学习时区</span>
+          <span>{copy.timezone}</span>
           <strong>{data.user.timezone}</strong>
         </div>
         <div>
-          <span>当前课程</span>
+          <span>{copy.activeCourses}</span>
           <strong>{data.enrollments.length} / 3 门</strong>
         </div>
       </section>
+
+      <section className="language-card" aria-label={copy.interfaceLanguage}>
+        <div>
+          <span className="eyebrow">LANGUAGE</span>
+          <h2>{copy.interfaceLanguage}</h2>
+          <p>{copy.languageHelp}</p>
+        </div>
+        <div className="language-actions">
+          <select
+            value={selectedLocale}
+            onChange={(event) => setSelectedLocale(resolveAppLocale(event.target.value))}
+            aria-label={copy.interfaceLanguage}
+          >
+            {Object.entries(LOCALE_LABELS).map(([value, label]) => (
+              <option value={value} key={value}>{label}</option>
+            ))}
+          </select>
+          <button
+            className="secondary-button"
+            type="button"
+            onClick={() => void saveLocale()}
+            disabled={savingLocale || selectedLocale === locale}
+          >
+            {savingLocale ? copy.saving : copy.saveLanguage}
+          </button>
+        </div>
+      </section>
+
+      {locale !== "zh-Hans" && (
+        <section className="content-language-notice" role="status">
+          <p>{copy.contentNotice}</p>
+          <span>{copy.contentNoticeAction}</span>
+        </section>
+      )}
 
       <section className={`access-card access-${data.access.state}`}>
         <div className="access-heading">

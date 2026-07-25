@@ -19,6 +19,7 @@ export const users = sqliteTable(
     firstName: text("first_name"),
     lastName: text("last_name"),
     languageCode: text("language_code"),
+    uiLocale: text("ui_locale").notNull().default("zh-Hans"),
     photoUrl: text("photo_url"),
     isPremium: integer("is_premium", { mode: "boolean" }).notNull().default(false),
     referralCode: text("referral_code"),
@@ -93,6 +94,52 @@ export const lessons = sqliteTable(
   (table) => [
     uniqueIndex("lessons_course_day_unique").on(table.courseId, table.day),
     index("lessons_course_idx").on(table.courseId),
+  ],
+);
+
+export const courseLocalizations = sqliteTable(
+  "course_localizations",
+  {
+    courseId: text("course_id")
+      .notNull()
+      .references(() => courses.id),
+    locale: text("locale").notNull(),
+    title: text("title").notNull(),
+    subtitle: text("subtitle").notNull(),
+    summary: text("summary").notNull(),
+    sourceVersion: text("source_version").notNull().default("v1"),
+    reviewStatus: text("review_status").notNull().default("draft"),
+    reviewedAt: text("reviewed_at"),
+    createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    primaryKey({ columns: [table.courseId, table.locale] }),
+    index("course_localizations_locale_status_idx").on(table.locale, table.reviewStatus),
+  ],
+);
+
+export const lessonLocalizations = sqliteTable(
+  "lesson_localizations",
+  {
+    lessonId: text("lesson_id")
+      .notNull()
+      .references(() => lessons.id),
+    locale: text("locale").notNull(),
+    title: text("title").notNull(),
+    objective: text("objective").notNull(),
+    content: text("content").notNull(),
+    practicePrompt: text("practice_prompt").notNull(),
+    criteriaJson: text("criteria_json").notNull().default("[]"),
+    sourceVersion: text("source_version").notNull().default("v1"),
+    reviewStatus: text("review_status").notNull().default("draft"),
+    reviewedAt: text("reviewed_at"),
+    createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    primaryKey({ columns: [table.lessonId, table.locale] }),
+    index("lesson_localizations_locale_status_idx").on(table.locale, table.reviewStatus),
   ],
 );
 

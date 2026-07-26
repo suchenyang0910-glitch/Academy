@@ -34,6 +34,47 @@ export type MultipleChoiceAssessment = {
   questions: MultipleChoiceQuestion[];
 };
 
+function buildLessonTeachingBlock(teaching: string, roundName: string, roundInstruction: string) {
+  return [
+    "先学知识，再做检查。",
+    "",
+    "今天你会学到：",
+    "1. 这节课最重要的一个核心概念",
+    "2. 它在真实工作里为什么重要",
+    "3. 你今天做题时应该抓住哪几个关键词",
+    "",
+    teaching,
+    "",
+    `本轮：${roundName}`,
+    roundInstruction,
+    "",
+    "课后检查：",
+    "完成下方 3 道选择题。它们只检查今天正文里已经讲过的关键点。",
+    "答错后先回看正文，再重新提交。",
+  ].join("\n");
+}
+
+function buildLessonPracticePrompt(criteria: string[]) {
+  return [
+    "课后检查：完成下方 3 道选择题。",
+    `重点留意这些关键词：${criteria.join("、")}。`,
+    "如果你发现某题不会，先回到上方正文，找到对应知识点，再回来作答。",
+    "目标不是蒙对，而是知道这题为什么对。",
+  ].join("\n");
+}
+
+function buildLessonPracticePromptV2(practice: string, criteria: string[]) {
+  return [
+    "课后动作：",
+    practice,
+    "",
+    "课后检查：完成下方 3 道选择题。",
+    `重点留意这些关键词：${criteria.join("、")}。`,
+    "如果发现某题不会，先回到上方正文，找到对应知识点，再回来作答。",
+    "目标不是蒙对，而是知道为什么对。",
+  ].join("\n");
+}
+
 export const COURSE_CATALOG: CourseDefinition[] = [
   {
     id: "english",
@@ -437,6 +478,141 @@ AI 可以帮你生成方案矩阵、反例和检查清单；它不能替你决�
   },
 ];
 
+const AI_LEVEL_REFINEMENTS: Partial<Record<number, Partial<AiLevel>>> = {
+  1: {
+    teaching: `今天先不讲复杂提示词，只做一件事：建立对 AI 的正确预期。
+
+你现在用到的 ChatGPT、DeepSeek、Claude，本质上都是“根据已有模式生成内容”的系统。它们擅长：
+- 整理你给的材料
+- 改写、归纳、翻译
+- 生成初稿和备选方案
+
+它们不擅长：
+- 替你承担方向判断
+- 自动保证事实一定正确
+- 在没有证据时给你高风险结论
+
+所以今天的关键不是“怎么把 AI 用得更炫”，而是先分清：
+1. 什么任务可以先交给 AI 协助
+2. 什么判断必须由人拍板
+3. 结果出来后，怎么验证它不是在胡说
+
+你只要记住一句话：AI 可以放大效率，但不能替你负责结果。`,
+    practice:
+      "请先想一件你今天真实做过的工作：写代码、整理需求、收集资料、写文案都可以。做题前先在脑中分清：AI 能协助哪一部分、人必须负责哪一部分、你会如何验证结果。",
+    criteria: ["AI 的基本工作方式", "AI 可协助部分", "人负责判断", "结果验证"],
+  },
+  2: {
+    teaching: `今天解决一个很常见的混乱：很多人把模型、应用、上下文、提示词混成一件事。
+
+先分开：
+- 模型：真正负责生成内容的能力本体
+- 应用：你看到的聊天界面或产品
+- 提示词：你给它的输入
+- 上下文：这次回答时它能看到的对话、文件和说明
+- 输出：它最终生成的结果
+
+为什么这很重要？
+因为你换一个应用、换一个模型、换一种是否联网的状态，结果都可能变。
+如果连自己在用什么层的能力都分不清，后面就会把“产品宣传语”误当成“模型真实能力”。
+
+今天的目标不是背定义，而是看懂你手上的 AI 产品到底由哪几层组成。`,
+    practice:
+      "先想一个你常用的 AI 产品。做题前，先在脑中把它拆成：应用、模型、你的输入、它看到的上下文、最后输出。",
+    criteria: ["模型", "应用", "输入", "上下文", "输出"],
+  },
+  3: {
+    teaching: `今天学一个非常关键的词：幻觉。
+
+所谓幻觉，不是 AI 故意撒谎，而是它在“不知道”的时候，依然继续生成一段看起来很像答案的话。
+最危险的地方就在这里：它经常说得很流畅、很自信，甚至格式很漂亮，但不代表内容已经核实过。
+
+所以判断一个回答能不能直接用，要先问三件事：
+1. 这是不是事实问题？
+2. 这件事是不是有时效性？
+3. 这件事出错后会不会带来高成本或高风险？
+
+如果答案是“会”，就不能只看 AI 这一轮输出，必须回到原始来源、真实数据或真人确认。
+
+今天学的不是“让 AI 少出错的技巧”，而是“你怎么识别什么时候不能直接信它”。`,
+    practice:
+      "做题前，先想一个高风险事实场景，例如付款、法务、政策、客户承诺。你要能分清：什么时候必须去找原始来源，而不是继续追问 AI。",
+    criteria: ["事实问题", "高风险判断", "原始来源", "验证动作"],
+  },
+  4: {
+    teaching: `今天开始理解：为什么同一个问题，第一轮回答往往只是草稿。
+
+AI 不会自动知道你的背景、受众、格式要求和限制条件。你没有说明，它就只能按“普通情况”猜。
+所以更好的使用方式不是一把梭哈写一条完美咒语，而是像带一个实习生：
+
+第一轮：先说明目标
+第二轮：补背景和限制
+第三轮：要求明确格式或改法
+
+每一轮都只改变一个关键变量，你才知道结果为什么变好或变坏。
+
+今天你要理解的是：高质量结果通常不是“一次问出来”，而是“多轮澄清出来”。`,
+    practice:
+      "做题前，先记住一个原则：一轮只补一个关键变量，例如背景、受众、格式、限制，不要一次把所有东西都搅在一起。",
+    criteria: ["目标", "补背景", "加限制", "多轮澄清"],
+  },
+  5: {
+    teaching: `今天才正式进入最基础的 prompt。
+
+不要把 prompt 想成玄学。它本质上是一份给 AI 的工作说明。
+一条最基础、最实用的工作说明，至少要有四件事：
+
+1. 目标：你要它完成什么
+2. 材料：它基于什么内容工作
+3. 格式：你希望输出长什么样
+4. 限制：哪些要求不能违背
+
+如果这四件事说不清，就算加再多“你是顶级专家”之类的角色包装，也很难稳定出结果。
+
+今天先练“把一件事说明白”，而不是追求复杂技巧。`,
+    practice:
+      "做题前，先想一个低风险真实任务，比如整理一段笔记、改写一封消息、归纳需求。你要能分清它的目标、材料、格式和限制。",
+    criteria: ["目标", "材料", "格式", "限制"],
+  },
+  6: {
+    teaching: `当基础说明仍然不够稳定时，才轮到三个进阶工具：
+- 示例
+- 视角 / 角色
+- 拆步骤
+
+示例的作用：告诉 AI 什么样的答案算“对味”。
+角色的作用：让它从某个判断框架出发，例如客户成功、产品经理、运营，而不是空泛地“像专家一样回答”。
+拆步骤的作用：把复杂任务拆成可检查的小步，减少它乱跳结论。
+
+今天最重要的不是把三种都堆上去，而是学会一次只加一个，观察它有没有真的改善结果。`,
+    practice:
+      "做题前，先记住：如果想验证一个技巧是否有效，就保持任务不变，只增加一个变量，例如只加一个示例，或者只要求拆步骤。",
+    criteria: ["示例", "角色/视角", "拆步骤", "单变量比较"],
+  },
+  7: {
+    teaching: `今天进入工作流思维。
+
+很多新手一上来就问“怎么做 Agent”，其实先要理解：为什么单次问答不够。
+当一个任务包含多步动作时，例如：
+- 收集信息
+- 清洗和筛选
+- 归纳判断
+- 生成输出
+
+这时你需要的不是更长的一句话，而是把任务拆成一个流程。
+
+所谓 workflow，不是为了炫技，而是为了：
+1. 让每一步更容易检查
+2. 减少一次输出里混入太多错误
+3. 知道出了问题是卡在收集、判断还是输出
+
+今天先理解“多步任务为什么要拆流程”，还不用你立刻搭复杂 Agent。`,
+    practice:
+      "做题前，先想一个你做过的真实任务，例如调研、需求整理、做周报。把它在脑中拆成至少三步：输入、处理中间层、最终输出。",
+    criteria: ["多步任务", "流程拆分", "输入", "处理中间层", "输出"],
+  },
+};
+
 const ROUND_META = [
   {
     name: "理解与模仿",
@@ -508,7 +684,11 @@ export function buildAiLesson(day: number): FixedLesson {
   if (day <= 56) {
     const level = ((day - 1) % 14) + 1;
     const round = Math.floor((day - 1) / 14) + 1;
-    const definition = AI_LEVELS[level - 1];
+    const baseDefinition = AI_LEVELS[level - 1];
+    const definition = {
+      ...baseDefinition,
+      ...(AI_LEVEL_REFINEMENTS[level] ?? {}),
+    };
     const roundMeta = ROUND_META[round - 1];
 
     return {
@@ -581,8 +761,45 @@ export function buildAiLesson(day: number): FixedLesson {
   };
 }
 
+function buildAiLessonAligned(day: number): FixedLesson {
+  if (day < 1 || day > 60) {
+    throw new Error("AI lesson day must be between 1 and 60");
+  }
+
+  if (day <= 56) {
+    const level = ((day - 1) % 14) + 1;
+    const round = Math.floor((day - 1) / 14) + 1;
+    const definition = AI_LEVELS[level - 1];
+    const roundMeta = ROUND_META[round - 1];
+
+    return {
+      id: `ai-day-${day}`,
+      courseId: "ai-command-skills",
+      day,
+      level,
+      round,
+      title: `Level ${level} 路 ${definition.title}`,
+      objective: definition.objective,
+      content: buildLessonTeachingBlock(
+        definition.teaching ?? definition.core,
+        roundMeta.name,
+        roundMeta.instruction,
+      ),
+      practicePrompt: buildLessonPracticePromptV2(
+        definition.practice,
+        definition.criteria,
+      ),
+      criteria: definition.criteria,
+      assessment: buildKnowledgeCheck(definition),
+      estimatedMinutes: 20,
+    };
+  }
+
+  return buildAiLesson(day);
+}
+
 export const AI_LESSONS = Array.from({ length: 60 }, (_, index) =>
-  buildAiLesson(index + 1),
+  buildAiLessonAligned(index + 1),
 );
 
 type SpiralLevel = {

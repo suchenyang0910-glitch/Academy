@@ -999,6 +999,46 @@ blockquote {
   font: 400 12px/1.65 Georgia, "Songti SC", serif;
 }
 
+.mission-card {
+  margin-top: 14px;
+  padding: 18px 16px;
+  border: 1px solid rgba(187, 103, 72, 0.18);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.65), rgba(255, 255, 255, 0.42)),
+    rgba(246, 240, 230, 0.92);
+}
+
+.mission-card h2 {
+  margin: 8px 0 6px;
+  color: #1f1d19;
+  font: 600 24px/1.15 Georgia, "Songti SC", serif;
+}
+
+.mission-card > p {
+  margin: 0;
+  color: #575248;
+  font: 400 13px/1.7 Georgia, "Songti SC", serif;
+}
+
+.mission-evidence {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(31, 29, 25, 0.08);
+  display: grid;
+  gap: 4px;
+}
+
+.mission-evidence strong {
+  color: var(--terracotta);
+  font: 500 10px/1.4 Georgia, serif;
+  letter-spacing: 0.12em;
+}
+
+.mission-evidence span {
+  color: #3b372f;
+  font: 400 12px/1.65 Georgia, "Songti SC", serif;
+}
+
 .supervision-completed {
   border-left-color: var(--sage);
   background: rgba(82, 104, 79, 0.07);
@@ -1518,6 +1558,45 @@ blockquote {
   color: #4d4940;
   font: 400 15px/1.8 Georgia, "Songti SC", serif;
   white-space: pre-line;
+}
+
+.rich-lesson-text {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.rich-lesson-text.compact {
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.lesson-paragraph-block {
+  margin: 0;
+  color: #4d4940;
+  font: 400 15px/1.8 Georgia, "Songti SC", serif;
+  white-space: pre-line;
+}
+
+.rich-lesson-text.compact .lesson-paragraph-block {
+  font-size: 13px;
+  line-height: 1.75;
+}
+
+.lesson-list-block {
+  margin: 0;
+  padding-left: 20px;
+  color: #4d4940;
+  font: 400 15px/1.8 Georgia, "Songti SC", serif;
+}
+
+.rich-lesson-text.compact .lesson-list-block {
+  font-size: 13px;
+  line-height: 1.75;
+}
+
+.lesson-list-block li + li {
+  margin-top: 6px;
 }
 
 .lesson-reading h2 {

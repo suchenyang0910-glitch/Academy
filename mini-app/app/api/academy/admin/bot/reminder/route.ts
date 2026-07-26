@@ -1,5 +1,5 @@
 import {
-  createReminder,
+  deliverReminder,
   ensureSeedData,
   verifyCronSecret,
   type AcademyIdentity,
@@ -56,10 +56,9 @@ export async function POST(request: Request) {
       return Response.json({ error: "level must be 1-4" }, { status: 400 });
     }
 
-    const result = await createReminder(identity.id, level as 1 | 2 | 3 | 4);
+    const result = await deliverReminder(identity.id, level as 1 | 2 | 3 | 4);
     return Response.json({ userId: identity.id, ...result });
   } catch (error) {
     return errorResponse(error);
   }
 }
-

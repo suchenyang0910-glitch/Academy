@@ -97,6 +97,47 @@ type Note = {
   createdAt: string;
 };
 
+type AbilityAssessment = {
+  id: number;
+  courseId: string;
+  stageKey: "day0" | "day7" | "day21";
+  version: string;
+  prompt: string;
+  rubricJson: string;
+  originalAnswer: string;
+  revisedAnswer: string | null;
+  score: number;
+  status: string;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type DueAssessment = {
+  courseId: string;
+  stageKey: "day0" | "day7" | "day21";
+  label: string;
+  targetDay: number;
+  title: string;
+  prompt: string;
+  rubric: string[];
+  completed: boolean;
+};
+
+type AssessmentSubmissionResponse = {
+  assessment: AbilityAssessment;
+  bootstrap: Bootstrap;
+};
+
+type ReviewResolveResponse = {
+  item: Bootstrap["reviewQueue"][number];
+  bootstrap: Bootstrap;
+};
+
+type LessonItemResponse = {
+  item: TodayItem;
+};
+
 type Bootstrap = {
   user: {
     id: string;
@@ -112,16 +153,37 @@ type Bootstrap = {
     timezone: string;
     trialStartedAt: string;
   };
+  reminderPreferences: {
+    enabled: boolean;
+    reminderHour: number;
+    dndStartHour: number | null;
+    dndEndHour: number | null;
+  };
   referral: {
     code: string;
     total: number;
     pending: number;
+    review: number;
     qualified: number;
+    rejected: number;
     rewardTarget: number;
     rewardDays: number;
     earnedRewards: number;
     nextRewardRemaining: number;
     shareUrl: string | null;
+    items: Array<{
+      id: number;
+      invitedUserId: string;
+      displayName: string;
+      telegramUsername: string | null;
+      status: string;
+      statusReason: string | null;
+      riskLevel: string;
+      riskSignals: string[];
+      qualifiedAt: string | null;
+      rewardGrantedAt: string | null;
+      createdAt: string;
+    }>;
   };
   access: {
     active: boolean;
@@ -180,6 +242,58 @@ type Bootstrap = {
   today: TodayItem[];
   learningAhead: TodayItem[];
   notes: Note[];
+  abilityAssessments: AbilityAssessment[];
+  dueAssessments: DueAssessment[];
+  reviewQueue: Array<{
+    id: number;
+    sourceType: string;
+    sourceRef: string;
+    courseId: string | null;
+    lessonId: string | null;
+    assessmentStageKey: string | null;
+    reason: string;
+    title: string;
+    recommendation: string;
+    dueOn: string;
+    status: string;
+    resolvedAt: string | null;
+    createdAt: string;
+    updatedAt: string;
+  }>;
+  assessmentRecommendations: Array<{
+    courseId: string;
+    courseTitle: string;
+    stageKey: "day0" | "day7" | "day21";
+    label: string;
+    title: string;
+    priority: "due" | "revise";
+    status: "pending" | "needs_revision";
+    message: string;
+    actionLabel: string;
+  }>;
+  metrics: {
+    effectiveLearningDays: number;
+    currentEffectiveStreak: number;
+    latestEffectiveDay: string | null;
+    completedEvidenceCount: number;
+    completionBreakdown: {
+      self: number;
+      prompted: number;
+      supervised: number;
+    };
+    reminderMetrics: {
+      deliveredCount: number;
+      clickedCount: number;
+      completedCount: number;
+      averageCompletionMinutes: number | null;
+      byLevel: {
+        l1: number;
+        l2: number;
+        l3: number;
+        l4: number;
+      };
+    };
+  };
   supervision: {
     todayKey: string;
     timezone: string;
@@ -249,6 +363,8 @@ export default function Home() {
   const [error, setError] = useState("");
   const [tab, setTab] = useState<Tab>("today");
   const [selected, setSelected] = useState<TodayItem | null>(null);
+  const [selectedAssessment, setSelectedAssessment] = useState<DueAssessment | null>(null);
+  const [selectedReview, setSelectedReview] = useState<Bootstrap["reviewQueue"][number] | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [toast, setToast] = useState("");
   const [locale, setLocale] = useState<AppLocale>("zh-Hans");
@@ -283,6 +399,18 @@ export default function Home() {
     document.documentElement.lang = locale;
   }, [locale]);
 
+  useEffect(() => {
+    const reminderEventId = new URLSearchParams(window.location.search).get(
+      "reminder_event",
+    );
+    if (!reminderEventId) return;
+
+    void academyRequest<{ ok: boolean }>("/api/academy/reminders/open", {
+      method: "POST",
+      body: JSON.stringify({ reminderEventId: Number(reminderEventId) }),
+    }).catch(() => undefined);
+  }, []);
+
   function notify(message: string) {
     setToast(message);
     window.setTimeout(() => setToast(""), 1800);
@@ -303,6 +431,43 @@ export default function Home() {
   const totalCount = data?.today.length ?? 0;
   const progress =
     totalCount === 0 ? 0 : Math.round((completedCount / totalCount) * 100);
+
+  const openReviewItems = data.reviewQueue.filter((item) => item.status === "open");
+  const incompleteTodayLesson = data.today.find(
+    (item) => item.submission?.status !== "completed",
+  );
+  const primaryMission =
+    data.assessmentRecommendations.length > 0
+      ? {
+          eyebrow: "TODAY'S MISSION",
+          title: "先处理阶段检查",
+          detail: data.assessmentRecommendations[0]?.message ?? "先完成当前阶段测评。",
+          evidence: "完成一份阶段测评并留下可回看结果。",
+        }
+      : openReviewItems.length > 0
+        ? {
+            eyebrow: "TODAY'S MISSION",
+            title: "先清理复习队列",
+            detail:
+              openReviewItems[0]?.recommendation ??
+              "先补掉上一轮没吃透的知识点。",
+            evidence: "完成 1 条复习项并修正一次旧错误。",
+          }
+        : incompleteTodayLesson
+          ? {
+              eyebrow: "TODAY'S MISSION",
+              title: `先完成 ${incompleteTodayLesson.enrollment.title}`,
+              detail:
+                incompleteTodayLesson.lesson?.objective ??
+                "今天先交付一份最小可验证输出。",
+              evidence: "留下今天的提交记录，并通过本课检查。",
+            }
+          : {
+              eyebrow: "TODAY'S MISSION",
+              title: "今天主线已完成",
+              detail: "如果你还想继续，可以进入预习区，但它不会替代明天主线。",
+              evidence: "额外学习会被记录为证据，但不会覆盖今日完成记录。",
+            };
 
   return (
     <main className="app-shell">
@@ -350,6 +515,8 @@ export default function Home() {
                     data.access.active ? setSelected(item) : setTab("profile")
                   }
                   onOpenPicker={openCoursePicker}
+                  onOpenAssessment={(assessment) => setSelectedAssessment(assessment)}
+                  onOpenReview={(item) => setSelectedReview(item)}
                 />
               )}
               {tab === "courses" && (
@@ -359,6 +526,7 @@ export default function Home() {
                   enrollments={data.enrollments}
                   today={data.today}
                   learningAhead={data.learningAhead}
+                  supervision={data.supervision}
                   onSelect={(item) =>
                     data.access.active ? setSelected(item) : setTab("profile")
                   }
@@ -386,6 +554,7 @@ export default function Home() {
                   data={data}
                   progress={progress}
                   completedCount={completedCount}
+                  onOpenAssessment={(assessment) => setSelectedAssessment(assessment)}
                 />
               )}
               {tab === "profile" && (
@@ -490,6 +659,74 @@ export default function Home() {
           />
         )}
 
+        {selectedAssessment && data && (
+          <AssessmentSheet
+            assessment={selectedAssessment}
+            existing={data.abilityAssessments.find(
+              (item) =>
+                item.courseId === selectedAssessment.courseId &&
+                item.stageKey === selectedAssessment.stageKey,
+            ) ?? null}
+            courseTitle={
+              data.catalog.find((item) => item.id === selectedAssessment.courseId)?.title ??
+              selectedAssessment.courseId
+            }
+            onClose={() => setSelectedAssessment(null)}
+            onSubmitted={(next, submitted) => {
+              setData(next);
+              setSelectedAssessment(null);
+              notify(
+                submitted.status === "completed"
+                  ? `${selectedAssessment.label} 已记录`
+                  : `${selectedAssessment.label} 已保存，可继续修正`,
+              );
+            }}
+          />
+        )}
+
+        {selectedReview && data && (
+          <ReviewQueueSheet
+            item={selectedReview}
+            relatedAssessment={
+              selectedReview.sourceType === "assessment"
+                ? data.dueAssessments.find(
+                    (assessment) =>
+                      `${assessment.courseId}:${assessment.stageKey}` ===
+                      selectedReview.sourceRef,
+                  ) ?? null
+                : null
+            }
+            relatedLesson={
+              selectedReview.lessonId
+                ? [...data.today, ...data.learningAhead].find(
+                    (entry) => entry.lesson?.id === selectedReview.lessonId,
+                  ) ?? null
+                : null
+            }
+            onClose={() => setSelectedReview(null)}
+            onOpenAssessment={(assessment) => {
+              setSelectedReview(null);
+              setSelectedAssessment(assessment);
+            }}
+            onOpenLesson={(item) => {
+              setSelectedReview(null);
+              setSelected(item);
+            }}
+            onOpenHistoricalLesson={async (lessonId) => {
+              const result = await academyRequest<LessonItemResponse>(
+                `/api/academy/lessons?lessonId=${encodeURIComponent(lessonId)}`,
+              );
+              setSelectedReview(null);
+              setSelected(result.item);
+            }}
+            onResolved={(next) => {
+              setData(next);
+              setSelectedReview(null);
+              notify("这条复习项已处理");
+            }}
+          />
+        )}
+
         {toast && <div className="toast">{toast}</div>}
       </section>
     </main>
@@ -549,6 +786,8 @@ function TodayView({
   completedCount,
   onSelect,
   onOpenPicker,
+  onOpenAssessment,
+  onOpenReview,
 }: {
   data: Bootstrap;
   copy: ReturnType<typeof copyFor>;
@@ -557,6 +796,8 @@ function TodayView({
   completedCount: number;
   onSelect: (item: TodayItem) => void;
   onOpenPicker: () => void;
+  onOpenAssessment: (assessment: DueAssessment) => void;
+  onOpenReview: (item: Bootstrap["reviewQueue"][number]) => void;
 }) {
   const minutes = data.enrollments.reduce(
     (sum, item) => sum + item.dailyMinutes,
@@ -574,6 +815,15 @@ function TodayView({
   const learningAhead = data.learningAhead.filter((item) =>
     completedCourseIds.has(item.enrollment.courseId),
   );
+  const completedTodayCount = completedCourseIds.size;
+  const studyAheadMessage =
+    data.supervision.lagDays >= 2
+      ? "你已经连续中断。预习区先关闭，等当前任务补上后再解锁。"
+      : data.supervision.lagDays === 1
+        ? "昨天的主线还没补完，预习区先锁住。先把当前任务处理掉。"
+        : completedTodayCount === 0
+          ? "任意完成一门今天的主线后，才会解锁那门课接下来的 3 节预习。"
+          : "已完成的课程可以继续向前；额外学习会留下证据，但不会替代明天的主线。";
 
   return (
     <>
@@ -613,6 +863,105 @@ function TodayView({
         <span>{supervisionCopy(data.supervision).label}</span>
         <p>{supervisionCopy(data.supervision).message}</p>
       </section>
+
+      <section className="mission-card" aria-label="Today's mission">
+        <span className="eyebrow">{primaryMission.eyebrow}</span>
+        <h2>{primaryMission.title}</h2>
+        <p>{primaryMission.detail}</p>
+        <div className="mission-evidence">
+          <strong>完成证据</strong>
+          <span>{primaryMission.evidence}</span>
+        </div>
+      </section>
+
+      {data.assessmentRecommendations.length > 0 && (
+        <section className="lesson-section">
+          <div className="section-heading">
+            <div>
+              <span className="eyebrow">CHECKPOINT FIRST</span>
+              <h2>先处理阶段测试</h2>
+            </div>
+          </div>
+          <div className="lesson-list">
+            {data.assessmentRecommendations.map((item) => {
+              const target = data.dueAssessments.find(
+                (assessment) =>
+                  assessment.courseId === item.courseId &&
+                  assessment.stageKey === item.stageKey,
+              );
+              if (!target) return null;
+              return (
+                <article
+                  className={`lesson-row ${item.status === "needs_revision" ? "is-done" : ""}`}
+                  key={`${item.courseId}:${item.stageKey}:today`}
+                  style={{ "--lesson-accent": "#8f786e" } as React.CSSProperties}
+                >
+                  <button
+                    className="lesson-main"
+                    type="button"
+                    onClick={() => onOpenAssessment(target)}
+                  >
+                    <span className="lesson-number">
+                      {item.stageKey.toUpperCase()}
+                    </span>
+                    <span className="lesson-copy">
+                      <strong>{item.courseTitle}</strong>
+                      <span>{item.message}</span>
+                    </span>
+                    <span className="lesson-arrow" aria-hidden="true">
+                      ›
+                    </span>
+                  </button>
+                  <span className={`evidence-state ${item.status === "needs_revision" ? "done" : ""}`}>
+                    {item.status === "needs_revision" ? "!" : "·"}
+                  </span>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {data.reviewQueue.filter((item) => item.status === "open").length > 0 && (
+        <section className="lesson-section">
+          <div className="section-heading">
+            <div>
+              <span className="eyebrow">REVIEW QUEUE</span>
+              <h2>待复习内容</h2>
+            </div>
+          </div>
+          <div className="lesson-list">
+            {data.reviewQueue
+              .filter((item) => item.status === "open")
+              .slice(0, 4)
+              .map((item, index) => (
+                <article
+                  className="lesson-row"
+                  key={`review-${item.id}`}
+                  style={{ "--lesson-accent": "#a48250" } as React.CSSProperties}
+                >
+                  <button
+                    className="lesson-main"
+                    type="button"
+                    onClick={() => onOpenReview(item)}
+                  >
+                    <span className="lesson-number">
+                      R{String(index + 1).padStart(2, "0")}
+                    </span>
+                    <span className="lesson-copy">
+                      <strong>{item.title}</strong>
+                      <span>{item.recommendation}</span>
+                    </span>
+                    <span className="lesson-arrow" aria-hidden="true">
+                      ›
+                    </span>
+                  </button>
+                  <span className="evidence-state">↺</span>
+                </article>
+              ))}
+          </div>
+        </section>
+      )}
 
       <section className="lesson-section">
         <div className="section-heading">
@@ -684,7 +1033,7 @@ function TodayView({
         {learningAhead.length ? (
           <>
             <p className="continue-study-copy">
-              已完成的课程可以继续向前。下面是该课程接下来的 3 节预习；完成它们会保存为额外学习证据，但不会挤掉未来每天的主线。
+              {studyAheadMessage}
             </p>
             <div className="continue-study-list">
               {learningAhead.map((item) => (
@@ -707,7 +1056,7 @@ function TodayView({
           </>
         ) : (
           <p className="continue-study-copy">
-            任意完成一门今天的主线练习，就会开放那门课接下来的 3 节。先留下学习证据，再继续向前，不让“多学”变成只浏览不输出。
+            {studyAheadMessage}
           </p>
         )}
       </section>
@@ -857,6 +1206,7 @@ function CoursesView({
   enrollments,
   today,
   learningAhead,
+  supervision,
   onSelect,
   onEdit,
 }: {
@@ -865,6 +1215,7 @@ function CoursesView({
   enrollments: Enrollment[];
   today: TodayItem[];
   learningAhead: TodayItem[];
+  supervision: Bootstrap["supervision"];
   onSelect: (item: TodayItem) => void;
   onEdit: () => void;
 }) {
@@ -883,6 +1234,14 @@ function CoursesView({
   const nextLessons = learningAhead.filter(
     (item) => item.enrollment.courseId === focusedCourseId,
   );
+  const nextUnlockMessage =
+    supervision.lagDays >= 2
+      ? "已经连续中断，预习区先关闭。先把当前必修课补上。"
+      : supervision.lagDays === 1
+        ? "你已经落后 1 天。下一课暂不解锁，先完成当前主线。"
+        : mainDone
+          ? "当前主线已完成，下面 3 节可以继续学习，但只记为额外证据。"
+          : "完成当前主线后才会解锁后续 3 节，不抢占明天的必修。";
 
   if (focusedCourse && focusedEnrollment && currentLesson) {
     const continuation = continuationFor(focusedCourse.id);
@@ -895,6 +1254,8 @@ function CoursesView({
         currentLesson={currentLesson}
         nextLessons={nextLessons}
         mainDone={Boolean(mainDone)}
+        lagDays={supervision.lagDays}
+        nextUnlockMessage={nextUnlockMessage}
         graduated={hasGraduated}
         continuation={continuation}
         onBack={() => setFocusedCourseId(null)}
@@ -973,6 +1334,8 @@ function CoursePathView({
   currentLesson,
   nextLessons,
   mainDone,
+  lagDays,
+  nextUnlockMessage,
   graduated,
   continuation,
   onBack,
@@ -983,6 +1346,8 @@ function CoursePathView({
   currentLesson: TodayItem;
   nextLessons: TodayItem[];
   mainDone: boolean;
+  lagDays: number;
+  nextUnlockMessage: string;
   graduated: boolean;
   continuation?: { title: string; description: string };
   onBack: () => void;
@@ -1016,18 +1381,18 @@ function CoursePathView({
         <section className={`path-next ${mainDone ? "is-open" : ""}`}>
           <span className="eyebrow">OPTIONAL NEXT</span>
           <h2>继续加学</h2>
-          <p>{mainDone ? "主线完成后，这 3 节可立即继续学习。" : "完成当前主线后解锁，不抢占明天的必修。"}</p>
+          <p>{nextUnlockMessage}</p>
           <div>
             {nextLessons.map((item) => (
               <button
                 key={item.lesson?.id}
                 type="button"
-                disabled={!mainDone}
+                disabled={!mainDone || lagDays > 0}
                 onClick={() => onSelect(item)}
               >
                 <span>DAY {String(item.lesson?.day ?? 0).padStart(2, "0")}</span>
                 <strong>{item.lesson?.title}</strong>
-                <i>{item.submission?.status === "completed" ? "已完成" : mainDone ? "开始 →" : "待解锁"}</i>
+                <i>{item.submission?.status === "completed" ? "已完成" : lagDays > 0 ? "先补当前" : mainDone ? "开始 →" : "待解锁"}</i>
               </button>
             ))}
           </div>
@@ -1056,6 +1421,7 @@ function LessonSheet({
   onSubmitted: (submission: Submission) => void;
 }) {
   const lesson = item.lesson!;
+  const canSubmit = item.enrollment.active === 1;
   const [answer, setAnswer] = useState("");
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
   const [submission, setSubmission] = useState(item.submission);
@@ -1115,7 +1481,7 @@ function LessonSheet({
         <section className="lesson-reading">
           <span className="eyebrow">01 · LEARN FIRST</span>
           <h2>先学，再做</h2>
-          <p>{lesson.content}</p>
+          <RichLessonText text={lesson.content} />
           {!knowledgeRead && (
             <button
               className="secondary-button learn-complete-button"
@@ -1134,9 +1500,13 @@ function LessonSheet({
             <p className="practice-locked">
               先完成上方的学习卡。看完句型和示例后，再开始写你的答案。
             </p>
+          ) : !canSubmit ? (
+            <p className="practice-locked">
+              杩欐槸涓€鑺傚巻鍙茶绋嬶紝鐜板湪鍙互鍥炵湅鍜屽涔狅紝浣嗕笉鍐嶆帴鍙楁彁浜ゃ€傚鏋滆缁х画鐣欎笅鏂拌瘉鎹紝璇峰洖鍒板綋鍓嶅惎鐢ㄧ殑璇剧▼銆?
+            </p>
           ) : (
             <>
-          <p>{lesson.practicePrompt}</p>
+          <RichLessonText text={lesson.practicePrompt} compact />
           {lesson.assessment ? (
             <div className="multiple-choice">
               {lesson.assessment.questions.map((question, questionIndex) => (
@@ -1195,6 +1565,7 @@ function LessonSheet({
               type="button"
               onClick={submit}
               disabled={
+                !canSubmit ||
                 submitting ||
                 (lesson.assessment
                   ? Object.keys(selectedOptions).length !== lesson.assessment.questions.length
@@ -1324,11 +1695,13 @@ function ProgressView({
   data,
   progress,
   completedCount,
+  onOpenAssessment,
 }: {
   copy: ReturnType<typeof copyFor>;
   data: Bootstrap;
   progress: number;
   completedCount: number;
+  onOpenAssessment: (assessment: DueAssessment) => void;
 }) {
   const evidence = data.today.filter((item) => item.submission).length;
   const averageScore = data.today.length
@@ -1379,6 +1752,13 @@ function ProgressView({
           <strong>{averageScore || "—"}</strong>
           <small>满分 100</small>
         </article>
+        <article>
+          <span>有效学习日</span>
+          <strong>{data.metrics.effectiveLearningDays}</strong>
+          <small>
+            当前连续 {data.metrics.currentEffectiveStreak} 天
+          </small>
+        </article>
       </section>
       {data.supervision.lagDays > 0 && (
         <section className="lag-warning">
@@ -1416,6 +1796,71 @@ function ProgressView({
           );
         })}
       </section>
+      {data.dueAssessments.length > 0 && (
+        <section className="subject-progress">
+          <div className="section-heading">
+            <div>
+              <span className="eyebrow">CHECKPOINTS</span>
+              <h2>阶段测试</h2>
+            </div>
+          </div>
+          {data.dueAssessments.map((item) => (
+            <button
+              type="button"
+              className="subject-line subject-line-button"
+              key={`${item.courseId}:${item.stageKey}`}
+              onClick={() => onOpenAssessment(item)}
+            >
+              <span className="subject-swatch" style={{ background: "#8f786e" }} />
+              <strong>{item.title}</strong>
+              <div className="mini-progress">
+                <span style={{ width: item.completed ? "100%" : "0%" }} />
+              </div>
+              <small>{item.completed ? "查看 / 重提" : `${item.label} 待完成`}</small>
+            </button>
+          ))}
+        </section>
+      )}
+      <AssessmentComparison data={data} />
+      <section className="stat-grid">
+        <article>
+          <span>自主完成</span>
+          <strong>{data.metrics.completionBreakdown.self}</strong>
+          <small>未被提醒直接完成</small>
+        </article>
+        <article>
+          <span>提醒完成</span>
+          <strong>{data.metrics.completionBreakdown.prompted}</strong>
+          <small>L1 / L2 后完成</small>
+        </article>
+        <article>
+          <span>强监督完成</span>
+          <strong>{data.metrics.completionBreakdown.supervised}</strong>
+          <small>L3 / L4 后完成</small>
+        </article>
+      </section>
+      <section className="stat-grid">
+        <article>
+          <span>提醒送达</span>
+          <strong>{data.metrics.reminderMetrics.deliveredCount}</strong>
+          <small>已成功发到 Telegram</small>
+        </article>
+        <article>
+          <span>提醒后完成</span>
+          <strong>{data.metrics.reminderMetrics.completedCount}</strong>
+          <small>
+            平均 {data.metrics.reminderMetrics.averageCompletionMinutes ?? "—"} 分钟
+          </small>
+        </article>
+        <article>
+          <span>高强度完成</span>
+          <strong>
+            {data.metrics.reminderMetrics.byLevel.l3 +
+              data.metrics.reminderMetrics.byLevel.l4}
+          </strong>
+          <small>L3 / L4 转化</small>
+        </article>
+      </section>
     </>
   );
 }
@@ -1438,6 +1883,18 @@ function ProfileView({
   const [payingPlan, setPayingPlan] = useState<string | null>(null);
   const [selectedLocale, setSelectedLocale] = useState<AppLocale>(locale);
   const [savingLocale, setSavingLocale] = useState(false);
+  const [reminderEnabled, setReminderEnabled] = useState(
+    data.reminderPreferences.enabled,
+  );
+  const [reminderHour, setReminderHour] = useState(
+    data.reminderPreferences.reminderHour,
+  );
+  const [dndStartHour, setDndStartHour] = useState<number | "">(
+    data.reminderPreferences.dndStartHour ?? "",
+  );
+  const [dndEndHour, setDndEndHour] = useState<number | "">(
+    data.reminderPreferences.dndEndHour ?? "",
+  );
   const [pricingPreview, setPricingPreview] = useState<PricingPreviewSnapshot | null>(null);
   const [lockingPricing, setLockingPricing] = useState(false);
   const [redeemCredits, setRedeemCredits] = useState(true);
@@ -1470,12 +1927,29 @@ function ProfileView({
     expired: copy.accessExpired,
   }[data.access.state];
 
+  useEffect(() => {
+    setSelectedLocale(locale);
+  }, [locale]);
+
+  useEffect(() => {
+    setReminderEnabled(data.reminderPreferences.enabled);
+    setReminderHour(data.reminderPreferences.reminderHour);
+    setDndStartHour(data.reminderPreferences.dndStartHour ?? "");
+    setDndEndHour(data.reminderPreferences.dndEndHour ?? "");
+  }, [data.reminderPreferences]);
+
   async function saveLocale() {
     setSavingLocale(true);
     try {
       const next = await academyRequest<Bootstrap>("/api/academy/preferences", {
         method: "POST",
-        body: JSON.stringify({ uiLocale: selectedLocale }),
+        body: JSON.stringify({
+          uiLocale: selectedLocale,
+          reminderEnabled,
+          reminderHour,
+          dndStartHour: dndStartHour === "" ? null : dndStartHour,
+          dndEndHour: dndEndHour === "" ? null : dndEndHour,
+        }),
       });
       onLocaleSaved(next);
     } catch (requestError) {
@@ -1693,6 +2167,87 @@ function ProfileView({
         </div>
       </section>
 
+      <section className="language-card" aria-label="提醒偏好">
+        <div>
+          <span className="eyebrow">REMINDERS</span>
+          <h2>{locale === "vi" ? "Nhắc học" : locale === "km" ? "ការរំលឹក" : locale === "th" ? "การเตือน" : "学习提醒"}</h2>
+          <p>
+            {locale === "vi"
+              ? "Tắt là không nhắc. L1 sẽ gửi sau giờ bạn đặt; khung yên tĩnh sẽ không gửi."
+              : locale === "km"
+                ? "បិទហើយគឺមិនផ្ញើរ។ L1 នឹងផ្ញើបន្ទាប់ពីម៉ោងដែលអ្នកកំណត់ ហើយម៉ោងស្ងប់នឹងមិនរំខាន។"
+                : locale === "th"
+                  ? "ปิดแล้วจะไม่เตือน L1 จะส่งหลังเวลาที่คุณตั้งไว้ และจะไม่ส่งในช่วงห้ามรบกวน"
+                  : "关闭后不再催促；L1 会在你设定的学习时间后触发，免打扰时段内不会发送。"}
+          </p>
+        </div>
+        <div className="language-actions reminder-settings-grid">
+          <label className="setting-stack">
+            <span>{locale === "vi" ? "Trạng thái" : locale === "km" ? "ស្ថានភាព" : locale === "th" ? "สถานะ" : "提醒状态"}</span>
+            <select
+              value={reminderEnabled ? "on" : "off"}
+              onChange={(event) => setReminderEnabled(event.target.value === "on")}
+            >
+              <option value="on">{locale === "vi" ? "Bật" : locale === "km" ? "បើក" : locale === "th" ? "เปิด" : "开启"}</option>
+              <option value="off">{locale === "vi" ? "Tắt" : locale === "km" ? "បិទ" : locale === "th" ? "ปิด" : "暂停"}</option>
+            </select>
+          </label>
+          <label className="setting-stack">
+            <span>{locale === "vi" ? "Giờ bắt đầu" : locale === "km" ? "ម៉ោងចាប់ផ្តើម" : locale === "th" ? "เวลาเริ่ม" : "学习时间"}</span>
+            <select
+              value={String(reminderHour)}
+              onChange={(event) => setReminderHour(Number(event.target.value))}
+            >
+              {Array.from({ length: 24 }, (_, hour) => (
+                <option value={hour} key={hour}>
+                  {String(hour).padStart(2, "0")}:00
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="setting-stack">
+            <span>{locale === "vi" ? "Yên tĩnh từ" : locale === "km" ? "ស្ងប់ចាប់ពី" : locale === "th" ? "ห้ามรบกวนเริ่ม" : "免打扰开始"}</span>
+            <select
+              value={dndStartHour === "" ? "" : String(dndStartHour)}
+              onChange={(event) =>
+                setDndStartHour(event.target.value === "" ? "" : Number(event.target.value))
+              }
+            >
+              <option value="">{locale === "vi" ? "Không đặt" : locale === "km" ? "មិនកំណត់" : locale === "th" ? "ไม่ตั้ง" : "不设置"}</option>
+              {Array.from({ length: 24 }, (_, hour) => (
+                <option value={hour} key={hour}>
+                  {String(hour).padStart(2, "0")}:00
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="setting-stack">
+            <span>{locale === "vi" ? "Yên tĩnh đến" : locale === "km" ? "ស្ងប់រហូតដល់" : locale === "th" ? "ห้ามรบกวนถึง" : "免打扰结束"}</span>
+            <select
+              value={dndEndHour === "" ? "" : String(dndEndHour)}
+              onChange={(event) =>
+                setDndEndHour(event.target.value === "" ? "" : Number(event.target.value))
+              }
+            >
+              <option value="">{locale === "vi" ? "Không đặt" : locale === "km" ? "មិនកំណត់" : locale === "th" ? "ไม่ตั้ง" : "不设置"}</option>
+              {Array.from({ length: 24 }, (_, hour) => (
+                <option value={hour} key={hour}>
+                  {String(hour).padStart(2, "0")}:00
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            className="secondary-button"
+            type="button"
+            onClick={() => void saveLocale()}
+            disabled={savingLocale}
+          >
+            {savingLocale ? copy.saving : locale === "vi" ? "Lưu cài đặt" : locale === "km" ? "រក្សាទុក" : locale === "th" ? "บันทึก" : "保存设置"}
+          </button>
+        </div>
+      </section>
+
       {locale !== "zh-Hans" && (
         <section className="content-language-notice" role="status">
           <p>{copy.contentNotice}</p>
@@ -1851,8 +2406,16 @@ function ProfileView({
             <span>学习中</span>
           </div>
           <div>
+            <strong>{data.referral.review}</strong>
+            <span>待审核</span>
+          </div>
+          <div>
             <strong>{data.referral.qualified}</strong>
             <span>已有效</span>
+          </div>
+          <div>
+            <strong>{data.referral.rejected}</strong>
+            <span>已驳回</span>
           </div>
         </div>
         <div className="invite-code-row">
@@ -1870,11 +2433,346 @@ function ProfileView({
         <small className="qualification-note">
           {copy.referralQualifiedDefinition} {copy.referralNextRate(nextReferralRate)}
         </small>
+        {data.referral.items.length > 0 && (
+          <div className="referral-list">
+            {data.referral.items.map((item) => (
+              <article className="referral-item" key={item.id}>
+                <div>
+                  <strong>{item.displayName}</strong>
+                  <span>
+                    {item.telegramUsername ? `@${item.telegramUsername}` : item.invitedUserId}
+                  </span>
+                </div>
+                <div>
+                  <strong>
+                    {item.status === "qualified"
+                      ? "已有效"
+                      : item.status === "rejected"
+                        ? "已驳回"
+                      : item.status === "review"
+                        ? "待审核"
+                        : "学习中"}
+                  </strong>
+                  <span>
+                    {item.rewardGrantedAt
+                      ? `奖励已发放 · ${formatShortDate(item.rewardGrantedAt)}`
+                      : item.qualifiedAt
+                        ? `已达标 · ${formatShortDate(item.qualifiedAt)}`
+                        : `加入时间 · ${formatShortDate(item.createdAt)}`}
+                  </span>
+                </div>
+                {item.riskSignals.length > 0 && (
+                  <small className="qualification-note">
+                    风险信号：{item.riskSignals.join("、")}
+                  </small>
+                )}
+              </article>
+            ))}
+          </div>
+        )}
       </section>
 
       <FeedbackPanel copy={copy} notify={notify} />
 
     </>
+  );
+}
+
+function AssessmentComparison({ data }: { data: Bootstrap }) {
+  const comparisons = data.catalog
+    .map((course) => {
+      const day0 = data.abilityAssessments.find(
+        (item) => item.courseId === course.id && item.stageKey === "day0",
+      );
+      const day21 = data.abilityAssessments.find(
+        (item) => item.courseId === course.id && item.stageKey === "day21",
+      );
+      if (!day0 && !day21) return null;
+      return {
+        courseTitle: course.title,
+        day0Score: day0?.score ?? null,
+        day21Score: day21?.score ?? null,
+      };
+    })
+    .filter((item): item is NonNullable<typeof item> => Boolean(item));
+
+  if (comparisons.length === 0) return null;
+
+  return (
+    <section className="subject-progress">
+      <div className="section-heading">
+        <div>
+          <span className="eyebrow">BASELINE VS CHECKPOINT</span>
+          <h2>Day 0 / Day 21 对比</h2>
+        </div>
+      </div>
+      {comparisons.map((item) => {
+        const delta =
+          item.day0Score != null && item.day21Score != null
+            ? Math.round(item.day21Score - item.day0Score)
+            : null;
+        return (
+          <div className="subject-line" key={item.courseTitle}>
+            <span className="subject-swatch" style={{ background: "#57705b" }} />
+            <strong>{item.courseTitle}</strong>
+            <div className="mini-progress">
+              <span
+                style={{
+                  width: `${Math.max(
+                    item.day21Score ?? item.day0Score ?? 0,
+                    3,
+                  )}%`,
+                }}
+              />
+            </div>
+            <small>
+              Day 0 {item.day0Score ?? "—"} → Day 21 {item.day21Score ?? "—"}
+              {delta != null ? ` · ${delta >= 0 ? "+" : ""}${delta}` : ""}
+            </small>
+          </div>
+        );
+      })}
+    </section>
+  );
+}
+
+function AssessmentSheet({
+  assessment,
+  existing,
+  courseTitle,
+  onClose,
+  onSubmitted,
+}: {
+  assessment: DueAssessment;
+  existing: AbilityAssessment | null;
+  courseTitle: string;
+  onClose: () => void;
+  onSubmitted: (bootstrap: Bootstrap, assessment: AbilityAssessment) => void;
+}) {
+  const [answer, setAnswer] = useState(
+    existing?.revisedAnswer ?? existing?.originalAnswer ?? "",
+  );
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  async function submit() {
+    setSubmitting(true);
+    setError("");
+    try {
+      const result = await academyRequest<AssessmentSubmissionResponse>(
+        "/api/academy/assessments",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            courseId: assessment.courseId,
+            stageKey: assessment.stageKey,
+            answer,
+          }),
+        },
+      );
+      onSubmitted(result.bootstrap, result.assessment);
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error ? requestError.message : "提交失败",
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="lesson-page">
+      <header className="lesson-page-header">
+        <button type="button" onClick={onClose}>
+          ‹ 返回进度
+        </button>
+        <span>
+          {assessment.label} · {courseTitle}
+        </span>
+      </header>
+      <div className="lesson-page-content">
+        <p className="lesson-kicker">
+          {courseTitle.toUpperCase()} · CHECKPOINT
+        </p>
+        <h1>{assessment.title}</h1>
+
+        <section className="objective-block">
+          <span>为什么现在做</span>
+          <p>
+            这是 {assessment.label}。它会记录你在当前阶段是否真的掌握了关键能力，
+            用来和后续阶段做对比。
+          </p>
+        </section>
+
+        <section className="lesson-reading">
+          <span className="eyebrow">01 · PROMPT</span>
+          <h2>阶段任务</h2>
+          <p>{assessment.prompt}</p>
+        </section>
+
+        <section className="practice-card">
+          <span className="eyebrow">02 · RUBRIC</span>
+          <h2>本次会看什么</h2>
+          <div className="criteria-row">
+            {assessment.rubric.map((criterion) => (
+              <span key={criterion}>{criterion}</span>
+            ))}
+          </div>
+          <textarea
+            value={answer}
+            onChange={(event) => setAnswer(event.target.value)}
+            placeholder="写下你当前阶段的真实答案。系统会保留原始版本，用于后续对比。"
+            maxLength={5000}
+          />
+          <div className="lesson-submit-bar">
+            <div className="answer-meta">
+              <span>{answer.trim().length} 字</span>
+              {error && <strong>{error}</strong>}
+            </div>
+            <button
+              className="primary-button"
+              type="button"
+              onClick={() => void submit()}
+              disabled={submitting || answer.trim().length < 30}
+            >
+              {submitting ? "正在记录…" : existing ? "修正后重新提交" : "提交阶段测试"}
+            </button>
+          </div>
+        </section>
+
+        {existing && (
+          <section className={`feedback-card ${existing.status === "completed" ? "passed" : ""}`}>
+            <div className="score-row">
+              <span>当前阶段分数</span>
+              <strong>{Math.round(existing.score)}</strong>
+            </div>
+            <p>{existing.notes ?? "已记录。"}</p>
+          </section>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ReviewQueueSheet({
+  item,
+  relatedAssessment,
+  relatedLesson,
+  onClose,
+  onOpenAssessment,
+  onOpenLesson,
+  onOpenHistoricalLesson,
+  onResolved,
+}: {
+  item: Bootstrap["reviewQueue"][number];
+  relatedAssessment: DueAssessment | null;
+  relatedLesson: TodayItem | null;
+  onClose: () => void;
+  onOpenAssessment: (assessment: DueAssessment) => void;
+  onOpenLesson: (item: TodayItem) => void;
+  onOpenHistoricalLesson: (lessonId: string) => Promise<void> | void;
+  onResolved: (bootstrap: Bootstrap) => void;
+}) {
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  async function resolve() {
+    setSaving(true);
+    setError("");
+    try {
+      const result = await academyRequest<ReviewResolveResponse>(
+        "/api/academy/review-queue/resolve",
+        {
+          method: "POST",
+          body: JSON.stringify({ reviewQueueItemId: item.id }),
+        },
+      );
+      onResolved(result.bootstrap);
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error ? requestError.message : "处理失败",
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="lesson-page">
+      <header className="lesson-page-header">
+        <button type="button" onClick={onClose}>
+          ‹ 返回今日
+        </button>
+        <span>REVIEW · {item.reason === "weekly_review" ? "7 天复习" : "补救任务"}</span>
+      </header>
+      <div className="lesson-page-content">
+        <p className="lesson-kicker">REVIEW QUEUE · {item.sourceType.toUpperCase()}</p>
+        <h1>{item.title}</h1>
+
+        <section className="objective-block">
+          <span>为什么会回到这里</span>
+          <p>{item.recommendation}</p>
+        </section>
+
+        <section className="lesson-reading">
+          <span className="eyebrow">01 · NEXT ACTION</span>
+          <h2>推荐下一步</h2>
+          <p>
+            {item.sourceType === "assessment"
+              ? "先根据阶段测试提示补齐关键维度，再重新提交 checkpoint。"
+              : "先回看这节内容，再补一轮输出或确认你仍然记得关键点。"}
+          </p>
+        </section>
+
+        <section className="practice-card">
+          <span className="eyebrow">02 · DO SOMETHING REAL</span>
+          <h2>处理这条复习项</h2>
+          <div className="invite-code-row">
+            {relatedAssessment && (
+              <button
+                className="primary-button"
+                type="button"
+                onClick={() => onOpenAssessment(relatedAssessment)}
+              >
+                去做对应阶段测试
+              </button>
+            )}
+            {relatedLesson && (
+              <button
+                className="secondary-button"
+                type="button"
+                onClick={() => onOpenLesson(relatedLesson)}
+              >
+                打开对应课程
+              </button>
+            )}
+            {!relatedLesson && item.lessonId && (
+              <button
+                className="secondary-button"
+                type="button"
+                onClick={() => void onOpenHistoricalLesson(item.lessonId)}
+              >
+                鎵撳紑鍘嗗彶璇剧▼
+              </button>
+            )}
+          </div>
+          <div className="lesson-submit-bar">
+            <div className="answer-meta">
+              <span>完成复习后可手动关闭这条提醒</span>
+              {error && <strong>{error}</strong>}
+            </div>
+            <button
+              className="primary-button"
+              type="button"
+              onClick={() => void resolve()}
+              disabled={saving}
+            >
+              {saving ? "正在关闭…" : "标记本次复习已完成"}
+            </button>
+          </div>
+        </section>
+      </div>
+    </div>
   );
 }
 
@@ -1969,6 +2867,59 @@ function NavButton({
       <span aria-hidden="true">{icon}</span>
       {label}
     </button>
+  );
+}
+
+function RichLessonText({
+  text,
+  compact = false,
+}: {
+  text: string;
+  compact?: boolean;
+}) {
+  const blocks = text
+    .split(/\n{2,}/)
+    .map((block) => block.trim())
+    .filter(Boolean);
+
+  return (
+    <div className={compact ? "rich-lesson-text compact" : "rich-lesson-text"}>
+      {blocks.map((block, index) => {
+        const lines = block
+          .split("\n")
+          .map((line) => line.trim())
+          .filter(Boolean);
+
+        const ordered = lines.every((line) => /^\d+\./.test(line));
+        const unordered = lines.every((line) => /^[-•]/.test(line));
+
+        if (ordered) {
+          return (
+            <ol key={`${index}-${block.slice(0, 12)}`} className="lesson-list-block ordered">
+              {lines.map((line, lineIndex) => (
+                <li key={`${index}-${lineIndex}`}>{line.replace(/^\d+\.\s*/, "")}</li>
+              ))}
+            </ol>
+          );
+        }
+
+        if (unordered) {
+          return (
+            <ul key={`${index}-${block.slice(0, 12)}`} className="lesson-list-block unordered">
+              {lines.map((line, lineIndex) => (
+                <li key={`${index}-${lineIndex}`}>{line.replace(/^[-•]\s*/, "")}</li>
+              ))}
+            </ul>
+          );
+        }
+
+        return (
+          <p key={`${index}-${block.slice(0, 12)}`} className="lesson-paragraph-block">
+            {block}
+          </p>
+        );
+      })}
+    </div>
   );
 }
 

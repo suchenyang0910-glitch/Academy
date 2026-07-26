@@ -2,15 +2,21 @@ import {
   ensureSeedData,
   getBootstrap,
   getIdentity,
-  updateUserLocale,
+  updateUserPreferences,
 } from "../../../../lib/academy-store";
 
 export async function POST(request: Request) {
   try {
     const identity = await getIdentity(request);
     await ensureSeedData(identity);
-    const payload = (await request.json()) as { uiLocale?: string };
-    await updateUserLocale(identity, payload.uiLocale ?? "");
+    const payload = (await request.json()) as {
+      uiLocale?: string;
+      reminderEnabled?: boolean;
+      reminderHour?: number;
+      dndStartHour?: number | null;
+      dndEndHour?: number | null;
+    };
+    await updateUserPreferences(identity, payload);
     return Response.json(await getBootstrap(identity));
   } catch (error) {
     if (error instanceof Response) return error;

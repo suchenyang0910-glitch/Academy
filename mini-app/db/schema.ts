@@ -24,6 +24,12 @@ export const users = sqliteTable(
     isPremium: integer("is_premium", { mode: "boolean" }).notNull().default(false),
     referralCode: text("referral_code"),
     timezone: text("timezone").notNull().default("Asia/Bangkok"),
+    reminderEnabled: integer("reminder_enabled", { mode: "boolean" })
+      .notNull()
+      .default(true),
+    reminderHour: integer("reminder_hour").notNull().default(20),
+    dndStartHour: integer("dnd_start_hour"),
+    dndEndHour: integer("dnd_end_hour"),
     trialStartedAt: text("trial_started_at").notNull().default(sql`CURRENT_TIMESTAMP`),
     createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
     updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
@@ -209,6 +215,74 @@ export const feedback = sqliteTable(
   ],
 );
 
+export const abilityAssessments = sqliteTable(
+  "ability_assessments",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id),
+    courseId: text("course_id")
+      .notNull()
+      .references(() => courses.id),
+    stageKey: text("stage_key").notNull(),
+    version: text("version").notNull().default("v1"),
+    prompt: text("prompt").notNull(),
+    rubricJson: text("rubric_json").notNull().default("[]"),
+    originalAnswer: text("original_answer").notNull(),
+    revisedAnswer: text("revised_answer"),
+    score: real("score").notNull().default(0),
+    status: text("status").notNull().default("submitted"),
+    notes: text("notes"),
+    createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    uniqueIndex("ability_assessments_user_course_stage_unique").on(
+      table.userId,
+      table.courseId,
+      table.stageKey,
+    ),
+    index("ability_assessments_user_created_idx").on(table.userId, table.createdAt),
+  ],
+);
+
+export const reviewQueueItems = sqliteTable(
+  "review_queue_items",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id),
+    sourceType: text("source_type").notNull(),
+    sourceRef: text("source_ref").notNull(),
+    courseId: text("course_id").references(() => courses.id),
+    lessonId: text("lesson_id").references(() => lessons.id),
+    assessmentStageKey: text("assessment_stage_key"),
+    reason: text("reason").notNull(),
+    title: text("title").notNull(),
+    recommendation: text("recommendation").notNull(),
+    dueOn: text("due_on").notNull(),
+    status: text("status").notNull().default("open"),
+    resolvedAt: text("resolved_at"),
+    createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    uniqueIndex("review_queue_items_user_source_unique").on(
+      table.userId,
+      table.sourceType,
+      table.sourceRef,
+      table.reason,
+    ),
+    index("review_queue_items_user_status_due_idx").on(
+      table.userId,
+      table.status,
+      table.dueOn,
+    ),
+  ],
+);
+
 export const reminderTemplates = sqliteTable("reminder_templates", {
   id: text("id").primaryKey(),
   level: integer("level").notNull(),
@@ -229,9 +303,14 @@ export const reminderEvents = sqliteTable(
       .notNull()
       .references(() => reminderTemplates.id),
     level: integer("level").notNull(),
+    deliveryStatus: text("delivery_status").notNull().default("queued"),
     sentAt: text("sent_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    deliveredAt: text("delivered_at"),
     clickedAt: text("clicked_at"),
     completedAt: text("completed_at"),
+    completedSubmissionId: integer("completed_submission_id").references(
+      () => submissions.id,
+    ),
   },
   (table) => [index("reminder_events_user_sent_idx").on(table.userId, table.sentAt)],
 );
@@ -248,7 +327,13 @@ export const invitations = sqliteTable(
       .references(() => users.id),
     inviteCode: text("invite_code").notNull(),
     status: text("status").notNull().default("pending"),
+    statusReason: text("status_reason"),
+    riskLevel: text("risk_level").notNull().default("low"),
+    riskSignalsJson: text("risk_signals_json").notNull().default("[]"),
     qualifiedAt: text("qualified_at"),
+    rewardGrantedAt: text("reward_granted_at"),
+    reviewedAt: text("reviewed_at"),
+    reviewedBy: text("reviewed_by"),
     createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   },
   (table) => [

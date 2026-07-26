@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Academy Telegram reminder dispatcher hourly
+
+[Timer]
+OnCalendar=hourly
+Persistent=true
+RandomizedDelaySec=180
+Unit=academy-reminders.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,17 @@
+[Unit]
+Description=Academy Telegram reminder dispatcher
+After=network-online.target academy.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=academy
+Group=academy
+Environment=ACADEMY_ENV_FILE=/etc/academy/academy.env
+Environment=ACADEMY_API_BASE_URL=http://127.0.0.1:3000
+ExecStart=/srv/academy/app/scripts/run-reminder-dispatch.sh
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/tmp

@@ -282,3 +282,24 @@ test("records structured in-app feedback for seed-user triage", async () => {
   assert.match(migration, /CREATE TABLE IF NOT EXISTS feedback/);
   assert.match(route, /createFeedback/);
 });
+
+test("ships a safe VPS dispatcher for real Telegram reminder delivery", async () => {
+  const [store, dispatcher, service, timer, guide] = await Promise.all([
+    readFile(new URL("../lib/academy-store.ts", import.meta.url), "utf8"),
+    readFile(new URL("../../scripts/run-reminder-dispatch.sh", import.meta.url), "utf8"),
+    readFile(new URL("../../ops/academy-reminders.service", import.meta.url), "utf8"),
+    readFile(new URL("../../ops/academy-reminders.timer", import.meta.url), "utf8"),
+    readFile(new URL("../../docs/REMINDER_DISPATCH.md", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(store, /export async function deliverDueReminders/);
+  assert.match(store, /deliveryReason: "failed"/);
+  assert.match(dispatcher, /127\.0\.0\.1:3000/);
+  assert.match(dispatcher, /ACADEMY_CRON_SECRET/);
+  assert.match(guide, /reminder_events/);
+  assert.match(service, /NoNewPrivileges=true/);
+  assert.match(service, /ProtectSystem=strict/);
+  assert.match(timer, /OnCalendar=hourly/);
+  assert.match(timer, /Persistent=true/);
+  assert.match(guide, /academy-reminders\.timer/);
+});

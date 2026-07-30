@@ -1,6 +1,7 @@
 import {
   ensureSeedData,
   getBootstrap,
+  getSeedValidationMetrics,
   verifyCronSecret,
   type AcademyIdentity,
 } from "../../../../../../lib/academy-store";
@@ -50,9 +51,11 @@ export async function POST(request: Request) {
     const identity = identityFromPayload(payload);
     await ensureSeedData(identity);
     const bootstrap = await getBootstrap(identity);
+    const validation = await getSeedValidationMetrics();
 
     return Response.json({
       userId: identity.id,
+      validation,
       access: bootstrap.access,
       supervision: bootstrap.supervision,
       credits: bootstrap.credits,
@@ -74,4 +77,3 @@ export async function POST(request: Request) {
     return errorResponse(error);
   }
 }
-

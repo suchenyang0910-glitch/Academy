@@ -4,16 +4,44 @@ import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
 import {
   LOCALE_LABELS,
+  contentLocaleLabel,
   copyFor,
   resolveAppLocale,
   type AppLocale,
 } from "../lib/i18n";
+import {
+  assessmentRuntimeCopy,
+  courseRuntimeCopy,
+  creditsLedgerStatusCopy,
+  creditsLedgerTypeCopy,
+  goalRuntimeCopy,
+  lessonRuntimeCopy,
+  notesRuntimeCopy,
+  profileRuntimeCopy,
+  progressRuntimeCopy,
+  reminderDiagnosticCopy,
+  reminderHistoryEmpty,
+  reminderHistoryStatus,
+  reminderHistorySummary,
+  reminderHistoryTitle,
+  requestRuntimeCopy,
+  starsStatusCopy,
+  supervisionRuntimeCopy,
+  testReminderCopy,
+  todayRuntimeCopy,
+  reviewRuntimeCopy,
+} from "../lib/runtime-copy";
 
 declare global {
   interface Window {
     Telegram?: {
       WebApp?: {
         initData?: string;
+        initDataUnsafe?: {
+          user?: {
+            language_code?: string;
+          };
+        };
         ready?: () => void;
         expand?: () => void;
         openTelegramLink?: (url: string) => void;
@@ -38,6 +66,8 @@ type CatalogCourse = {
   durationDays: number;
   accent: string;
   status: string;
+  contentLocale: AppLocale;
+  isContentFallback: boolean;
 };
 
 type Enrollment = {
@@ -72,6 +102,8 @@ type Lesson = {
     }>;
   };
   estimatedMinutes: number;
+  contentLocale: AppLocale;
+  isContentFallback: boolean;
 };
 
 type Submission = {
@@ -81,7 +113,10 @@ type Submission = {
   ruleFeedback?: string;
   aiFeedback?: string | null;
   completionSource?: string;
+  evidenceStatus?: string | null;
 };
+
+type PaymentResultState = "paid" | "pending" | "failed" | "cancelled";
 
 type TodayItem = {
   enrollment: Enrollment;
@@ -89,6 +124,20 @@ type TodayItem = {
   submission: Submission | null;
   isExtra?: boolean;
 };
+
+function hasAcceptedLessonEvidence(item: TodayItem) {
+  return (
+    item.submission?.status === "completed" &&
+    item.submission.evidenceStatus === "accepted"
+  );
+}
+
+function hasAcceptedMainlineEvidence(item: TodayItem) {
+  return (
+    hasAcceptedLessonEvidence(item) &&
+    item.submission?.completionSource !== "extra"
+  );
+}
 
 type Note = {
   id: number;
@@ -159,6 +208,27 @@ type Bootstrap = {
     dndStartHour: number | null;
     dndEndHour: number | null;
   };
+  reminderDiagnostic: {
+    enabled: boolean;
+    telegramBound: boolean;
+    timezone: string;
+    nextReminderLocal: string | null;
+    reason:
+      | "scheduled"
+      | "eligible_now"
+      | "paused"
+      | "missing_telegram_id"
+      | "access_expired"
+      | "no_active_courses"
+      | "completed_today"
+      | "do_not_disturb";
+    lastEvent: null | {
+      level: number;
+      deliveryStatus: string;
+      sentAt: string;
+      deliveredAt: string | null;
+    };
+  };
   referral: {
     code: string;
     total: number;
@@ -193,12 +263,39 @@ type Bootstrap = {
     accessEndsAt: string;
     daysRemaining: number;
     planKey: string | null;
+    continuation: {
+      primaryPlanKey: string;
+      primaryUsdPrice: string;
+      primaryStars: number | null;
+      primaryPlanEnabled: boolean;
+      primaryDisabledReason: string | null;
+      qualifiedInvites: number;
+      qualifiedInvitesNeeded: number;
+      referralRewardTarget: number;
+      creditsAvailablePoints: number;
+      estimatedCreditsUsd: number;
+      maxRedeemablePercent: number;
+      canReduceNextPaymentWithCredits: boolean;
+      requiredAction: "none" | "pay_or_redeem_credits" | "configure_stars";
+    };
   };
   credits: {
     balancePoints: number;
     availablePoints: number;
     pendingPoints: number;
     anchor: { pointsPerUsd: number; rule: string };
+    ledger: Array<{
+      id: number;
+      entryType: string;
+      rewardType: string;
+      amountPoints: number;
+      status: string;
+      relatedOrderId: string | null;
+      relatedInvitationId: number | null;
+      relatedCampaignRewardId: string | null;
+      expiresAt: string | null;
+      createdAt: string;
+    }>;
   };
   pricing: {
     pointsPerUsd: number;
@@ -234,7 +331,13 @@ type Bootstrap = {
       durationDays: number;
       recurring: boolean;
       stars: number | null;
+      configuredBy: string | null;
       enabled: boolean;
+      disabledReason:
+        | "missing_bot_token"
+        | "missing_webhook_secret"
+        | "missing_stars_amount"
+        | null;
     }>;
   };
   catalog: CatalogCourse[];
@@ -242,6 +345,15 @@ type Bootstrap = {
   today: TodayItem[];
   learningAhead: TodayItem[];
   notes: Note[];
+  reminderHistory: Array<{
+    id: number;
+    level: number;
+    deliveryStatus: string;
+    sentAt: string;
+    deliveredAt: string | null;
+    clickedAt: string | null;
+    completedAt: string | null;
+  }>;
   abilityAssessments: AbilityAssessment[];
   dueAssessments: DueAssessment[];
   reviewQueue: Array<{
@@ -271,6 +383,80 @@ type Bootstrap = {
     message: string;
     actionLabel: string;
   }>;
+  goalTemplate: null | {
+    id: string;
+    version: string;
+    title: string;
+    slogan: string;
+    artifact: string;
+    definitionOfDone: string[];
+    checkpoints: Array<{
+      id: string;
+      day: number;
+      label: string;
+      title: string;
+      outcome: string;
+      evidence: string[];
+      definitionOfDone: string[];
+    }>;
+    nextCheckpoint: null | {
+      id: string;
+      day: number;
+      label: string;
+      title: string;
+      outcome: string;
+      evidence: string[];
+      definitionOfDone: string[];
+    };
+    milestoneSubmissions: Array<{
+      id: number;
+      templateId: string;
+      checkpointId: string;
+      checkpointDay: number;
+      artifactUrl: string | null;
+      evidenceText: string;
+      evidenceItems: string[];
+      status: string;
+      score: number;
+      notes: string | null;
+      submittedAt: string;
+      updatedAt: string;
+    }>;
+    currentDay: number;
+    completedLessons: number;
+    totalDays: number;
+    prototypeProgress: number;
+    nextMilestone: string;
+    nextEvidence: string;
+  };
+  agentLab: null | {
+    id: number;
+    templateId: string;
+    builderProvider: "flowise";
+    builderProjectRef: string | null;
+    workflowRef: string | null;
+    workflowExport: Record<string, unknown>;
+    status: string;
+    runtimeStatus: string;
+    metadata: Record<string, unknown>;
+    createdAt: string;
+    updatedAt: string;
+    runtimeChecks: Array<{
+      id: number;
+      checkType: string;
+      testCases: Array<{
+        question: string;
+        expected: string;
+        actual: string;
+        citation: string;
+      }>;
+      result: Record<string, unknown>;
+      status: string;
+      score: number;
+      notes: string | null;
+      createdAt: string;
+    }>;
+  };
   metrics: {
     effectiveLearningDays: number;
     currentEffectiveStreak: number;
@@ -280,6 +466,60 @@ type Bootstrap = {
       self: number;
       prompted: number;
       supervised: number;
+    };
+    evidenceMetrics: {
+      acceptedCount: number;
+      lessonAcceptedCount: number;
+      averageScore: number | null;
+      byType: {
+        quiz: number;
+        project: number;
+        reflection: number;
+        checkpoint: number;
+        review: number;
+        runtimeSuccess: number;
+      };
+    };
+    quizMetrics: {
+      attemptCount: number;
+      lessonAttemptedCount: number;
+      firstAttemptCount: number;
+      firstPassCount: number;
+      firstPassRate: number;
+      firstFailCount: number;
+      revisionAttemptLessonCount: number;
+      revisionPassAfterFailCount: number;
+      revisionPassAfterFailRate: number;
+      questionAccuracyRate: number;
+    };
+    goalMetrics: {
+      templateId: string;
+      requiredCheckpointCount: number;
+      completedCheckpointCount: number;
+      evidenceSubmissionRate: number;
+      fwpr7: {
+        eligible: boolean;
+        achieved: boolean;
+      };
+      day21Dod: {
+        achieved: boolean;
+      };
+    };
+    competencyGraph: {
+      overallScore: number;
+      evidencedNodeCount: number;
+      totalNodeCount: number;
+      nodes: Array<{
+        id: string;
+        title: string;
+        description: string;
+        level: number;
+        category: string;
+        weight: number;
+        evidenceCount: number;
+        score: number;
+        status: "not_started" | "in_progress" | "evidenced";
+      }>;
     };
     reminderMetrics: {
       deliveredCount: number;
@@ -325,6 +565,26 @@ type PricingPreviewResponse = { snapshot: PricingPreviewSnapshot };
 
 type Tab = "today" | "courses" | "notes" | "progress" | "profile";
 
+type AcademyRequestErrorCode = "telegram_auth_required" | "request_failed";
+
+class AcademyRequestError extends Error {
+  code: AcademyRequestErrorCode;
+
+  constructor(code: AcademyRequestErrorCode) {
+    super(code);
+    this.name = "AcademyRequestError";
+    this.code = code;
+  }
+}
+
+function initialClientLocale() {
+  if (typeof window === "undefined") return "zh-Hans";
+  return resolveAppLocale(
+    window.Telegram?.WebApp?.initDataUnsafe?.user?.language_code ??
+      window.navigator.language,
+  );
+}
+
 function academyHeaders() {
   const referralCode =
     typeof window === "undefined"
@@ -332,6 +592,17 @@ function academyHeaders() {
       : new URLSearchParams(window.location.search).get("ref") ?? "";
   return {
     "content-type": "application/json",
+    "x-telegram-init-data": window.Telegram?.WebApp?.initData ?? "",
+    "x-academy-ref": referralCode,
+  };
+}
+
+function academyUploadHeaders() {
+  const referralCode =
+    typeof window === "undefined"
+      ? ""
+      : new URLSearchParams(window.location.search).get("ref") ?? "";
+  return {
     "x-telegram-init-data": window.Telegram?.WebApp?.initData ?? "",
     "x-academy-ref": referralCode,
   };
@@ -347,12 +618,10 @@ async function academyRequest<T>(path: string, init?: RequestInit): Promise<T> {
   });
   if (!response.ok) {
     if (response.status === 401) {
-      throw new Error("请从 Telegram 内的 Academy 菜单打开，浏览器链接无法完成身份校验。");
+      throw new AcademyRequestError("telegram_auth_required");
     }
-    const body = (await response.json().catch(() => null)) as
-      | { error?: string }
-      | null;
-    throw new Error(body?.error || "请求失败，请稍后重试");
+    await response.json().catch(() => null);
+    throw new AcademyRequestError("request_failed");
   }
   return response.json() as Promise<T>;
 }
@@ -367,7 +636,7 @@ export default function Home() {
   const [selectedReview, setSelectedReview] = useState<Bootstrap["reviewQueue"][number] | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [toast, setToast] = useState("");
-  const [locale, setLocale] = useState<AppLocale>("zh-Hans");
+  const [locale, setLocale] = useState<AppLocale>(() => initialClientLocale());
   const copy = copyFor(locale);
 
   const load = useCallback(async () => {
@@ -381,8 +650,13 @@ export default function Home() {
         setPickerOpen(true);
       }
     } catch (requestError) {
+      const requestCopy = requestRuntimeCopy(locale);
       setError(
-        requestError instanceof Error ? requestError.message : "加载失败",
+        requestError instanceof AcademyRequestError
+          ? requestError.code === "telegram_auth_required"
+            ? requestCopy.telegramAuthRequired
+            : requestCopy.requestFailed
+          : requestCopy.loadFailed,
       );
     } finally {
       setLoading(false);
@@ -398,6 +672,25 @@ export default function Home() {
   useEffect(() => {
     document.documentElement.lang = locale;
   }, [locale]);
+
+  function trackConversionEvent(eventType: string, planKey?: string) {
+    void academyRequest<{ event: unknown }>("/api/academy/conversion-events", {
+      method: "POST",
+      body: JSON.stringify({
+        eventType,
+        planKey,
+        metadata: { tab, locale },
+      }),
+    }).catch(() => undefined);
+  }
+
+  useEffect(() => {
+    if (!data || data.access.active) return;
+    const key = `academy:conversion:trial_expired_exposed:${data.user.id}`;
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, "1");
+    trackConversionEvent("trial_expired_exposed");
+  }, [data, locale, tab]);
 
   useEffect(() => {
     const reminderEventId = new URLSearchParams(window.location.search).get(
@@ -419,54 +712,58 @@ export default function Home() {
   function openCoursePicker() {
     if (!data?.access.active) {
       setTab("profile");
-      notify("试用已结束，先处理使用权限");
+      notify(copy.accessExpiredAction);
       return;
     }
     setPickerOpen(true);
   }
 
   const completedCount =
-    data?.today.filter((item) => item.submission?.status === "completed").length ??
-    0;
+    data?.today.filter((item) => hasAcceptedMainlineEvidence(item)).length ?? 0;
   const totalCount = data?.today.length ?? 0;
   const progress =
     totalCount === 0 ? 0 : Math.round((completedCount / totalCount) * 100);
 
   const openReviewItems = data.reviewQueue.filter((item) => item.status === "open");
   const incompleteTodayLesson = data.today.find(
-    (item) => item.submission?.status !== "completed",
+    (item) => !hasAcceptedMainlineEvidence(item),
   );
+  const todayCopy = todayRuntimeCopy(locale);
   const primaryMission =
     data.assessmentRecommendations.length > 0
       ? {
           eyebrow: "TODAY'S MISSION",
-          title: "先处理阶段检查",
-          detail: data.assessmentRecommendations[0]?.message ?? "先完成当前阶段测评。",
-          evidence: "完成一份阶段测评并留下可回看结果。",
+          title: todayCopy.missionAssessmentTitle,
+          detail:
+            data.assessmentRecommendations[0]?.message ??
+            todayCopy.missionAssessmentDetail,
+          evidence: todayCopy.missionAssessmentEvidence,
         }
       : openReviewItems.length > 0
         ? {
             eyebrow: "TODAY'S MISSION",
-            title: "先清理复习队列",
+            title: todayCopy.missionReviewTitle,
             detail:
               openReviewItems[0]?.recommendation ??
-              "先补掉上一轮没吃透的知识点。",
-            evidence: "完成 1 条复习项并修正一次旧错误。",
+              todayCopy.missionReviewDetail,
+            evidence: todayCopy.missionReviewEvidence,
           }
         : incompleteTodayLesson
           ? {
               eyebrow: "TODAY'S MISSION",
-              title: `先完成 ${incompleteTodayLesson.enrollment.title}`,
+              title: todayCopy.missionLessonTitle(
+                incompleteTodayLesson.enrollment.title,
+              ),
               detail:
                 incompleteTodayLesson.lesson?.objective ??
-                "今天先交付一份最小可验证输出。",
-              evidence: "留下今天的提交记录，并通过本课检查。",
+                todayCopy.missionLessonDetail,
+              evidence: todayCopy.missionLessonEvidence,
             }
           : {
               eyebrow: "TODAY'S MISSION",
-              title: "今天主线已完成",
-              detail: "如果你还想继续，可以进入预习区，但它不会替代明天主线。",
-              evidence: "额外学习会被记录为证据，但不会覆盖今日完成记录。",
+              title: todayCopy.missionDoneTitle,
+              detail: todayCopy.missionDoneDetail,
+              evidence: todayCopy.missionDoneEvidence,
             };
 
   return (
@@ -502,7 +799,14 @@ export default function Home() {
           {!loading && data && (
             <>
               {!data.access.active && tab !== "profile" && (
-                <ExpiredBanner onOpenPlans={() => setTab("profile")} />
+                <ExpiredBanner
+                  continuation={data.access.continuation}
+                  copy={profileRuntimeCopy(locale)}
+                  onOpenPlans={() => {
+                    trackConversionEvent("plans_opened");
+                    setTab("profile");
+                  }}
+                />
               )}
               {tab === "today" && (
                 <TodayView
@@ -511,6 +815,10 @@ export default function Home() {
                   locale={locale}
                   progress={progress}
                   completedCount={completedCount}
+                  onMilestoneSaved={(next) => {
+                    setData(next);
+                    notify(goalRuntimeCopy(locale).milestoneSaved);
+                  }}
                   onSelect={(item) =>
                     data.access.active ? setSelected(item) : setTab("profile")
                   }
@@ -522,6 +830,7 @@ export default function Home() {
               {tab === "courses" && (
                 <CoursesView
                   copy={copy}
+                  locale={locale}
                   catalog={data.catalog}
                   enrollments={data.enrollments}
                   today={data.today}
@@ -536,6 +845,7 @@ export default function Home() {
               {tab === "notes" && (
                 <NotesView
                   copy={copy}
+                  locale={locale}
                   notes={data.notes}
                   accessActive={data.access.active}
                   onSaved={(note) => {
@@ -544,17 +854,19 @@ export default function Home() {
                         ? { ...current, notes: [note, ...current.notes] }
                         : current,
                     );
-                    notify("笔记已经收好");
+                    notify(notesRuntimeCopy(locale).savedToast);
                   }}
                 />
               )}
               {tab === "progress" && (
                 <ProgressView
                   copy={copy}
+                  locale={locale}
                   data={data}
                   progress={progress}
                   completedCount={completedCount}
                   onOpenAssessment={(assessment) => setSelectedAssessment(assessment)}
+                  notify={notify}
                 />
               )}
               {tab === "profile" && (
@@ -611,6 +923,7 @@ export default function Home() {
         {data && pickerOpen && (
           <CoursePicker
             copy={copy}
+            locale={locale}
             catalog={data.catalog}
             initialIds={data.enrollments.map((item) => item.courseId)}
             required={data.enrollments.length === 0}
@@ -618,7 +931,7 @@ export default function Home() {
             onSaved={(next) => {
               setData(next);
               setPickerOpen(false);
-              notify("课程安排已更新");
+              notify(courseRuntimeCopy(locale).coursePlanUpdated);
             }}
           />
         )}
@@ -626,8 +939,10 @@ export default function Home() {
         {selected?.lesson && (
           <LessonSheet
             item={selected}
+            locale={locale}
             onClose={() => setSelected(null)}
             onSubmitted={(submission) => {
+              const lessonCopy = lessonRuntimeCopy(locale);
               setData((current) =>
                 current
                   ? {
@@ -650,10 +965,10 @@ export default function Home() {
               );
               notify(
                 selected.isExtra && submission.status === "completed"
-                  ? "预习证据已保存；明天仍要完成主线"
+                  ? lessonCopy.extraEvidenceSaved
                   : submission.status === "completed"
-                    ? "这节课有证据了"
-                  : "已保存，按反馈修正后再提交",
+                    ? lessonCopy.lessonEvidenceSaved
+                    : lessonCopy.revisionSaved,
               );
             }}
           />
@@ -662,6 +977,7 @@ export default function Home() {
         {selectedAssessment && data && (
           <AssessmentSheet
             assessment={selectedAssessment}
+            locale={locale}
             existing={data.abilityAssessments.find(
               (item) =>
                 item.courseId === selectedAssessment.courseId &&
@@ -673,12 +989,13 @@ export default function Home() {
             }
             onClose={() => setSelectedAssessment(null)}
             onSubmitted={(next, submitted) => {
+              const assessmentCopy = assessmentRuntimeCopy(locale);
               setData(next);
               setSelectedAssessment(null);
               notify(
                 submitted.status === "completed"
-                  ? `${selectedAssessment.label} 已记录`
-                  : `${selectedAssessment.label} 已保存，可继续修正`,
+                  ? assessmentCopy.recorded(selectedAssessment.label)
+                  : assessmentCopy.savedForRevision(selectedAssessment.label),
               );
             }}
           />
@@ -687,6 +1004,7 @@ export default function Home() {
         {selectedReview && data && (
           <ReviewQueueSheet
             item={selectedReview}
+            locale={locale}
             relatedAssessment={
               selectedReview.sourceType === "assessment"
                 ? data.dueAssessments.find(
@@ -722,7 +1040,7 @@ export default function Home() {
             onResolved={(next) => {
               setData(next);
               setSelectedReview(null);
-              notify("这条复习项已处理");
+              notify(reviewRuntimeCopy(locale).resolvedToast);
             }}
           />
         )}
@@ -743,15 +1061,67 @@ function LoadingState({ copy }: { copy: ReturnType<typeof copyFor> }) {
   );
 }
 
-function ExpiredBanner({ onOpenPlans }: { onOpenPlans: () => void }) {
+function ContentFallbackNotice({
+  copy,
+  locale,
+  contentLocale,
+  compact = false,
+}: {
+  copy: ReturnType<typeof copyFor>;
+  locale: AppLocale;
+  contentLocale: AppLocale;
+  compact?: boolean;
+}) {
+  if (locale === contentLocale) return null;
+  return (
+    <section className={`content-fallback-badge ${compact ? "compact" : ""}`} role="status">
+      <span>{contentLocaleLabel(contentLocale)}</span>
+      <p>{copy.contentNotice}</p>
+    </section>
+  );
+}
+
+function paymentStatusContent(
+  copy: ReturnType<typeof copyFor>,
+  status: PaymentResultState,
+) {
+  return {
+    pending: {
+      title: copy.paymentStatusPending,
+      detail: copy.paymentStatusPendingDetail,
+    },
+    paid: {
+      title: copy.paymentStatusPaid,
+      detail: copy.paymentStatusPaidDetail,
+    },
+    failed: {
+      title: copy.paymentStatusFailed,
+      detail: copy.paymentStatusFailedDetail,
+    },
+    cancelled: {
+      title: copy.paymentStatusCancelled,
+      detail: copy.paymentStatusCancelledDetail,
+    },
+  }[status];
+}
+
+function ExpiredBanner({
+  continuation,
+  copy,
+  onOpenPlans,
+}: {
+  continuation: Bootstrap["access"]["continuation"];
+  copy: ReturnType<typeof profileRuntimeCopy>;
+  onOpenPlans: () => void;
+}) {
   return (
     <section className="expired-banner" role="status">
       <div>
-        <span>试用已结束</span>
-        <p>历史记录仍可查看。继续提交课程需要订阅或有效邀请奖励。</p>
+        <span>{copy.expiredTitle}</span>
+        <p>{copy.expiredDescription(continuation.primaryUsdPrice, continuation.qualifiedInvitesNeeded)}</p>
       </div>
       <button type="button" onClick={onOpenPlans}>
-        查看方案
+        {copy.viewPlans}
       </button>
     </section>
   );
@@ -788,6 +1158,7 @@ function TodayView({
   onOpenPicker,
   onOpenAssessment,
   onOpenReview,
+  onMilestoneSaved,
 }: {
   data: Bootstrap;
   copy: ReturnType<typeof copyFor>;
@@ -798,6 +1169,7 @@ function TodayView({
   onOpenPicker: () => void;
   onOpenAssessment: (assessment: DueAssessment) => void;
   onOpenReview: (item: Bootstrap["reviewQueue"][number]) => void;
+  onMilestoneSaved: (data: Bootstrap) => void;
 }) {
   const minutes = data.enrollments.reduce(
     (sum, item) => sum + item.dailyMinutes,
@@ -805,25 +1177,22 @@ function TodayView({
   );
   const completedCourseIds = new Set(
     data.today
-      .filter(
-        (item) =>
-          item.submission?.status === "completed" &&
-          item.submission.completionSource !== "extra",
-      )
+      .filter((item) => hasAcceptedMainlineEvidence(item))
       .map((item) => item.enrollment.courseId),
   );
   const learningAhead = data.learningAhead.filter((item) =>
     completedCourseIds.has(item.enrollment.courseId),
   );
   const completedTodayCount = completedCourseIds.size;
+  const courseCopy = courseRuntimeCopy(locale);
   const studyAheadMessage =
     data.supervision.lagDays >= 2
-      ? "你已经连续中断。预习区先关闭，等当前任务补上后再解锁。"
+      ? courseCopy.lockedByInterruption
       : data.supervision.lagDays === 1
-        ? "昨天的主线还没补完，预习区先锁住。先把当前任务处理掉。"
+        ? courseCopy.lockedByBehind
         : completedTodayCount === 0
-          ? "任意完成一门今天的主线后，才会解锁那门课接下来的 3 节预习。"
-          : "已完成的课程可以继续向前；额外学习会留下证据，但不会替代明天的主线。";
+          ? courseCopy.extraLocked
+          : courseCopy.extraOpen;
 
   return (
     <>
@@ -850,7 +1219,7 @@ function TodayView({
           <div
             className="progress-ring"
             style={{ "--progress": `${progress * 3.6}deg` } as React.CSSProperties}
-            aria-label={`今日学习进度 ${progress}%`}
+            aria-label={todayCopy.progressLabel(progress)}
           >
             <div>{progress}%</div>
           </div>
@@ -860,16 +1229,26 @@ function TodayView({
       <section
         className={`supervision-note supervision-${data.supervision.state}`}
       >
-        <span>{supervisionCopy(data.supervision).label}</span>
-        <p>{supervisionCopy(data.supervision).message}</p>
+        <span>{supervisionRuntimeCopy(data.supervision, locale).label}</span>
+        <p>{supervisionRuntimeCopy(data.supervision, locale).message}</p>
       </section>
+
+      {data.goalTemplate && (
+        <GoalTemplateCard
+          goal={data.goalTemplate}
+          agentLab={data.agentLab}
+          locale={locale}
+          accessActive={data.access.active}
+          onSaved={onMilestoneSaved}
+        />
+      )}
 
       <section className="mission-card" aria-label="Today's mission">
         <span className="eyebrow">{primaryMission.eyebrow}</span>
         <h2>{primaryMission.title}</h2>
         <p>{primaryMission.detail}</p>
         <div className="mission-evidence">
-          <strong>完成证据</strong>
+          <strong>{todayRuntimeCopy(locale).evidenceLabel}</strong>
           <span>{primaryMission.evidence}</span>
         </div>
       </section>
@@ -879,7 +1258,7 @@ function TodayView({
           <div className="section-heading">
             <div>
               <span className="eyebrow">CHECKPOINT FIRST</span>
-              <h2>先处理阶段测试</h2>
+              <h2>{todayCopy.checkpointFirstTitle}</h2>
             </div>
           </div>
           <div className="lesson-list">
@@ -927,7 +1306,7 @@ function TodayView({
           <div className="section-heading">
             <div>
               <span className="eyebrow">REVIEW QUEUE</span>
-              <h2>待复习内容</h2>
+              <h2>{todayCopy.reviewQueueTitle}</h2>
             </div>
           </div>
           <div className="lesson-list">
@@ -976,13 +1355,13 @@ function TodayView({
 
         {data.today.length === 0 ? (
           <button className="empty-course" type="button" onClick={onOpenPicker}>
-            <strong>选择 1–3 门课程</strong>
-            <span>每门每天 15–20 分钟</span>
+            <strong>{todayCopy.chooseCoursesTitle}</strong>
+            <span>{todayCopy.chooseCoursesSubtitle}</span>
           </button>
         ) : (
           <div className="lesson-list">
             {data.today.map((item, index) => {
-              const done = item.submission?.status === "completed";
+              const done = hasAcceptedMainlineEvidence(item);
               return (
                 <article
                   className={`lesson-row ${done ? "is-done" : ""}`}
@@ -1005,7 +1384,7 @@ function TodayView({
                     <span className="lesson-copy">
                       <strong>{item.enrollment.title}</strong>
                       <span>
-                        {item.lesson?.title ?? "课程内容正在准备，先别假装完成"}
+                        {item.lesson?.title ?? todayCopy.lessonPreparing}
                       </span>
                     </span>
                     <span className="lesson-arrow" aria-hidden="true">
@@ -1026,9 +1405,9 @@ function TodayView({
         <div className="section-heading">
           <div>
             <span className="eyebrow">KEEP GOING</span>
-            <h2>想多学一点？</h2>
+            <h2>{courseCopy.continueExtraTitle}</h2>
           </div>
-          <span className="continue-study-time">每门再加 15–20 分钟</span>
+          <span className="continue-study-time">{courseCopy.continueExtraTime}</span>
         </div>
         {learningAhead.length ? (
           <>
@@ -1039,7 +1418,7 @@ function TodayView({
               {learningAhead.map((item) => (
                 <button
                   className={`continue-study-row ${
-                    item.submission?.status === "completed" ? "is-done" : ""
+                    hasAcceptedLessonEvidence(item) ? "is-done" : ""
                   }`}
                   key={`${item.enrollment.id}-${item.lesson?.id}`}
                   type="button"
@@ -1049,7 +1428,11 @@ function TodayView({
                   <span>{item.enrollment.title}</span>
                   <strong>DAY {String(item.lesson?.day ?? 0).padStart(2, "0")}</strong>
                   <em>{item.lesson?.title}</em>
-                  <i>{item.submission?.status === "completed" ? "已完成" : "预习 →"}</i>
+                  <i>
+                    {hasAcceptedLessonEvidence(item)
+                      ? courseCopy.completed
+                      : courseCopy.preview}
+                  </i>
                 </button>
               ))}
             </div>
@@ -1062,9 +1445,483 @@ function TodayView({
       </section>
 
       <blockquote>
-        “完成不是点一下按钮，而是留下一个以后还能检查的结果。”
+        {todayCopy.evidenceQuote}
       </blockquote>
     </>
+  );
+}
+
+function GoalTemplateCard({
+  goal,
+  agentLab,
+  locale,
+  accessActive,
+  onSaved,
+}: {
+  goal: NonNullable<Bootstrap["goalTemplate"]>;
+  agentLab: Bootstrap["agentLab"];
+  locale: AppLocale;
+  accessActive: boolean;
+  onSaved: (data: Bootstrap) => void;
+}) {
+  const copy = goalRuntimeCopy(locale);
+  const defaultCheckpointId =
+    goal.nextCheckpoint?.id ?? goal.checkpoints[0]?.id ?? "";
+  const [openCheckpointId, setOpenCheckpointId] = useState(defaultCheckpointId);
+  const [artifactUrl, setArtifactUrl] = useState("");
+  const [evidenceText, setEvidenceText] = useState("");
+  const [uploadedArtifacts, setUploadedArtifacts] = useState<
+    Array<{
+      id: number;
+      reference: string;
+      originalFilename: string;
+      mimeType: string;
+      sizeBytes: number;
+    }>
+  >([]);
+  const [runtimeTests, setRuntimeTests] = useState(
+    Array.from({ length: 3 }, () => ({
+      question: "",
+      expected: "",
+      actual: "",
+      citation: "",
+    })),
+  );
+  const [builderProjectRef, setBuilderProjectRef] = useState(
+    agentLab?.builderProjectRef ?? "",
+  );
+  const [workflowRef, setWorkflowRef] = useState(agentLab?.workflowRef ?? "");
+  const [workflowExportText, setWorkflowExportText] = useState(
+    agentLab?.workflowExport && Object.keys(agentLab.workflowExport).length > 0
+      ? JSON.stringify(agentLab.workflowExport, null, 2)
+      : "",
+  );
+  const [savingAgentLab, setSavingAgentLab] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState("");
+  const selectedCheckpoint =
+    goal.checkpoints.find((checkpoint) => checkpoint.id === openCheckpointId) ??
+    goal.checkpoints[0] ??
+    null;
+  const runtimeTestsRequired = Number(selectedCheckpoint?.day ?? 0) >= 7;
+  const submissionByCheckpoint = new Map(
+    goal.milestoneSubmissions.map((submission) => [
+      submission.checkpointId,
+      submission,
+    ]),
+  );
+
+  useEffect(() => {
+    setBuilderProjectRef(agentLab?.builderProjectRef ?? "");
+    setWorkflowRef(agentLab?.workflowRef ?? "");
+    setWorkflowExportText(
+      agentLab?.workflowExport && Object.keys(agentLab.workflowExport).length > 0
+        ? JSON.stringify(agentLab.workflowExport, null, 2)
+        : "",
+    );
+  }, [agentLab]);
+
+  async function saveAgentLab() {
+    setSavingAgentLab(true);
+    setError("");
+    try {
+      let workflowExport: unknown = workflowExportText.trim();
+      if (workflowExportText.trim()) {
+        try {
+          workflowExport = JSON.parse(workflowExportText);
+        } catch {
+          workflowExport = { raw: workflowExportText.trim() };
+        }
+      }
+      const result = await academyRequest<{ bootstrap: Bootstrap }>(
+        "/api/academy/agent-lab",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            action: "save_project",
+            templateId: goal.id,
+            builderProjectRef,
+            workflowRef,
+            workflowExport,
+          }),
+        },
+      );
+      onSaved(result.bootstrap);
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error ? requestError.message : copy.agentLabSaveFailed,
+      );
+    } finally {
+      setSavingAgentLab(false);
+    }
+  }
+
+  async function recordStructuredRuntimeCheck() {
+    if (!agentLab?.id) {
+      setError(copy.saveAgentLabFirst);
+      return;
+    }
+    setSavingAgentLab(true);
+    setError("");
+    try {
+      const result = await academyRequest<{ bootstrap: Bootstrap }>(
+        "/api/academy/agent-lab",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            action: "record_runtime_check",
+            agentProjectId: agentLab.id,
+            runtimeTests,
+            result: {
+              source: "agent_lab_structured_check",
+              note: "Academy checks test cases, citations, workflow export and reachable runtime/reference link.",
+            },
+          }),
+        },
+      );
+      onSaved(result.bootstrap);
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : copy.runtimeCheckFailed,
+      );
+    } finally {
+      setSavingAgentLab(false);
+    }
+  }
+
+  async function uploadMilestoneArtifact(file: File | undefined) {
+    if (!file) return;
+    setUploading(true);
+    setError("");
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("purpose", "project_milestone");
+      const response = await fetch("/api/academy/uploads", {
+        method: "POST",
+        headers: academyUploadHeaders(),
+        body: formData,
+      });
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as
+          | { error?: string }
+          | null;
+        throw new Error(body?.error || copy.uploadFailed);
+      }
+      const result = (await response.json()) as {
+        artifact: {
+          id: number;
+          reference: string;
+          originalFilename: string;
+          mimeType: string;
+          sizeBytes: number;
+        };
+      };
+      setUploadedArtifacts((items) => [...items, result.artifact]);
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error ? requestError.message : copy.uploadFailed,
+      );
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function submitMilestone() {
+    if (!selectedCheckpoint) return;
+    setSaving(true);
+    setError("");
+    try {
+      const result = await academyRequest<{
+        milestone: NonNullable<
+          Bootstrap["goalTemplate"]
+        >["milestoneSubmissions"][number];
+        bootstrap: Bootstrap;
+      }>("/api/academy/goals/milestones", {
+        method: "POST",
+        body: JSON.stringify({
+          templateId: goal.id,
+          checkpointId: selectedCheckpoint.id,
+          artifactUrl,
+          evidenceText,
+          attachmentIds: uploadedArtifacts.map((artifact) => artifact.id),
+          runtimeTests: runtimeTestsRequired ? runtimeTests : [],
+        }),
+      });
+      setArtifactUrl("");
+      setEvidenceText("");
+      setUploadedArtifacts([]);
+      setRuntimeTests(
+        Array.from({ length: 3 }, () => ({
+          question: "",
+          expected: "",
+          actual: "",
+          citation: "",
+        })),
+      );
+      onSaved(result.bootstrap);
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error ? requestError.message : copy.submitFailed,
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <section className="goal-template-card" aria-label="Goal template">
+      <span className="eyebrow">GOAL TEMPLATE</span>
+      <div className="goal-template-head">
+        <div>
+          <h2>{goal.title}</h2>
+          <p>{goal.slogan}</p>
+        </div>
+        <strong>{goal.prototypeProgress}%</strong>
+      </div>
+      <div className="goal-progress-line">
+        <span style={{ width: `${Math.max(goal.prototypeProgress, 4)}%` }} />
+      </div>
+      <div className="goal-template-grid">
+        <div>
+          <span>Artifact</span>
+          <strong>{goal.artifact}</strong>
+        </div>
+        <div>
+          <span>Next milestone</span>
+          <strong>{goal.nextMilestone}</strong>
+        </div>
+      </div>
+      <div className="mission-evidence">
+        <strong>Next evidence</strong>
+        <span>{goal.nextEvidence}</span>
+      </div>
+      <div className="agent-lab-card">
+        <div className="agent-lab-head">
+          <div>
+            <span className="eyebrow">AGENT LAB</span>
+            <strong>Flowise Adapter · Reference Only</strong>
+          </div>
+          <em>{agentLab?.runtimeStatus ?? "not_tested"}</em>
+        </div>
+        <p>
+          {copy.agentLabBody}
+        </p>
+        <div className="agent-lab-form">
+          <input
+            value={builderProjectRef}
+            onChange={(event) => setBuilderProjectRef(event.target.value)}
+            placeholder="Flowise project / chatflow URL"
+            disabled={!accessActive || savingAgentLab}
+          />
+          <input
+            value={workflowRef}
+            onChange={(event) => setWorkflowRef(event.target.value)}
+            placeholder="Workflow export / README / repo reference"
+            disabled={!accessActive || savingAgentLab}
+          />
+          <textarea
+            value={workflowExportText}
+            onChange={(event) => setWorkflowExportText(event.target.value)}
+            placeholder={copy.workflowExportPlaceholder}
+            rows={3}
+            disabled={!accessActive || savingAgentLab}
+          />
+          <button
+            type="button"
+            onClick={() => void saveAgentLab()}
+            disabled={!accessActive || savingAgentLab}
+          >
+            {savingAgentLab ? copy.savingAgentLab : copy.saveAgentLab}
+          </button>
+          <button
+            type="button"
+            onClick={() => void recordStructuredRuntimeCheck()}
+            disabled={!accessActive || savingAgentLab || !agentLab?.id}
+          >
+            {copy.recordRuntimeCheck}
+          </button>
+        </div>
+        {agentLab?.runtimeChecks.length ? (
+          <div className="agent-runtime-checks">
+            {agentLab.runtimeChecks.map((check) => (
+              <span key={check.id}>
+                {check.status} · {check.score} · {check.testCases.length} tests
+              </span>
+            ))}
+          </div>
+        ) : (
+          <small>{copy.noRuntimeChecks}</small>
+        )}
+      </div>
+      <div className="goal-checkpoint-list">
+        {goal.checkpoints.map((checkpoint) => (
+          <button
+            type="button"
+            className={
+              checkpoint.id === openCheckpointId
+                ? "goal-checkpoint is-selected"
+                : checkpoint.day <= goal.currentDay
+                ? "goal-checkpoint is-current"
+                : "goal-checkpoint"
+            }
+            key={checkpoint.id}
+            onClick={() => {
+              setOpenCheckpointId(checkpoint.id);
+              setError("");
+              setRuntimeTests(
+                Array.from({ length: 3 }, () => ({
+                  question: "",
+                  expected: "",
+                  actual: "",
+                  citation: "",
+                })),
+              );
+            }}
+          >
+            <span>{checkpoint.label}</span>
+            <strong>{checkpoint.title}</strong>
+            <small>{checkpoint.outcome}</small>
+            {submissionByCheckpoint.has(checkpoint.id) && (
+              <em>
+                {submissionByCheckpoint.get(checkpoint.id)?.status === "accepted"
+                  ? "accepted"
+                  : submissionByCheckpoint.get(checkpoint.id)?.status === "pending_review"
+                    ? "pending review"
+                  : "revise"}{" "}
+                · {submissionByCheckpoint.get(checkpoint.id)?.score}
+              </em>
+            )}
+          </button>
+        ))}
+      </div>
+      {selectedCheckpoint && (
+        <div className="milestone-submit-box">
+          <div>
+            <span>{selectedCheckpoint.label} Evidence</span>
+            <strong>{selectedCheckpoint.title}</strong>
+          </div>
+          <input
+            value={artifactUrl}
+            onChange={(event) => setArtifactUrl(event.target.value)}
+            placeholder="https:// demo / README / workflow export"
+            disabled={!accessActive || saving}
+          />
+          <textarea
+            value={evidenceText}
+            onChange={(event) => setEvidenceText(event.target.value)}
+            placeholder={copy.evidencePlaceholder}
+            rows={4}
+            disabled={!accessActive || saving}
+          />
+          {runtimeTestsRequired && (
+            <div className="runtime-test-grid" aria-label="Runtime tests">
+              <strong>{copy.runtimeEvidenceTitle}</strong>
+              <small>
+                {copy.runtimeEvidenceHint}
+              </small>
+              {runtimeTests.map((testCase, index) => (
+                <div className="runtime-test-case" key={index}>
+                  <span>TEST {index + 1}</span>
+                  <input
+                    value={testCase.question}
+                    onChange={(event) =>
+                      setRuntimeTests((items) =>
+                        items.map((item, itemIndex) =>
+                          itemIndex === index
+                            ? { ...item, question: event.target.value }
+                            : item,
+                        ),
+                      )
+                    }
+                    placeholder={copy.runtimeQuestionPlaceholder}
+                    disabled={!accessActive || saving}
+                  />
+                  <input
+                    value={testCase.expected}
+                    onChange={(event) =>
+                      setRuntimeTests((items) =>
+                        items.map((item, itemIndex) =>
+                          itemIndex === index
+                            ? { ...item, expected: event.target.value }
+                            : item,
+                        ),
+                      )
+                    }
+                    placeholder={copy.runtimeExpectedPlaceholder}
+                    disabled={!accessActive || saving}
+                  />
+                  <textarea
+                    value={testCase.actual}
+                    onChange={(event) =>
+                      setRuntimeTests((items) =>
+                        items.map((item, itemIndex) =>
+                          itemIndex === index
+                            ? { ...item, actual: event.target.value }
+                            : item,
+                        ),
+                      )
+                    }
+                    placeholder={copy.runtimeActualPlaceholder}
+                    rows={2}
+                    disabled={!accessActive || saving}
+                  />
+                  <input
+                    value={testCase.citation}
+                    onChange={(event) =>
+                      setRuntimeTests((items) =>
+                        items.map((item, itemIndex) =>
+                          itemIndex === index
+                            ? { ...item, citation: event.target.value }
+                            : item,
+                        ),
+                      )
+                    }
+                    placeholder={copy.runtimeCitationPlaceholder}
+                    disabled={!accessActive || saving}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+          <label className="artifact-upload-box">
+            <span>{uploading ? copy.uploading : copy.uploadArtifact}</span>
+            <small>{copy.uploadHint}</small>
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp,application/pdf,text/plain,text/markdown,application/json,.md,.json"
+              disabled={!accessActive || saving || uploading}
+              onChange={(event) => {
+                const file = event.currentTarget.files?.[0];
+                event.currentTarget.value = "";
+                void uploadMilestoneArtifact(file);
+              }}
+            />
+          </label>
+          {uploadedArtifacts.length > 0 && (
+            <div className="uploaded-artifact-list">
+              {uploadedArtifacts.map((artifact) => (
+                <span key={artifact.id}>
+                  {artifact.originalFilename} · {Math.ceil(artifact.sizeBytes / 1024)}KB
+                </span>
+              ))}
+            </div>
+          )}
+          {error && <small className="form-error">{error}</small>}
+          <button
+            className="primary-button"
+            type="button"
+            onClick={() => void submitMilestone()}
+            disabled={!accessActive || saving || uploading}
+          >
+            {saving ? copy.recording : copy.submitMilestone}
+          </button>
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -1079,6 +1936,7 @@ function dateLocaleFor(locale: AppLocale) {
 
 function CoursePicker({
   copy,
+  locale,
   catalog,
   initialIds,
   required,
@@ -1086,12 +1944,14 @@ function CoursePicker({
   onSaved,
 }: {
   copy: ReturnType<typeof copyFor>;
+  locale: AppLocale;
   catalog: CatalogCourse[];
   initialIds: string[];
   required: boolean;
   onClose: () => void;
   onSaved: (data: Bootstrap) => void;
 }) {
+  const courseCopy = courseRuntimeCopy(locale);
   const [selectedIds, setSelectedIds] = useState(initialIds);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -1110,7 +1970,7 @@ function CoursePicker({
         return current.filter((id) => id !== courseId);
       }
       if (current.length >= 3) {
-        setError("最多同时选择 3 门课程");
+        setError(courseCopy.maxThreeCourses);
         return current;
       }
       return [...current, courseId];
@@ -1119,7 +1979,7 @@ function CoursePicker({
 
   async function save() {
     if (selectedIds.length < 1) {
-      setError("至少选择 1 门课程");
+      setError(courseCopy.minOneCourse);
       return;
     }
     setSaving(true);
@@ -1135,7 +1995,7 @@ function CoursePicker({
       onSaved(next);
     } catch (requestError) {
       setError(
-        requestError instanceof Error ? requestError.message : "保存失败",
+        requestError instanceof Error ? requestError.message : courseCopy.saveFailed,
       );
     } finally {
       setSaving(false);
@@ -1152,7 +2012,7 @@ function CoursePicker({
         </div>
         {!required && (
           <button className="text-button" type="button" onClick={onClose}>
-            取消
+            {courseCopy.cancel}
           </button>
         )}
       </header>
@@ -1183,8 +2043,8 @@ function CoursePicker({
 
       <footer className="picker-footer">
         <div>
-          <span>已选 {selectedIds.length}/3 门</span>
-          <strong>每天约 {minutes} 分钟</strong>
+          <span>{courseCopy.selectedCount(selectedIds.length)}</span>
+          <strong>{courseCopy.dailyMinutes(minutes)}</strong>
         </div>
         {error && <p>{error}</p>}
         <button
@@ -1193,7 +2053,7 @@ function CoursePicker({
           onClick={save}
           disabled={saving}
         >
-          {saving ? "正在安排…" : "开始 60 天训练"}
+          {saving ? courseCopy.savingPlan : courseCopy.startTraining}
         </button>
       </footer>
     </div>
@@ -1202,6 +2062,7 @@ function CoursePicker({
 
 function CoursesView({
   copy,
+  locale,
   catalog,
   enrollments,
   today,
@@ -1211,6 +2072,7 @@ function CoursesView({
   onEdit,
 }: {
   copy: ReturnType<typeof copyFor>;
+  locale: AppLocale;
   catalog: CatalogCourse[];
   enrollments: Enrollment[];
   today: TodayItem[];
@@ -1219,6 +2081,7 @@ function CoursesView({
   onSelect: (item: TodayItem) => void;
   onEdit: () => void;
 }) {
+  const courseCopy = courseRuntimeCopy(locale);
   const [focusedCourseId, setFocusedCourseId] = useState<string | null>(null);
   const activeIds = new Set(enrollments.map((item) => item.courseId));
   const focusedEnrollment = enrollments.find(
@@ -1228,23 +2091,26 @@ function CoursesView({
   const currentLesson = today.find(
     (item) => item.enrollment.courseId === focusedCourseId,
   );
-  const mainDone =
-    currentLesson?.submission?.status === "completed" &&
-    currentLesson.submission.completionSource !== "extra";
+  const mainDone = currentLesson
+    ? hasAcceptedMainlineEvidence(currentLesson)
+    : false;
   const nextLessons = learningAhead.filter(
     (item) => item.enrollment.courseId === focusedCourseId,
   );
   const nextUnlockMessage =
     supervision.lagDays >= 2
-      ? "已经连续中断，预习区先关闭。先把当前必修课补上。"
+      ? courseCopy.lockedByInterruption
       : supervision.lagDays === 1
-        ? "你已经落后 1 天。下一课暂不解锁，先完成当前主线。"
+        ? courseCopy.lockedByBehind
         : mainDone
-          ? "当前主线已完成，下面 3 节可以继续学习，但只记为额外证据。"
-          : "完成当前主线后才会解锁后续 3 节，不抢占明天的必修。";
+          ? courseCopy.extraOpen
+          : courseCopy.extraLocked;
 
   if (focusedCourse && focusedEnrollment && currentLesson) {
-    const continuation = continuationFor(focusedCourse.id);
+    const continuation =
+      courseCopy.extensionPaths[
+        focusedCourse.id as keyof typeof courseCopy.extensionPaths
+      ];
     const hasGraduated =
       focusedEnrollment.currentDay >= focusedCourse.durationDays && mainDone;
     return (
@@ -1258,6 +2124,7 @@ function CoursesView({
         nextUnlockMessage={nextUnlockMessage}
         graduated={hasGraduated}
         continuation={continuation}
+        locale={locale}
         onBack={() => setFocusedCourseId(null)}
         onSelect={onSelect}
       />
@@ -1268,7 +2135,7 @@ function CoursesView({
     <>
       <section className="page-intro">
         <span className="eyebrow">COURSE CATALOG</span>
-        <h1>课程</h1>
+        <h1>{copy.courses}</h1>
         <p>{copy.ui.courseCatalogDescription}</p>
       </section>
       <div className="catalog-list">
@@ -1286,10 +2153,18 @@ function CoursesView({
               <span>{course.subtitle}</span>
               <h2>{course.title}</h2>
               <p>{course.summary}</p>
+              {course.isContentFallback && (
+                <ContentFallbackNotice
+                  copy={copy}
+                  locale={locale}
+                  contentLocale={course.contentLocale}
+                  compact
+                />
+              )}
               <div>
                 <strong>{course.durationDays} DAYS</strong>
-                <small>{course.dailyMinutes} 分钟／天</small>
-                <em>{active ? "查看路径 →" : "未选择"}</em>
+                <small>{courseCopy.minutesPerDay(course.dailyMinutes)}</small>
+                <em>{active ? courseCopy.viewPath : courseCopy.notSelected}</em>
               </div>
             </button>
           );
@@ -1302,32 +2177,6 @@ function CoursesView({
   );
 }
 
-function continuationFor(courseId: string) {
-  const paths: Record<string, { title: string; description: string }> = {
-    english: {
-      title: "English Level 2 · 真实场景沟通",
-      description: "从固定表达进入追问、协作与 10 分钟以上的连续真实交流。",
-    },
-    "ai-command-skills": {
-      title: "AI Level 2 · 工作流与可运行原型",
-      description: "从单个指令进入多工具工作流、评估集与可运行的个人原型。",
-    },
-    business: {
-      title: "Business Extension · 市场验证与成交",
-      description: "把机会判断延展到连续访谈、报价测试和可复核的购买意向。",
-    },
-    "founder-note": {
-      title: "Founder Note Level 2 · 决策系统",
-      description: "从每日记录进入决策复盘、反例库与个人判断 SOP。",
-    },
-    quiz: {
-      title: "Quiz Level 2 · 情景挑战",
-      description: "从知识提取进入跨场景判断、限时作答与错误模式训练。",
-    },
-  };
-  return paths[courseId];
-}
-
 function CoursePathView({
   course,
   enrollment,
@@ -1338,6 +2187,7 @@ function CoursePathView({
   nextUnlockMessage,
   graduated,
   continuation,
+  locale,
   onBack,
   onSelect,
 }: {
@@ -1350,20 +2200,30 @@ function CoursePathView({
   nextUnlockMessage: string;
   graduated: boolean;
   continuation?: { title: string; description: string };
+  locale: AppLocale;
   onBack: () => void;
   onSelect: (item: TodayItem) => void;
 }) {
+  const copy = courseRuntimeCopy(locale);
+  const appCopy = copyFor(locale);
   return (
     <section className="course-path" style={{ "--course-accent": course.accent } as React.CSSProperties}>
       <button className="path-back" type="button" onClick={onBack}>
-        ‹ 返回课程
+        {copy.backCourses}
       </button>
       <span className="eyebrow">{course.subtitle.toUpperCase()}</span>
       <h1>{course.title}</h1>
       <p>{course.summary}</p>
+      {course.isContentFallback && (
+        <ContentFallbackNotice
+          copy={appCopy}
+          locale={locale}
+          contentLocale={course.contentLocale}
+        />
+      )}
 
       <div className="path-progress">
-        <span>60 天主线</span>
+        <span>{copy.mainline60}</span>
         <strong>DAY {String(enrollment.currentDay).padStart(2, "0")}</strong>
         <i style={{ "--path-progress": `${Math.min(100, (enrollment.currentDay / course.durationDays) * 100)}%` } as React.CSSProperties} />
       </div>
@@ -1373,14 +2233,14 @@ function CoursePathView({
         <strong>{currentLesson.lesson?.title}</strong>
         <p>{currentLesson.lesson?.objective}</p>
         <button className="primary-button" type="button" onClick={() => onSelect(currentLesson)}>
-          {mainDone ? "查看今天的学习证据" : "继续今天的主线 →"}
+          {mainDone ? copy.viewTodayEvidence : copy.continueMainline}
         </button>
       </section>
 
       {!graduated && (
         <section className={`path-next ${mainDone ? "is-open" : ""}`}>
           <span className="eyebrow">OPTIONAL NEXT</span>
-          <h2>继续加学</h2>
+          <h2>{copy.continueExtra}</h2>
           <p>{nextUnlockMessage}</p>
           <div>
             {nextLessons.map((item) => (
@@ -1392,7 +2252,15 @@ function CoursePathView({
               >
                 <span>DAY {String(item.lesson?.day ?? 0).padStart(2, "0")}</span>
                 <strong>{item.lesson?.title}</strong>
-                <i>{item.submission?.status === "completed" ? "已完成" : lagDays > 0 ? "先补当前" : mainDone ? "开始 →" : "待解锁"}</i>
+                <i>
+                  {hasAcceptedLessonEvidence(item)
+                    ? copy.completed
+                    : lagDays > 0
+                      ? copy.catchUpFirst
+                      : mainDone
+                        ? copy.start
+                        : copy.locked}
+                </i>
               </button>
             ))}
           </div>
@@ -1404,7 +2272,9 @@ function CoursePathView({
           <span className="eyebrow">AFTER DAY 60</span>
           <h2>{continuation.title}</h2>
           <p>{continuation.description}</p>
-          <strong>{graduated ? "已满足解锁条件 · 即将进入下一阶段" : "完成 Day 60 能力验证后解锁"}</strong>
+          <strong>
+            {graduated ? copy.nextStageReady : copy.day60Unlock}
+          </strong>
         </section>
       )}
     </section>
@@ -1413,14 +2283,18 @@ function CoursePathView({
 
 function LessonSheet({
   item,
+  locale,
   onClose,
   onSubmitted,
 }: {
   item: TodayItem;
+  locale: AppLocale;
   onClose: () => void;
   onSubmitted: (submission: Submission) => void;
 }) {
   const lesson = item.lesson!;
+  const copy = lessonRuntimeCopy(locale);
+  const appCopy = copyFor(locale);
   const canSubmit = item.enrollment.active === 1;
   const [answer, setAnswer] = useState("");
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
@@ -1449,7 +2323,7 @@ function LessonSheet({
       onSubmitted(result.submission);
     } catch (requestError) {
       setError(
-        requestError instanceof Error ? requestError.message : "提交失败",
+        requestError instanceof Error ? requestError.message : copy.submitFailed,
       );
     } finally {
       setSubmitting(false);
@@ -1458,9 +2332,9 @@ function LessonSheet({
 
   return (
     <div className="lesson-page">
-      <header className="lesson-page-header">
-        <button type="button" onClick={onClose}>
-          ‹ 返回今日
+        <header className="lesson-page-header">
+          <button type="button" onClick={onClose}>
+          {copy.backToday}
         </button>
         <span>
           {item.isExtra ? "EXTRA · " : ""}DAY {String(lesson.day).padStart(2, "0")} · {lesson.estimatedMinutes} MIN
@@ -1472,15 +2346,22 @@ function LessonSheet({
           {item.isExtra ? " · EXTRA STUDY" : ""}
         </p>
         <h1>{lesson.title}</h1>
+        {lesson.isContentFallback && (
+          <ContentFallbackNotice
+            copy={appCopy}
+            locale={locale}
+            contentLocale={lesson.contentLocale}
+          />
+        )}
 
         <section className="objective-block">
-          <span>今天的目标</span>
+          <span>{copy.todayObjective}</span>
           <p>{lesson.objective}</p>
         </section>
 
         <section className="lesson-reading">
           <span className="eyebrow">01 · LEARN FIRST</span>
-          <h2>先学，再做</h2>
+          <h2>{copy.learnFirstTitle}</h2>
           <RichLessonText text={lesson.content} />
           {!knowledgeRead && (
             <button
@@ -1488,21 +2369,21 @@ function LessonSheet({
               type="button"
               onClick={() => setKnowledgeRead(true)}
             >
-              我已看完，开始练习 →
+              {copy.startPractice}
             </button>
           )}
         </section>
 
         <section className="practice-card">
           <span className="eyebrow">02 · ACTIVE PRACTICE</span>
-          <h2>{lesson.assessment ? "完成本课检查" : "必须留下输出"}</h2>
+          <h2>{lesson.assessment ? copy.lessonCheckTitle : copy.mustLeaveOutput}</h2>
           {!knowledgeRead ? (
             <p className="practice-locked">
-              先完成上方的学习卡。看完句型和示例后，再开始写你的答案。
+              {copy.practiceLocked}
             </p>
           ) : !canSubmit ? (
             <p className="practice-locked">
-              杩欐槸涓€鑺傚巻鍙茶绋嬶紝鐜板湪鍙互鍥炵湅鍜屽涔狅紝浣嗕笉鍐嶆帴鍙楁彁浜ゃ€傚鏋滆缁х画鐣欎笅鏂拌瘉鎹紝璇峰洖鍒板綋鍓嶅惎鐢ㄧ殑璇剧▼銆?
+              {copy.historyReadOnly}
             </p>
           ) : (
             <>
@@ -1546,7 +2427,7 @@ function LessonSheet({
               <textarea
                 value={answer}
                 onChange={(event) => setAnswer(event.target.value)}
-                placeholder="写下你的原始答案。系统会保留它，不让 AI 替你假装学会。"
+                placeholder={copy.answerPlaceholder}
                 maxLength={4000}
               />
             </>
@@ -1555,8 +2436,11 @@ function LessonSheet({
             <div className="answer-meta">
               <span>
                 {lesson.assessment
-                  ? `已完成 ${Object.keys(selectedOptions).length}/${lesson.assessment.questions.length} 题`
-                  : `${answer.trim().length} 字`}
+                  ? copy.choiceProgress(
+                      Object.keys(selectedOptions).length,
+                      lesson.assessment.questions.length,
+                    )
+                  : copy.wordCount(answer.trim().length)}
               </span>
               {error && <strong>{error}</strong>}
             </div>
@@ -1572,7 +2456,11 @@ function LessonSheet({
                   : !answer.trim())
               }
             >
-              {submitting ? "正在检查…" : submission ? "修正后重新提交" : "提交学习证据"}
+              {submitting
+                ? copy.checking
+                : submission
+                  ? copy.resubmit
+                  : copy.submitEvidence}
             </button>
           </div>
             </>
@@ -1582,19 +2470,19 @@ function LessonSheet({
         {submission && (
           <section
             className={`feedback-card ${
-              submission.status === "completed" ? "passed" : ""
+              submission.evidenceStatus === "accepted" ? "passed" : ""
             }`}
           >
             <div>
-              <span>规则评分</span>
+              <span>{copy.ruleScore}</span>
               <strong>{Math.round(submission.ruleScore)}</strong>
             </div>
             <p>{submission.ruleFeedback}</p>
             <div className="ai-feedback">
-              <span>AI 教练点评</span>
+              <span>{copy.aiCoach}</span>
               <p>
                 {submission.aiFeedback ||
-                  "AI 教练暂时没有回应。规则评分已保存，不影响今天的学习。"}
+                  copy.aiFallback}
               </p>
             </div>
           </section>
@@ -1606,15 +2494,18 @@ function LessonSheet({
 
 function NotesView({
   copy,
+  locale,
   notes,
   accessActive,
   onSaved,
 }: {
   copy: ReturnType<typeof copyFor>;
+  locale: AppLocale;
   notes: Note[];
   accessActive: boolean;
   onSaved: (note: Note) => void;
 }) {
+  const noteCopy = notesRuntimeCopy(locale);
   const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -1631,7 +2522,7 @@ function NotesView({
       onSaved(result.note);
     } catch (requestError) {
       setError(
-        requestError instanceof Error ? requestError.message : "保存失败",
+        requestError instanceof Error ? requestError.message : noteCopy.saveFailed,
       );
     } finally {
       setSaving(false);
@@ -1650,7 +2541,7 @@ function NotesView({
           <textarea
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
-            placeholder="一个发现、一次判断，或明天必须继续的问题…"
+            placeholder={noteCopy.placeholder}
             maxLength={2000}
           />
           <div>
@@ -1668,12 +2559,12 @@ function NotesView({
         </section>
       ) : (
         <p className="locked-composer">
-          试用结束后仍可查看历史笔记，但不能继续新增学习记录。
+          {noteCopy.lockedComposer}
         </p>
       )}
       <section className="timeline note-timeline">
         {notes.length === 0 && (
-          <p className="empty-note">还没有笔记。大脑觉得记得住，通常只是它的个人意见。</p>
+          <p className="empty-note">{noteCopy.emptyNote}</p>
         )}
         {notes.map((note) => (
           <article className="note-entry" key={note.id}>
@@ -1692,26 +2583,79 @@ function NotesView({
 
 function ProgressView({
   copy,
+  locale,
   data,
   progress,
   completedCount,
   onOpenAssessment,
+  notify,
 }: {
   copy: ReturnType<typeof copyFor>;
+  locale: AppLocale;
   data: Bootstrap;
   progress: number;
   completedCount: number;
   onOpenAssessment: (assessment: DueAssessment) => void;
+  notify: (message: string) => void;
 }) {
-  const evidence = data.today.filter((item) => item.submission).length;
-  const averageScore = data.today.length
-    ? Math.round(
-        data.today.reduce(
-          (sum, item) => sum + (item.submission?.ruleScore ?? 0),
-          0,
-        ) / Math.max(1, evidence),
-      )
-    : 0;
+  const progressCopy = progressRuntimeCopy(locale);
+  const evidence = data.metrics.evidenceMetrics.acceptedCount;
+  const averageScore = data.metrics.evidenceMetrics.averageScore;
+  const [exportingProof, setExportingProof] = useState<"json" | "markdown" | null>(null);
+  const [creatingProofShare, setCreatingProofShare] = useState(false);
+  const [proofShareUrl, setProofShareUrl] = useState("");
+
+  async function exportCompetencyProof(format: "json" | "markdown") {
+    setExportingProof(format);
+    try {
+      const response = await fetch(`/api/academy/competency-proof?format=${format}`, {
+        headers: academyUploadHeaders(),
+      });
+      if (!response.ok) {
+        throw new Error("export failed");
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download =
+        format === "markdown"
+          ? "academy-competency-proof.md"
+          : "academy-competency-proof.json";
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+    } finally {
+      setExportingProof(null);
+    }
+  }
+
+  async function createProofShare() {
+    setCreatingProofShare(true);
+    try {
+      const response = await fetch("/api/academy/competency-proof", {
+        method: "POST",
+        headers: academyUploadHeaders(),
+      });
+      if (!response.ok) {
+        throw new Error("proof share failed");
+      }
+      const result = (await response.json()) as { shareUrl?: string };
+      if (!result.shareUrl) throw new Error("proof share url missing");
+      setProofShareUrl(result.shareUrl);
+      try {
+        await navigator.clipboard.writeText(result.shareUrl);
+        notify(progressCopy.proofShareCreatedAndCopied);
+      } catch {
+        notify(progressCopy.proofShareCreated);
+      }
+    } catch (shareError) {
+      notify(shareError instanceof Error ? shareError.message : progressCopy.proofShareFailed);
+    } finally {
+      setCreatingProofShare(false);
+    }
+  }
 
   return (
     <>
@@ -1722,13 +2666,13 @@ function ProgressView({
       </section>
       <section className="day-progress-card">
         <div className="big-day">
-          <span>当前学习日</span>
+          <span>{progressCopy.currentLearningDay}</span>
           <strong>{String(data.enrollments[0]?.currentDay ?? 1).padStart(2, "0")}</strong>
           <small>/ 60 DAYS</small>
         </div>
         <div className="overall-line">
           <div>
-            <span>今日完成</span>
+            <span>{progressCopy.todayCompletion}</span>
             <strong>{progress}%</strong>
           </div>
           <div className="long-progress">
@@ -1738,49 +2682,182 @@ function ProgressView({
       </section>
       <section className="stat-grid">
         <article>
-          <span>已完成</span>
+          <span>{progressCopy.completed}</span>
           <strong>{completedCount}</strong>
-          <small>共 {data.today.length} 门</small>
+          <small>{progressCopy.totalCourses(data.today.length)}</small>
         </article>
         <article>
-          <span>学习证据</span>
+          <span>{progressCopy.learningEvidence}</span>
           <strong>{evidence}</strong>
-          <small>今日提交</small>
+          <small>{progressCopy.acceptedEvidence}</small>
         </article>
         <article>
-          <span>规则均分</span>
-          <strong>{averageScore || "—"}</strong>
-          <small>满分 100</small>
+          <span>{progressCopy.ruleAverage}</span>
+          <strong>{averageScore ?? "—"}</strong>
+          <small>{progressCopy.outOf100}</small>
         </article>
         <article>
-          <span>有效学习日</span>
+          <span>{progressCopy.effectiveLearningDays}</span>
           <strong>{data.metrics.effectiveLearningDays}</strong>
           <small>
-            当前连续 {data.metrics.currentEffectiveStreak} 天
+            {progressCopy.currentStreak(data.metrics.currentEffectiveStreak)}
           </small>
+        </article>
+      </section>
+      <section className="stat-grid">
+        <article>
+          <span>{progressCopy.fwpr7}</span>
+          <strong>
+            {data.metrics.goalMetrics.fwpr7.achieved
+              ? progressCopy.achieved
+              : data.metrics.goalMetrics.fwpr7.eligible
+                ? progressCopy.pending
+                : progressCopy.notReady}
+          </strong>
+          <small>{progressCopy.fwpr7Hint}</small>
+        </article>
+        <article>
+          <span>{progressCopy.day21Dod}</span>
+          <strong>
+            {data.metrics.goalMetrics.day21Dod.achieved
+              ? progressCopy.achieved
+              : progressCopy.pending}
+          </strong>
+          <small>{progressCopy.day21DodHint}</small>
+        </article>
+        <article>
+          <span>{progressCopy.goalEvidenceRate}</span>
+          <strong>{data.metrics.goalMetrics.evidenceSubmissionRate}%</strong>
+          <small>
+            {progressCopy.goalEvidenceCount(
+              data.metrics.goalMetrics.completedCheckpointCount,
+              data.metrics.goalMetrics.requiredCheckpointCount,
+            )}
+          </small>
+        </article>
+        <article>
+          <span>{progressCopy.runtimeEvidence}</span>
+          <strong>{data.metrics.evidenceMetrics.byType.runtimeSuccess}</strong>
+          <small>{progressCopy.runtimeEvidenceHint}</small>
+        </article>
+      </section>
+      <section className="competency-card">
+        <div className="section-heading">
+          <div>
+            <span className="eyebrow">COMPETENCY GRAPH</span>
+            <h2>{progressCopy.competencyTitle}</h2>
+          </div>
+          <div className="competency-proof-actions">
+            <strong>{data.metrics.competencyGraph.overallScore}%</strong>
+            <button
+              type="button"
+              onClick={() => void exportCompetencyProof("json")}
+              disabled={exportingProof != null}
+            >
+              {exportingProof === "json" ? progressCopy.exporting : progressCopy.exportJson}
+            </button>
+            <button
+              type="button"
+              onClick={() => void exportCompetencyProof("markdown")}
+              disabled={exportingProof != null}
+            >
+              {exportingProof === "markdown"
+                ? progressCopy.exporting
+                : progressCopy.exportMarkdown}
+            </button>
+            <button
+              type="button"
+              onClick={() => void createProofShare()}
+              disabled={creatingProofShare}
+            >
+              {creatingProofShare
+                ? progressCopy.creatingProofShare
+                : progressCopy.createProofShare}
+            </button>
+          </div>
+        </div>
+        <p>{progressCopy.competencySubtitle}</p>
+        {proofShareUrl ? (
+          <div className="competency-share-link">
+            <span>{progressCopy.publicProofPage}</span>
+            <a href={proofShareUrl} target="_blank" rel="noreferrer">
+              {proofShareUrl}
+            </a>
+          </div>
+        ) : null}
+        <div className="competency-node-list">
+          {data.metrics.competencyGraph.nodes.map((node) => (
+            <article className={`competency-node competency-${node.status}`} key={node.id}>
+              <div>
+                <span>{node.status.replace("_", " ")}</span>
+                <strong>{node.title}</strong>
+                <small>{node.description}</small>
+              </div>
+              <div className="competency-score">
+                <b>{node.score}</b>
+                <small>{progressCopy.evidenceCount(node.evidenceCount)}</small>
+              </div>
+              <i style={{ width: `${Math.max(node.score, 3)}%` }} />
+            </article>
+          ))}
+        </div>
+      </section>
+      <section className="stat-grid">
+        <article>
+          <span>{progressCopy.quizFirstPassRate}</span>
+          <strong>{data.metrics.quizMetrics.firstPassRate}%</strong>
+          <small>
+            {progressCopy.quizFirstPassCount(
+              data.metrics.quizMetrics.firstPassCount,
+              data.metrics.quizMetrics.firstAttemptCount,
+            )}
+          </small>
+        </article>
+        <article>
+          <span>{progressCopy.quizRevisionPassRate}</span>
+          <strong>{data.metrics.quizMetrics.revisionPassAfterFailRate}%</strong>
+          <small>
+            {progressCopy.quizRevisionPassCount(
+              data.metrics.quizMetrics.revisionPassAfterFailCount,
+              data.metrics.quizMetrics.firstFailCount,
+            )}
+          </small>
+        </article>
+        <article>
+          <span>{progressCopy.quizQuestionAccuracy}</span>
+          <strong>{data.metrics.quizMetrics.questionAccuracyRate}%</strong>
+          <small>{progressCopy.quizAttemptCount(data.metrics.quizMetrics.attemptCount)}</small>
+        </article>
+        <article>
+          <span>{progressCopy.quizNeedsReview}</span>
+          <strong>
+            {Math.max(
+              0,
+              data.metrics.quizMetrics.firstFailCount -
+                data.metrics.quizMetrics.revisionPassAfterFailCount,
+            )}
+          </strong>
+          <small>{progressCopy.quizNeedsReviewHint}</small>
         </article>
       </section>
       {data.supervision.lagDays > 0 && (
         <section className="lag-warning">
-          <span>课程没有跳过</span>
-          <p>
-            当前比日历计划落后 {data.supervision.lagDays} 天。完成当前课程后，
-            系统会在下一个学习日解锁下一课。
-          </p>
+          <span>{progressCopy.noSkipping}</span>
+          <p>{progressCopy.lagWarning(data.supervision.lagDays)}</p>
         </section>
       )}
       <section className="subject-progress">
         <div className="section-heading">
           <div>
             <span className="eyebrow">ACTIVE COURSES</span>
-            <h2>独立课程进度</h2>
+            <h2>{progressCopy.independentCourseProgress}</h2>
           </div>
         </div>
         {data.enrollments.map((enrollment) => {
           const item = data.today.find(
             (today) => today.enrollment.id === enrollment.id,
           );
-          const done = item?.submission?.status === "completed";
+          const done = item ? hasAcceptedMainlineEvidence(item) : false;
           return (
             <div className="subject-line" key={enrollment.id}>
               <span
@@ -1801,7 +2878,7 @@ function ProgressView({
           <div className="section-heading">
             <div>
               <span className="eyebrow">CHECKPOINTS</span>
-              <h2>阶段测试</h2>
+              <h2>{progressCopy.stageAssessments}</h2>
             </div>
           </div>
           {data.dueAssessments.map((item) => (
@@ -1816,7 +2893,11 @@ function ProgressView({
               <div className="mini-progress">
                 <span style={{ width: item.completed ? "100%" : "0%" }} />
               </div>
-              <small>{item.completed ? "查看 / 重提" : `${item.label} 待完成`}</small>
+              <small>
+                {item.completed
+                  ? progressCopy.viewOrResubmit
+                  : progressCopy.assessmentPending(item.label)}
+              </small>
             </button>
           ))}
         </section>
@@ -1824,41 +2905,43 @@ function ProgressView({
       <AssessmentComparison data={data} />
       <section className="stat-grid">
         <article>
-          <span>自主完成</span>
+          <span>{progressCopy.selfCompleted}</span>
           <strong>{data.metrics.completionBreakdown.self}</strong>
-          <small>未被提醒直接完成</small>
+          <small>{progressCopy.selfCompletedHint}</small>
         </article>
         <article>
-          <span>提醒完成</span>
+          <span>{progressCopy.promptedCompleted}</span>
           <strong>{data.metrics.completionBreakdown.prompted}</strong>
-          <small>L1 / L2 后完成</small>
+          <small>{progressCopy.afterL1L2}</small>
         </article>
         <article>
-          <span>强监督完成</span>
+          <span>{progressCopy.supervisedCompleted}</span>
           <strong>{data.metrics.completionBreakdown.supervised}</strong>
-          <small>L3 / L4 后完成</small>
+          <small>{progressCopy.afterL3L4}</small>
         </article>
       </section>
       <section className="stat-grid">
         <article>
-          <span>提醒送达</span>
+          <span>{progressCopy.remindersDelivered}</span>
           <strong>{data.metrics.reminderMetrics.deliveredCount}</strong>
-          <small>已成功发到 Telegram</small>
+          <small>{progressCopy.deliveredHint}</small>
         </article>
         <article>
-          <span>提醒后完成</span>
+          <span>{progressCopy.completedAfterReminder}</span>
           <strong>{data.metrics.reminderMetrics.completedCount}</strong>
           <small>
-            平均 {data.metrics.reminderMetrics.averageCompletionMinutes ?? "—"} 分钟
+            {progressCopy.averageMinutes(
+              data.metrics.reminderMetrics.averageCompletionMinutes,
+            )}
           </small>
         </article>
         <article>
-          <span>高强度完成</span>
+          <span>{progressCopy.highIntensityCompleted}</span>
           <strong>
             {data.metrics.reminderMetrics.byLevel.l3 +
               data.metrics.reminderMetrics.byLevel.l4}
           </strong>
-          <small>L3 / L4 转化</small>
+          <small>{progressCopy.l3L4Conversion}</small>
         </article>
       </section>
     </>
@@ -1898,8 +2981,9 @@ function ProfileView({
   const [pricingPreview, setPricingPreview] = useState<PricingPreviewSnapshot | null>(null);
   const [lockingPricing, setLockingPricing] = useState(false);
   const [redeemCredits, setRedeemCredits] = useState(true);
+  const [testingReminder, setTestingReminder] = useState(false);
   const [paymentResult, setPaymentResult] = useState<
-    "paid" | "pending" | "failed" | "cancelled" | null
+    PaymentResultState | null
   >(null);
   const initials =
     data.user.displayName
@@ -1926,6 +3010,14 @@ function ProfileView({
     reward: copy.accessReward,
     expired: copy.accessExpired,
   }[data.access.state];
+  const currentPaymentStatus = paymentResult
+    ? paymentStatusContent(copy, paymentResult)
+    : null;
+  const profileCopy = profileRuntimeCopy(locale);
+  const reminderDiagnostic = reminderDiagnosticCopy(
+    locale,
+    data.reminderDiagnostic,
+  );
 
   useEffect(() => {
     setSelectedLocale(locale);
@@ -1971,8 +3063,7 @@ function ProfileView({
   async function shareAcademy() {
     try {
       const url = localShareUrl();
-      const text =
-        "我在 Academy 做 60 天能力训练。不是收藏课程，是每天必须留下学习证据。";
+      const text = profileCopy.shareText;
       const telegramShare = `https://t.me/share/url?url=${encodeURIComponent(
         url,
       )}&text=${encodeURIComponent(text)}`;
@@ -1986,7 +3077,7 @@ function ProfileView({
         return;
       }
       await navigator.clipboard.writeText(`${text}\n${url}`);
-      notify("邀请链接已复制");
+      notify(profileCopy.shareCopied);
     } catch (shareError) {
       if (
         shareError instanceof DOMException &&
@@ -1994,26 +3085,65 @@ function ProfileView({
       ) {
         return;
       }
-      notify("分享没有成功，请复制邀请码");
+      notify(profileCopy.shareFailed);
     }
   }
 
   async function copyCode() {
     try {
       await navigator.clipboard.writeText(data.referral.code);
-      notify("邀请码已复制");
+      notify(profileCopy.inviteCodeCopied);
     } catch {
-      notify(`邀请码：${data.referral.code}`);
+      notify(profileCopy.inviteCodeFallback(data.referral.code));
     }
   }
 
+  async function sendTestReminder() {
+    setTestingReminder(true);
+    try {
+      const result = await academyRequest<{
+        delivered: boolean;
+        deliveryReason: string;
+      }>("/api/academy/reminders/test", {
+        method: "POST",
+        body: JSON.stringify({}),
+      });
+      notify(
+        result.delivered
+          ? testReminderCopy(locale).sent
+          : testReminderCopy(locale).skipped(result.deliveryReason),
+      );
+      await onPaymentFinished();
+    } catch (requestError) {
+      notify(
+        requestError instanceof Error
+          ? requestError.message
+          : testReminderCopy(locale).failed,
+      );
+    } finally {
+      setTestingReminder(false);
+    }
+  }
+
+  function trackProfileConversion(eventType: string, planKey?: string) {
+    void academyRequest<{ event: unknown }>("/api/academy/conversion-events", {
+      method: "POST",
+      body: JSON.stringify({
+        eventType,
+        planKey,
+        metadata: { locale, source: "profile" },
+      }),
+    }).catch(() => undefined);
+  }
+
   async function startStarsPayment(planKey: string, enabled: boolean) {
+    trackProfileConversion("price_clicked", planKey);
     if (!enabled) {
-      notify("这档方案还没有配置 Stars 数量");
+      notify(starsStatusCopy(locale).planDisabled);
       return;
     }
     if (!window.Telegram?.WebApp?.openInvoice) {
-      notify("请从 Telegram Mini App 内发起 Stars 支付");
+      notify(copy.paymentOpenInTelegramRequired);
       return;
     }
 
@@ -2034,7 +3164,7 @@ function ProfileView({
       notify(
         paymentError instanceof Error
           ? paymentError.message
-          : "结算预览失败",
+          : copy.pricingPreviewFailed,
       );
     }
   }
@@ -2075,9 +3205,7 @@ function ProfileView({
         setPricingPreview(null);
         setPaymentResult(status);
         if (status === "paid" || status === "pending") {
-          notify(
-            status === "paid" ? "Stars 支付成功，正在更新权限" : "支付正在确认",
-          );
+          notify(paymentStatusContent(copy, status).title);
           const delays = status === "paid" ? [700, 2000] : [700, 2000, 5000];
           delays.forEach((delay, index) => {
             window.setTimeout(() => {
@@ -2089,15 +3217,16 @@ function ProfileView({
           });
           return;
         }
-        if (status === "failed") notify("Stars 支付失败，请稍后重试");
-        if (status === "cancelled") notify("已取消支付");
+        if (status === "failed" || status === "cancelled") {
+          notify(paymentStatusContent(copy, status).title);
+        }
       });
     } catch (paymentError) {
       setPayingPlan(null);
       notify(
         paymentError instanceof Error
           ? paymentError.message
-          : "Stars 发票创建失败",
+          : copy.paymentInvoiceFailed,
       );
     } finally {
       setLockingPricing(false);
@@ -2116,19 +3245,19 @@ function ProfileView({
           <p>
             {data.user.telegramUsername
               ? `@${data.user.telegramUsername}`
-              : "未设置 Telegram 用户名"}
+              : profileCopy.telegramUsernameMissing}
           </p>
         </div>
       </section>
 
-      <section className="profile-facts" aria-label="Telegram 个人信息">
+      <section className="profile-facts" aria-label={profileCopy.telegramProfileLabel}>
         <div>
           <span>Telegram ID</span>
-          <strong>{data.user.telegramId ?? "Founder 本地模式"}</strong>
+          <strong>{data.user.telegramId ?? profileCopy.localFounderMode}</strong>
         </div>
         <div>
           <span>{copy.telegramLanguage}</span>
-          <strong>{data.user.languageCode ?? "未提供"}</strong>
+          <strong>{data.user.languageCode ?? profileCopy.notProvided}</strong>
         </div>
         <div>
           <span>{copy.timezone}</span>
@@ -2136,7 +3265,7 @@ function ProfileView({
         </div>
         <div>
           <span>{copy.activeCourses}</span>
-          <strong>{data.enrollments.length} / 3 门</strong>
+          <strong>{profileCopy.courseCount(data.enrollments.length)}</strong>
         </div>
       </section>
 
@@ -2167,33 +3296,25 @@ function ProfileView({
         </div>
       </section>
 
-      <section className="language-card" aria-label="提醒偏好">
+      <section className="language-card" aria-label={profileCopy.reminderPreferences}>
         <div>
           <span className="eyebrow">REMINDERS</span>
-          <h2>{locale === "vi" ? "Nhắc học" : locale === "km" ? "ការរំលឹក" : locale === "th" ? "การเตือน" : "学习提醒"}</h2>
-          <p>
-            {locale === "vi"
-              ? "Tắt là không nhắc. L1 sẽ gửi sau giờ bạn đặt; khung yên tĩnh sẽ không gửi."
-              : locale === "km"
-                ? "បិទហើយគឺមិនផ្ញើរ។ L1 នឹងផ្ញើបន្ទាប់ពីម៉ោងដែលអ្នកកំណត់ ហើយម៉ោងស្ងប់នឹងមិនរំខាន។"
-                : locale === "th"
-                  ? "ปิดแล้วจะไม่เตือน L1 จะส่งหลังเวลาที่คุณตั้งไว้ และจะไม่ส่งในช่วงห้ามรบกวน"
-                  : "关闭后不再催促；L1 会在你设定的学习时间后触发，免打扰时段内不会发送。"}
-          </p>
+          <h2>{profileCopy.remindersTitle}</h2>
+          <p>{profileCopy.remindersDescription}</p>
         </div>
         <div className="language-actions reminder-settings-grid">
           <label className="setting-stack">
-            <span>{locale === "vi" ? "Trạng thái" : locale === "km" ? "ស្ថានភាព" : locale === "th" ? "สถานะ" : "提醒状态"}</span>
+            <span>{profileCopy.reminderStatus}</span>
             <select
               value={reminderEnabled ? "on" : "off"}
               onChange={(event) => setReminderEnabled(event.target.value === "on")}
             >
-              <option value="on">{locale === "vi" ? "Bật" : locale === "km" ? "បើក" : locale === "th" ? "เปิด" : "开启"}</option>
-              <option value="off">{locale === "vi" ? "Tắt" : locale === "km" ? "បិទ" : locale === "th" ? "ปิด" : "暂停"}</option>
+              <option value="on">{profileCopy.on}</option>
+              <option value="off">{profileCopy.off}</option>
             </select>
           </label>
           <label className="setting-stack">
-            <span>{locale === "vi" ? "Giờ bắt đầu" : locale === "km" ? "ម៉ោងចាប់ផ្តើម" : locale === "th" ? "เวลาเริ่ม" : "学习时间"}</span>
+            <span>{profileCopy.learningHour}</span>
             <select
               value={String(reminderHour)}
               onChange={(event) => setReminderHour(Number(event.target.value))}
@@ -2206,14 +3327,14 @@ function ProfileView({
             </select>
           </label>
           <label className="setting-stack">
-            <span>{locale === "vi" ? "Yên tĩnh từ" : locale === "km" ? "ស្ងប់ចាប់ពី" : locale === "th" ? "ห้ามรบกวนเริ่ม" : "免打扰开始"}</span>
+            <span>{profileCopy.dndStart}</span>
             <select
               value={dndStartHour === "" ? "" : String(dndStartHour)}
               onChange={(event) =>
                 setDndStartHour(event.target.value === "" ? "" : Number(event.target.value))
               }
             >
-              <option value="">{locale === "vi" ? "Không đặt" : locale === "km" ? "មិនកំណត់" : locale === "th" ? "ไม่ตั้ง" : "不设置"}</option>
+              <option value="">{profileCopy.notSet}</option>
               {Array.from({ length: 24 }, (_, hour) => (
                 <option value={hour} key={hour}>
                   {String(hour).padStart(2, "0")}:00
@@ -2222,14 +3343,14 @@ function ProfileView({
             </select>
           </label>
           <label className="setting-stack">
-            <span>{locale === "vi" ? "Yên tĩnh đến" : locale === "km" ? "ស្ងប់រហូតដល់" : locale === "th" ? "ห้ามรบกวนถึง" : "免打扰结束"}</span>
+            <span>{profileCopy.dndEnd}</span>
             <select
               value={dndEndHour === "" ? "" : String(dndEndHour)}
               onChange={(event) =>
                 setDndEndHour(event.target.value === "" ? "" : Number(event.target.value))
               }
             >
-              <option value="">{locale === "vi" ? "Không đặt" : locale === "km" ? "មិនកំណត់" : locale === "th" ? "ไม่ตั้ง" : "不设置"}</option>
+              <option value="">{profileCopy.notSet}</option>
               {Array.from({ length: 24 }, (_, hour) => (
                 <option value={hour} key={hour}>
                   {String(hour).padStart(2, "0")}:00
@@ -2243,9 +3364,78 @@ function ProfileView({
             onClick={() => void saveLocale()}
             disabled={savingLocale}
           >
-            {savingLocale ? copy.saving : locale === "vi" ? "Lưu cài đặt" : locale === "km" ? "រក្សាទុក" : locale === "th" ? "บันทึก" : "保存设置"}
+            {savingLocale ? copy.saving : profileCopy.saveSettings}
           </button>
         </div>
+      </section>
+
+      <section className="reminder-history" aria-label="Reminder history">
+        <div className="reminder-diagnostic">
+          <span className="eyebrow">REMINDER DIAGNOSTIC</span>
+          <h2>{reminderDiagnostic.title}</h2>
+          <p>{reminderDiagnostic.reason}</p>
+          <div className="reminder-diagnostic-grid">
+            <div>
+              <span>{reminderDiagnostic.nextLabel}</span>
+              <strong>
+                {data.reminderDiagnostic.nextReminderLocal ??
+                  (data.reminderDiagnostic.reason === "eligible_now"
+                    ? reminderDiagnostic.now
+                    : "—")}
+              </strong>
+            </div>
+            <div>
+              <span>{reminderDiagnostic.lastLabel}</span>
+              <strong>
+                {data.reminderDiagnostic.lastEvent
+                  ? `${reminderHistoryStatus(locale, {
+                      id: 0,
+                      level: data.reminderDiagnostic.lastEvent.level,
+                      deliveryStatus: data.reminderDiagnostic.lastEvent.deliveryStatus,
+                      sentAt: data.reminderDiagnostic.lastEvent.sentAt,
+                      deliveredAt: data.reminderDiagnostic.lastEvent.deliveredAt,
+                      clickedAt: null,
+                      completedAt: null,
+                    })} · L${data.reminderDiagnostic.lastEvent.level}`
+                  : reminderDiagnostic.none}
+              </strong>
+            </div>
+          </div>
+          <small>{reminderDiagnostic.subtitle}</small>
+          <button
+            className="secondary-button"
+            type="button"
+            onClick={() => void sendTestReminder()}
+            disabled={testingReminder}
+          >
+            {testingReminder
+              ? testReminderCopy(locale).sending
+              : testReminderCopy(locale).button}
+          </button>
+        </div>
+        <div className="section-heading">
+          <div>
+            <span className="eyebrow">REMINDER STATUS</span>
+            <h2>{reminderHistoryTitle(locale)}</h2>
+          </div>
+          <small>{reminderHistorySummary(locale, data.reminderHistory)}</small>
+        </div>
+        {data.reminderHistory.length === 0 ? (
+          <p className="reminder-history-empty">{reminderHistoryEmpty(locale)}</p>
+        ) : (
+          <div className="reminder-history-list">
+            {data.reminderHistory.map((event) => (
+              <article className="reminder-history-row" key={event.id}>
+                <span className={`reminder-status-dot is-${event.deliveryStatus}`} />
+                <div>
+                  <strong>{reminderHistoryStatus(locale, event)}</strong>
+                  <small>{formatReminderTimestamp(event.sentAt, locale)}</small>
+                </div>
+                <em>L{event.level}</em>
+              </article>
+            ))}
+          </div>
+        )}
       </section>
 
       {locale !== "zh-Hans" && (
@@ -2275,6 +3465,30 @@ function ProfileView({
       </section>
 
       <small className="payment-note">{copy.creditsRule}</small>
+      <section className="referral-list" aria-label={copy.creditsLedgerTitle}>
+        <div className="section-heading">
+          <div>
+            <span className="eyebrow">CREDITS LEDGER</span>
+            <h2>{copy.creditsLedgerTitle}</h2>
+          </div>
+        </div>
+        {data.credits.ledger.length === 0 ? (
+          <p className="reminder-history-empty">{copy.creditsLedgerEmpty}</p>
+        ) : (
+          data.credits.ledger.map((entry) => (
+            <article className="referral-item" key={entry.id}>
+              <div>
+                <strong>{creditsLedgerTypeCopy(locale, entry.rewardType)}</strong>
+                <span>{formatShortDate(entry.createdAt)}</span>
+              </div>
+              <div>
+                <strong>{formatCreditsAmount(entry.amountPoints)}</strong>
+                <span>{creditsLedgerStatusCopy(locale, entry.status)}</span>
+              </div>
+            </article>
+          ))
+        )}
+      </section>
 
       <section className="content-language-notice" role="status">
         <p>
@@ -2293,35 +3507,72 @@ function ProfileView({
             <h2>{accessLabel}</h2>
           </div>
           <strong>
-            {data.access.active ? `${data.access.daysRemaining} 天` : "已锁定"}
+            {data.access.active
+              ? profileCopy.days(data.access.daysRemaining)
+              : profileCopy.locked}
           </strong>
         </div>
         <p>
           {data.access.active
-            ? `当前使用权限至 ${formatShortDate(data.access.accessEndsAt)}。`
-            : "历史课程、笔记和证据仍可查看；新课程和提交已停止。"}
+            ? profileCopy.accessActiveUntil(formatShortDate(data.access.accessEndsAt))
+            : profileCopy.accessLockedDescription}
         </p>
-        <div className="pricing-grid" aria-label="订阅价格">
+        <section
+          className="continuation-card"
+          aria-label={profileCopy.continuationRulesLabel}
+        >
+          <div>
+            <span>{profileCopy.continuationPrimary}</span>
+            <strong>
+              {profileCopy.monthlyPrice(data.access.continuation.primaryUsdPrice)}
+              {data.access.continuation.primaryStars
+                ? profileCopy.starsAmount(data.access.continuation.primaryStars)
+                : ` · ${profileCopy.starsPending}`}
+            </strong>
+          </div>
+          <div>
+            <span>{profileCopy.continuationCredits}</span>
+            <strong>
+              {data.access.continuation.creditsAvailablePoints} pts ·{" "}
+              {profileCopy.maxRedeem(data.access.continuation.maxRedeemablePercent)}
+            </strong>
+          </div>
+          <div>
+            <span>{profileCopy.continuationReferral}</span>
+            <strong>
+              {data.access.continuation.qualifiedInvites}/
+              {data.access.continuation.referralRewardTarget}
+              {data.access.continuation.qualifiedInvitesNeeded > 0
+                ? ` · ${profileCopy.needMore(data.access.continuation.qualifiedInvitesNeeded)}`
+                : ` · ${profileCopy.referralTargetDone}`}
+            </strong>
+          </div>
+        </section>
+        <div className="pricing-grid" aria-label={profileCopy.pricingGridLabel}>
           {data.payment.plans.map((plan) => (
             <button
               type="button"
               key={plan.key}
-              disabled={payingPlan !== null || lockingPricing}
+              disabled={payingPlan !== null || lockingPricing || !plan.enabled}
               onClick={() => startStarsPayment(plan.key, plan.enabled)}
             >
               <span>
-                {plan.durationDays} 天
-                {plan.recurring ? " · 自动续费" : ""}
+                {profileCopy.days(plan.durationDays)}
+                {plan.recurring ? profileCopy.recurringSuffix : ""}
               </span>
-              <strong>{plan.stars ? `⭐ ${plan.stars}` : "Stars 待定"}</strong>
+              <strong>{plan.stars ? `⭐ ${plan.stars}` : profileCopy.starsPending}</strong>
               <small>
-                {plan.usdPrice} 目标价
-                {payingPlan === plan.key ? " · 正在创建发票" : ""}
+                {profileCopy.targetPrice(plan.usdPrice)}
+                {payingPlan === plan.key ? profileCopy.creatingInvoiceSuffix : ""}
+                {" · "}
+                {plan.enabled
+                  ? starsStatusCopy(locale).ready(plan.configuredBy)
+                  : starsStatusCopy(locale).disabledReason(plan.disabledReason)}
               </small>
             </button>
           ))}
         </div>
-        <div className="invite-code-row" aria-label="积分抵扣开关">
+        <div className="invite-code-row" aria-label={profileCopy.creditsToggleLabel}>
           <div>
             <span>{copy.billingUseCredits}</span>
             <strong>
@@ -2368,8 +3619,8 @@ function ProfileView({
         )}
         <small className="payment-note">
           {data.payment.enabled
-            ? "数字课程通过 Telegram Stars 结算。付款成功回调后才会增加权限。"
-            : "Telegram Stars 接口已接好；填写 Bot Token、Webhook Secret 和四档 Stars 数量后启用。"}
+            ? profileCopy.paymentEnabledNote
+            : profileCopy.paymentDisabledNote}
           {paymentResult === "pending"
             ? ` · ${copy.paymentStatusPending}`
             : paymentResult === "paid"
@@ -2380,6 +3631,21 @@ function ProfileView({
                   ? ` · ${copy.paymentStatusCancelled}`
                   : ""}
         </small>
+        {(currentPaymentStatus || data.payment.enabled) && (
+          <section
+            className={`payment-state-card ${
+              paymentResult ? `is-${paymentResult}` : "is-policy"
+            }`}
+            role="status"
+          >
+            <strong>
+              {currentPaymentStatus?.title ?? copy.paymentRefundTitle}
+            </strong>
+            <p>
+              {currentPaymentStatus?.detail ?? copy.paymentRefundPolicy}
+            </p>
+          </section>
+        )}
       </section>
 
       <section className="referral-card">
@@ -2389,46 +3655,47 @@ function ProfileView({
             <h2>{copy.referralTitle}</h2>
           </div>
           <strong>
-            {qualifiedInvites} 位
+            {qualifiedInvites} {profileCopy.invitedUnit}
           </strong>
         </div>
         <p>{copy.referralRule}</p>
-        <div className="referral-progress" aria-label={`有效邀请进度 ${referralProgress}%`}>
+        <small className="qualification-note">{copy.referralValidBehavior}</small>
+        <div className="referral-progress" aria-label={profileCopy.referralProgressLabel(referralProgress)}>
           <span style={{ width: `${Math.max(referralProgress, 2)}%` }} />
         </div>
         <div className="invite-stats">
           <div>
             <strong>{data.referral.total}</strong>
-            <span>已进入</span>
+            <span>{profileCopy.entered}</span>
           </div>
           <div>
             <strong>{data.referral.pending}</strong>
-            <span>学习中</span>
+            <span>{profileCopy.learning}</span>
           </div>
           <div>
             <strong>{data.referral.review}</strong>
-            <span>待审核</span>
+            <span>{profileCopy.review}</span>
           </div>
           <div>
             <strong>{data.referral.qualified}</strong>
-            <span>已有效</span>
+            <span>{profileCopy.qualified}</span>
           </div>
           <div>
             <strong>{data.referral.rejected}</strong>
-            <span>已驳回</span>
+            <span>{profileCopy.rejected}</span>
           </div>
         </div>
         <div className="invite-code-row">
           <div>
-            <span>我的邀请码</span>
+            <span>{profileCopy.myInviteCode}</span>
             <strong>{data.referral.code}</strong>
           </div>
           <button type="button" onClick={copyCode}>
-            复制
+            {profileCopy.copy}
           </button>
         </div>
         <button className="primary-button share-button" type="button" onClick={shareAcademy}>
-          分享 Academy Mini App
+          {profileCopy.shareMiniApp}
         </button>
         <small className="qualification-note">
           {copy.referralQualifiedDefinition} {copy.referralNextRate(nextReferralRate)}
@@ -2446,24 +3713,24 @@ function ProfileView({
                 <div>
                   <strong>
                     {item.status === "qualified"
-                      ? "已有效"
+                      ? profileCopy.qualified
                       : item.status === "rejected"
-                        ? "已驳回"
+                        ? profileCopy.rejected
                       : item.status === "review"
-                        ? "待审核"
-                        : "学习中"}
+                        ? profileCopy.review
+                        : profileCopy.learning}
                   </strong>
                   <span>
                     {item.rewardGrantedAt
-                      ? `奖励已发放 · ${formatShortDate(item.rewardGrantedAt)}`
+                      ? profileCopy.rewardGranted(formatShortDate(item.rewardGrantedAt))
                       : item.qualifiedAt
-                        ? `已达标 · ${formatShortDate(item.qualifiedAt)}`
-                        : `加入时间 · ${formatShortDate(item.createdAt)}`}
+                        ? profileCopy.qualifiedAt(formatShortDate(item.qualifiedAt))
+                        : profileCopy.joinedAt(formatShortDate(item.createdAt))}
                   </span>
                 </div>
                 {item.riskSignals.length > 0 && (
                   <small className="qualification-note">
-                    风险信号：{item.riskSignals.join("、")}
+                    {profileCopy.riskSignals(item.riskSignals.join(" / "))}
                   </small>
                 )}
               </article>
@@ -2503,7 +3770,7 @@ function AssessmentComparison({ data }: { data: Bootstrap }) {
       <div className="section-heading">
         <div>
           <span className="eyebrow">BASELINE VS CHECKPOINT</span>
-          <h2>Day 0 / Day 21 对比</h2>
+          <h2>{progressCopy.baselineVsCheckpointTitle}</h2>
         </div>
       </div>
       {comparisons.map((item) => {
@@ -2538,17 +3805,20 @@ function AssessmentComparison({ data }: { data: Bootstrap }) {
 
 function AssessmentSheet({
   assessment,
+  locale,
   existing,
   courseTitle,
   onClose,
   onSubmitted,
 }: {
   assessment: DueAssessment;
+  locale: AppLocale;
   existing: AbilityAssessment | null;
   courseTitle: string;
   onClose: () => void;
   onSubmitted: (bootstrap: Bootstrap, assessment: AbilityAssessment) => void;
 }) {
+  const copy = assessmentRuntimeCopy(locale);
   const [answer, setAnswer] = useState(
     existing?.revisedAnswer ?? existing?.originalAnswer ?? "",
   );
@@ -2573,7 +3843,7 @@ function AssessmentSheet({
       onSubmitted(result.bootstrap, result.assessment);
     } catch (requestError) {
       setError(
-        requestError instanceof Error ? requestError.message : "提交失败",
+        requestError instanceof Error ? requestError.message : copy.submitFailed,
       );
     } finally {
       setSubmitting(false);
@@ -2584,7 +3854,7 @@ function AssessmentSheet({
     <div className="lesson-page">
       <header className="lesson-page-header">
         <button type="button" onClick={onClose}>
-          ‹ 返回进度
+          {copy.backProgress}
         </button>
         <span>
           {assessment.label} · {courseTitle}
@@ -2597,22 +3867,19 @@ function AssessmentSheet({
         <h1>{assessment.title}</h1>
 
         <section className="objective-block">
-          <span>为什么现在做</span>
-          <p>
-            这是 {assessment.label}。它会记录你在当前阶段是否真的掌握了关键能力，
-            用来和后续阶段做对比。
-          </p>
+          <span>{copy.whyNow}</span>
+          <p>{copy.whyNowBody(assessment.label)}</p>
         </section>
 
         <section className="lesson-reading">
           <span className="eyebrow">01 · PROMPT</span>
-          <h2>阶段任务</h2>
+          <h2>{copy.stageTask}</h2>
           <p>{assessment.prompt}</p>
         </section>
 
         <section className="practice-card">
           <span className="eyebrow">02 · RUBRIC</span>
-          <h2>本次会看什么</h2>
+          <h2>{copy.rubricTitle}</h2>
           <div className="criteria-row">
             {assessment.rubric.map((criterion) => (
               <span key={criterion}>{criterion}</span>
@@ -2621,12 +3888,12 @@ function AssessmentSheet({
           <textarea
             value={answer}
             onChange={(event) => setAnswer(event.target.value)}
-            placeholder="写下你当前阶段的真实答案。系统会保留原始版本，用于后续对比。"
+            placeholder={copy.answerPlaceholder}
             maxLength={5000}
           />
           <div className="lesson-submit-bar">
             <div className="answer-meta">
-              <span>{answer.trim().length} 字</span>
+              <span>{copy.wordCount(answer.trim().length)}</span>
               {error && <strong>{error}</strong>}
             </div>
             <button
@@ -2635,7 +3902,11 @@ function AssessmentSheet({
               onClick={() => void submit()}
               disabled={submitting || answer.trim().length < 30}
             >
-              {submitting ? "正在记录…" : existing ? "修正后重新提交" : "提交阶段测试"}
+              {submitting
+                ? copy.recording
+                : existing
+                  ? copy.resubmit
+                  : copy.submitAssessment}
             </button>
           </div>
         </section>
@@ -2643,10 +3914,10 @@ function AssessmentSheet({
         {existing && (
           <section className={`feedback-card ${existing.status === "completed" ? "passed" : ""}`}>
             <div className="score-row">
-              <span>当前阶段分数</span>
+              <span>{copy.currentScore}</span>
               <strong>{Math.round(existing.score)}</strong>
             </div>
-            <p>{existing.notes ?? "已记录。"}</p>
+            <p>{existing.notes ?? copy.recordedFallback}</p>
           </section>
         )}
       </div>
@@ -2656,6 +3927,7 @@ function AssessmentSheet({
 
 function ReviewQueueSheet({
   item,
+  locale,
   relatedAssessment,
   relatedLesson,
   onClose,
@@ -2665,6 +3937,7 @@ function ReviewQueueSheet({
   onResolved,
 }: {
   item: Bootstrap["reviewQueue"][number];
+  locale: AppLocale;
   relatedAssessment: DueAssessment | null;
   relatedLesson: TodayItem | null;
   onClose: () => void;
@@ -2673,6 +3946,7 @@ function ReviewQueueSheet({
   onOpenHistoricalLesson: (lessonId: string) => Promise<void> | void;
   onResolved: (bootstrap: Bootstrap) => void;
 }) {
+  const copy = reviewRuntimeCopy(locale);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -2690,7 +3964,7 @@ function ReviewQueueSheet({
       onResolved(result.bootstrap);
     } catch (requestError) {
       setError(
-        requestError instanceof Error ? requestError.message : "处理失败",
+        requestError instanceof Error ? requestError.message : copy.resolveFailed,
       );
     } finally {
       setSaving(false);
@@ -2701,32 +3975,32 @@ function ReviewQueueSheet({
     <div className="lesson-page">
       <header className="lesson-page-header">
         <button type="button" onClick={onClose}>
-          ‹ 返回今日
+          {copy.backToday}
         </button>
-        <span>REVIEW · {item.reason === "weekly_review" ? "7 天复习" : "补救任务"}</span>
+        <span>REVIEW · {item.reason === "weekly_review" ? copy.weeklyReview : copy.recoveryMission}</span>
       </header>
       <div className="lesson-page-content">
         <p className="lesson-kicker">REVIEW QUEUE · {item.sourceType.toUpperCase()}</p>
         <h1>{item.title}</h1>
 
         <section className="objective-block">
-          <span>为什么会回到这里</span>
+          <span>{copy.whyReturned}</span>
           <p>{item.recommendation}</p>
         </section>
 
         <section className="lesson-reading">
           <span className="eyebrow">01 · NEXT ACTION</span>
-          <h2>推荐下一步</h2>
+          <h2>{copy.nextAction}</h2>
           <p>
             {item.sourceType === "assessment"
-              ? "先根据阶段测试提示补齐关键维度，再重新提交 checkpoint。"
-              : "先回看这节内容，再补一轮输出或确认你仍然记得关键点。"}
+              ? copy.assessmentAction
+              : copy.lessonAction}
           </p>
         </section>
 
         <section className="practice-card">
           <span className="eyebrow">02 · DO SOMETHING REAL</span>
-          <h2>处理这条复习项</h2>
+          <h2>{copy.resolveTitle}</h2>
           <div className="invite-code-row">
             {relatedAssessment && (
               <button
@@ -2734,7 +4008,7 @@ function ReviewQueueSheet({
                 type="button"
                 onClick={() => onOpenAssessment(relatedAssessment)}
               >
-                去做对应阶段测试
+                {copy.openAssessment}
               </button>
             )}
             {relatedLesson && (
@@ -2743,7 +4017,7 @@ function ReviewQueueSheet({
                 type="button"
                 onClick={() => onOpenLesson(relatedLesson)}
               >
-                打开对应课程
+                {copy.openLesson}
               </button>
             )}
             {!relatedLesson && item.lessonId && (
@@ -2752,13 +4026,13 @@ function ReviewQueueSheet({
                 type="button"
                 onClick={() => void onOpenHistoricalLesson(item.lessonId)}
               >
-                鎵撳紑鍘嗗彶璇剧▼
+                {copy.openHistoricalLesson}
               </button>
             )}
           </div>
           <div className="lesson-submit-bar">
             <div className="answer-meta">
-              <span>完成复习后可手动关闭这条提醒</span>
+              <span>{copy.resolveHint}</span>
               {error && <strong>{error}</strong>}
             </div>
             <button
@@ -2767,7 +4041,7 @@ function ReviewQueueSheet({
               onClick={() => void resolve()}
               disabled={saving}
             >
-              {saving ? "正在关闭…" : "标记本次复习已完成"}
+              {saving ? copy.closing : copy.markDone}
             </button>
           </div>
         </section>
@@ -2934,6 +4208,26 @@ function formatDate(value: string) {
   }).format(parsed);
 }
 
+function formatCreditsAmount(points: number) {
+  const amount = Number(points);
+  const prefix = amount > 0 ? "+" : "";
+  return `${prefix}${new Intl.NumberFormat("en-US").format(amount)} pts`;
+}
+
+function formatReminderTimestamp(value: string, locale: AppLocale) {
+  const normalized = value.includes("T")
+    ? value
+    : `${value.replace(" ", "T")}Z`;
+  const date = new Date(normalized);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat(dateLocaleFor(locale), {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
 function formatShortDate(value: string) {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return value;
@@ -2942,29 +4236,4 @@ function formatShortDate(value: string) {
     month: "short",
     day: "numeric",
   }).format(parsed);
-}
-
-function supervisionCopy(supervision: Bootstrap["supervision"]) {
-  if (supervision.state === "completed") {
-    return {
-      label: "今日完成",
-      message: "今天的任务已经留下证据。系统明天再来打扰你。",
-    };
-  }
-  if (supervision.state === "interrupted") {
-    return {
-      label: "连续中断",
-      message: `已经落后 ${supervision.lagDays} 天。下一课不会解锁，先把当前任务处理掉。`,
-    };
-  }
-  if (supervision.state === "behind") {
-    return {
-      label: "需要补课",
-      message: "昨天的任务还在。它没有消失，只是开始积灰。",
-    };
-  }
-  return {
-    label: "今日监督",
-    message: "不要求突然自律，只要求今天的任务别被明天继承。",
-  };
 }

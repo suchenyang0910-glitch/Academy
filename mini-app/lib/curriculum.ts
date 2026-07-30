@@ -34,7 +34,13 @@ export type MultipleChoiceAssessment = {
   questions: MultipleChoiceQuestion[];
 };
 
-function buildLessonTeachingBlock(teaching: string, roundName: string, roundInstruction: string) {
+function buildLessonTeachingBlock(
+  teaching: string,
+  roundName: string,
+  roundInstruction: string,
+  core: string,
+  objective: string,
+) {
   return [
     "先学知识，再做检查。",
     "",
@@ -42,6 +48,9 @@ function buildLessonTeachingBlock(teaching: string, roundName: string, roundInst
     "1. 这节课最重要的一个核心概念",
     "2. 它在真实工作里为什么重要",
     "3. 你今天做题时应该抓住哪几个关键词",
+    "",
+    `核心原则：${core}`,
+    `能力目标：${objective}`,
     "",
     teaching,
     "",
@@ -312,11 +321,13 @@ AI 可以帮你生成方案矩阵、反例和检查清单；它不能替你决�
     level: 8,
     title: "知识库与 RAG",
     core: "先检索你的资料，再生成答案；引用必须能回到原文",
-    teaching: `模型并不知道你的公司文档、客户记录或最新 SOP。把资料直接放进对话，只能解决一次问题；知识库（RAG）解决的是“先找到相关片段，再基于片段回答”。
+    teaching: `知识：模型不会自动知道你的公司文档、客户记录、SOP 或今天刚发生的业务事实。把一段资料直接复制进对话，只能解决这一次；知识库（RAG）解决的是“先检索相关片段，再基于片段回答”。
 
-一个可靠的知识库要有三件事：资料来源清楚、回答能标注引用位置、找不到依据时明确说不知道。RAG 不是让 AI 知道一切，而是限制它只在有证据时回答。
+例子：你上传一份产品说明书后问“退款条件是什么？”。可靠回答应该引用说明书里的具体段落；如果说明书没有退款条款，它应该说“资料中没有找到依据”，而不是编一套看起来合理的政策。
 
-课后检查会验证：为什么需要检索、什么叫可追溯引用、什么时候应该拒答。`,
+检查：一个最小 RAG 必须同时具备三件事：资料来源清楚、回答能回到原文引用、找不到依据时拒答。RAG 的价值不是让 AI 万能，而是让答案被证据约束。
+
+最小实操：选一份你自己的文档，准备 5 个问题，其中至少 1 个问题故意不在文档里。检查答案是否引用正确片段，以及是否能对无依据问题说不知道。`,
     objective: "理解为什么模型不知道你的业务，并设计一个带引用和拒答机制的最小知识库。",
     practice: "选择一份自己的文档，设计 5 个可验证问题，并检查答案是否引用正确内容或明确说不知道。",
     criteria: ["文档", "测试问题", "引用", "拒答", "检索"],
@@ -336,11 +347,13 @@ AI 可以帮你生成方案矩阵、反例和检查清单；它不能替你决�
     level: 9,
     title: "工作流与 Agent",
     core: "可靠流程比角色数量更重要；自动化前先做清楚人工流程",
-    teaching: `Agent 不是“更聪明的聊天机器人”，而是让模型按步骤调用工具、保存状态并完成任务的流程。一个流程最少要说清：输入从哪里来、每一步做什么、输出交给谁、失败时怎么办。
+    teaching: `知识：Agent 不是“更聪明的聊天机器人”，而是一个能按步骤使用工具、保存状态、处理失败并交付结果的流程。真正重要的不是有几个角色，而是流程是否清楚。
 
-自动化会放大效率，也会放大错误。因此金额、对外发送、删除数据等关键节点必须保留人工审核。先跑通人工版本，再自动化最稳定的重复部分。
+例子：做一份客户周报，可以拆成：读取数据 → 找异常 → 生成摘要 → 人工确认 → 发出报告。如果连人工版流程都说不清，直接自动化只会把混乱跑得更快。
 
-课后检查会验证：自动化前的准备、人工审核的位置，以及为什么不能让 Agent 自由发挥。`,
+检查：自动化前必须说清四件事：输入从哪里来、每一步做什么、输出交给谁、失败时怎么办。金额、对外发送、删除数据、客户承诺等关键节点必须保留人工审核。
+
+最小实操：选择一个你每周重复做的任务，拆成至少 3 步，并标出哪一步必须由人确认，哪一步可以让 AI 或工具先辅助。`,
     objective: "设计输入、步骤、工具、状态、失败处理和人工审核节点。",
     practice: "把一个重复任务拆成至少三个步骤，明确每一步输入、输出、失败处理和必须由人确认的地方。",
     criteria: ["输入", "输出", "步骤", "失败处理", "人工审核"],
@@ -360,11 +373,13 @@ AI 可以帮你生成方案矩阵、反例和检查清单；它不能替你决�
     level: 10,
     title: "数据分析",
     core: "让计算、字段和异常可复核，AI 不能替你编造数据依据",
-    teaching: `AI 可以帮助你读表、写分析思路和生成代码，但“洞察”必须建立在真实字段与可复核计算上。先确认数据来自哪里、每列代表什么、时间范围是否一致，再讨论增长或下降。
+    teaching: `知识：AI 可以帮你读表、写分析思路、生成代码和解释趋势，但数据分析不是让 AI “看一眼就给洞察”。结论必须能回到真实字段、计算方法和时间范围。
 
-异常值、缺失值和重复数据会让漂亮结论失去意义。任何百分比都应能回答：分子是什么、分母是什么、比较的是哪段时间。
+例子：AI 说“销售额增长 30%”。你要追问：销售额字段是哪一列？分子和分母是什么？比较的是本周和上周，还是本月和上月？有没有退款、缺失值或重复订单影响结果？
 
-课后检查会验证：什么算可复核结论、为什么必须处理异常，以及 AI 在数据分析中不能替代的部分。`,
+检查：可复核的数据结论至少包括四件事：字段来源、计算方式、比较范围、异常处理。漂亮图表不能代替真实计算，流畅解释也不能代替原始数据。
+
+最小实操：拿一份 CSV 或表格，找出 1 个增长/下降信号，写下它用到的字段、计算方式、时间范围，以及你发现或排除的异常。`,
     objective: "完成数据解释、清洗、计算、异常确认和洞察验证。",
     practice: "使用一份 CSV 找出三个信号，并写出每个结论的字段、计算依据和异常检查。",
     criteria: ["字段", "清洗", "计算", "异常", "依据"],
@@ -384,11 +399,13 @@ AI 可以帮你生成方案矩阵、反例和检查清单；它不能替你决�
     level: 11,
     title: "内容、写作与翻译",
     core: "AI 是初稿作者，你是事实负责人、总编和本地化判断者",
-    teaching: `内容生产可拆成三层：事实是否正确、表达是否适合受众、渠道格式是否合适。AI 擅长帮助起草和改写；人必须确认产品承诺、案例、价格、法律风险和文化语境。
+    teaching: `知识：AI 可以做初稿作者、改写助手和翻译助手，但你仍然是事实负责人、总编和本地化判断者。内容生产要分三层：事实是否正确、表达是否适合受众、渠道格式是否合适。
 
-直译追求信息完整；重写追求让目标读者自然理解。两者不是同一件事。对外内容发布前，永远把“是否真实、是否误导”放在“是否好看”之前。
+例子：把中文产品介绍翻译成英文时，直译负责不丢信息；重写负责让目标读者读起来自然。价格、承诺、案例、政策、法律风险和文化语境不能交给 AI 自己猜。
 
-课后检查会验证：谁负责事实、直译和重写的区别，以及发布前的检查重点。`,
+检查：发布前的优先级是：真实 > 不误导 > 适合受众 > 好看。AI 写得顺，不代表事实已经核实；AI 翻得像母语，不代表符合当地语境。
+
+最小实操：选一段真实业务文本，先让 AI 直译，再让它按指定受众重写。最后标出至少 3 个必须由人核实的事实或承诺。`,
     objective: "控制受众、结构、语气、渠道适配与事实检查；区分直译和重写。",
     practice: "选择一段真实业务文本，完成一个初稿和一个面向指定受众的改写，并标出必须人工核实的事实。",
     criteria: ["受众", "结构", "语气", "事实检查", "本地化"],
@@ -408,11 +425,13 @@ AI 可以帮你生成方案矩阵、反例和检查清单；它不能替你决�
     level: 12,
     title: "编程辅助与原型",
     core: "代码能运行、测试能通过、你能解释，才算完成",
-    teaching: `AI 能显著加快写代码、定位错误和生成测试的速度，但它不会自动理解你的真实业务规则。先把需求写成可验证行为，再让 AI 帮你拆分实现；遇到报错时保留错误信息和修改原因。
+    teaching: `知识：AI 能显著加快写代码、定位错误、解释陌生代码和生成测试，但它不会自动理解你的真实业务规则。代码任务要先写成可验证行为，再让 AI 帮你实现。
 
-“能跑一次”不是完成。至少要验证关键输入、错误输入和边界情况；并且你要能解释这段代码处理什么、依赖什么、在哪里可能失败。
+例子：你要做“提交答案后计算分数”。不要只说“帮我写评分功能”，而要说明输入是什么、正确答案在哪里、通过线是多少、答错后返回什么、异常数据怎么处理。
 
-课后检查会验证：原型完成的标准、测试的作用，以及为什么不能直接把 AI 代码投入生产。`,
+检查：能跑一次不等于完成。可靠原型至少要满足：关键场景能运行、错误输入有处理、测试能通过、你能解释它做什么以及可能在哪里失败。
+
+最小实操：让 AI 帮你完成一个小功能或修一个报错。提交时保留四样东西：需求描述、报错或实现过程、测试结果、你自己的解释。`,
     objective: "使用 AI 完成需求描述、实现、调试、测试和代码解释。",
     practice: "完成一个可运行的小功能，保留需求、错误、修改、测试结果和你自己的解释。",
     criteria: ["需求", "运行结果", "错误", "测试", "解释"],
@@ -432,11 +451,13 @@ AI 可以帮你生成方案矩阵、反例和检查清单；它不能替你决�
     level: 13,
     title: "学习助手与项目设计",
     core: "让 AI 用问题帮助你理解，同时为毕业原型定义真实问题",
-    teaching: `把 AI 当学习助手的正确方式，是让它帮助你暴露不知道的部分，而不是替你写答案。先用自己的话解释，再让 AI 追问、举反例、出小测；这比反复阅读更能检验理解。
+    teaching: `知识：把 AI 当学习助手，不是让它替你写标准答案，而是让它帮你暴露“不知道自己不知道”的地方。最有效的顺序是：先用自己的话解释，再让 AI 追问、举反例、出小测。
 
-毕业原型不需要大而全。它应有一个真实用户、一个明确问题、一种可控输入和一个可检查成功标准。范围越小，越容易完成、测试和复盘。
+例子：你说“我懂 RAG 了”。让 AI 问你三个问题：为什么需要检索？什么叫引用可追溯？没有依据时怎么办？如果答不上来，就说明还只是熟悉，不是掌握。
 
-课后检查会验证：主动回忆为何重要，以及一个好毕业原型的最小组成。`,
+检查：主动回忆比反复阅读更能检验理解。毕业原型也不需要大而全，它只需要一个真实用户、一个明确问题、一种可控输入和一个可检查的成功标准。
+
+最小实操：选一个你还没吃透的概念，先用自己的话解释 3 句话，再让 AI 只用追问和小测检查你；然后写下你的毕业原型要解决的真实问题、用户、输入和成功标准。`,
     objective: "使用苏格拉底提问、费曼解释和小测检验理解；明确一个可在 60 天内完成的原型范围。",
     practice: "选择一个不熟悉概念，让 AI 只用提问引导你；再写下毕业原型要解决的真实问题、用户、输入和成功标准。",
     criteria: ["提问", "自己的解释", "真实问题", "成功标准"],
@@ -456,11 +477,13 @@ AI 可以帮你生成方案矩阵、反例和检查清单；它不能替你决�
     level: 14,
     title: "周期复盘",
     core: "总结、补漏、升级；熟悉感不等于能力",
-    teaching: `复盘不是写“我学了很多”，而是用证据回答四个问题：我能独立做什么？证据在哪里？我在哪些地方失败？下一轮只改哪一个点？
+    teaching: `知识：复盘不是写“我学了很多”，而是用证据回答问题。Academy 的原则是：没有证据，就不算完成。
 
-连续学习能证明习惯，不能单独证明能力。真正的能力证据来自真实任务、可检查的结果、失败记录和修复后的再次尝试。
+例子：如果你说“我会用 AI 做数据分析”，证据不能只是看过课程，而应该是：一份真实表格、一个可复核结论、字段和计算说明、异常处理记录，以及你修正过的错误。
 
-课后检查会验证：什么算能力证据、失败记录的价值，以及如何把复盘转成下一轮行动。`,
+检查：连续学习能证明习惯，不能单独证明能力。真正的能力证据来自真实任务、可检查结果、失败记录和修复后的再次尝试。
+
+最小实操：完成本轮复盘，写下一个你能证明的能力、一条证据、一处失败、一个需要回看的概念，以及下一轮只改进的一个目标。`,
     objective: "根据作品、验证记录和错误判断已经掌握、仍需练习和下一轮升级的能力。",
     practice: "完成本轮复盘：列出一个可证明的能力、一处失败、一个需要回看的概念，以及下一轮一个具体升级目标。",
     criteria: ["掌握证据", "失败记录", "薄弱概念", "升级目标"],
@@ -701,8 +724,8 @@ export function buildAiLesson(day: number): FixedLesson {
       objective: definition.objective,
       content:
         definition.teaching
-          ? `${definition.teaching}\n\n本轮：${roundMeta.name}。${roundMeta.instruction}\n\n课后检查：读完本课后，完成下方 1 道选择题。答错可以回看正文后重新提交。`
-          : `${definition.core}。\n\n本轮：${roundMeta.name}。${roundMeta.instruction}\n\n课后检查：读完本课后，完成下方 1 道选择题。答错可以回看正文后重新提交。`,
+          ? `${definition.teaching}\n\n本轮：${roundMeta.name}。${roundMeta.instruction}\n\n课后检查：读完本课后，完成下方 3 道选择题。每题都来自正文关键知识点；答对至少 2 题即可通过。`
+          : `${definition.core}。\n\n本轮：${roundMeta.name}。${roundMeta.instruction}\n\n课后检查：读完本课后，完成下方 3 道选择题。每题都来自正文关键知识点；答对至少 2 题即可通过。`,
       practicePrompt: "课后检查：完成下方 3 道选择题。每题对应正文中的一个关键知识点；答对至少 2 题即可通过。",
       criteria: definition.criteria,
       assessment: buildKnowledgeCheck(definition),
@@ -784,6 +807,8 @@ function buildAiLessonAligned(day: number): FixedLesson {
         definition.teaching ?? definition.core,
         roundMeta.name,
         roundMeta.instruction,
+        definition.core,
+        definition.objective,
       ),
       practicePrompt: buildLessonPracticePromptV2(
         definition.practice,
@@ -811,6 +836,49 @@ type SpiralLevel = {
   criteria: string[];
 };
 
+function buildSpiralKnowledgeCheck(definition: SpiralLevel): MultipleChoiceAssessment {
+  const primaryCriterion = definition.criteria[0] ?? "关键概念";
+  const secondaryCriterion = definition.criteria[1] ?? "真实应用";
+  return {
+    type: "multiple_choice",
+    questions: [
+      {
+        question: "根据本课，最应该先抓住的核心知识点是什么？",
+        options: [
+          { id: "a", label: definition.core },
+          { id: "b", label: "先追求输出更长、更复杂，再考虑是否真的理解。" },
+          { id: "c", label: "只要完成打卡，就不需要检查能否用于真实任务。" },
+        ],
+        correctOptionId: "a",
+        explanation: `本课的核心知识点是：${definition.core}`,
+      },
+      {
+        question: "完成本课后，最接近本课目标的能力表现是哪一项？",
+        options: [
+          { id: "a", label: "收藏更多资料，但暂时不做可验证动作。" },
+          { id: "b", label: definition.objective },
+          { id: "c", label: "跳过基础内容，直接进入更复杂的下一课。" },
+        ],
+        correctOptionId: "b",
+        explanation: `本课的能力目标是：${definition.objective}`,
+      },
+      {
+        question: "做本课练习时，哪种做法最符合检查要求？",
+        options: [
+          {
+            id: "a",
+            label: `围绕 ${primaryCriterion} / ${secondaryCriterion} 等关键点完成练习，再提交结果。`,
+          },
+          { id: "b", label: "只写一段很长的感想，不确认是否覆盖关键点。" },
+          { id: "c", label: "不看正文，直接猜答案，错了也继续下一课。" },
+        ],
+        correctOptionId: "a",
+        explanation: `本课检查会围绕这些关键点：${definition.criteria.join("、")}。`,
+      },
+    ],
+  };
+}
+
 function buildSpiralCourse(
   courseId: string,
   levels: SpiralLevel[],
@@ -833,11 +901,22 @@ function buildSpiralCourse(
       round,
       title: `Level ${level} · ${definition.title}`,
       objective: definition.objective,
-      content:
-        definition.teaching ??
-        `先理解这一点：${definition.core}。\n\n本轮学习方式：${roundMeta.name}。${roundMeta.instruction}`,
-      practicePrompt: `${definition.practice}\n\n本轮要求：${roundMeta.instruction}`,
+      content: [
+        definition.teaching ?? `先理解这一点：${definition.core}。`,
+        "",
+        `本轮学习方式：${roundMeta.name}。${roundMeta.instruction}`,
+        "",
+        "课后检查说明：下面会有 3 道选择题，只考本课正文已经讲过的核心知识点。答对至少 2 题即可通过；主观练习作为实操证据，不再作为基础知识通过的唯一条件。",
+      ].join("\n"),
+      practicePrompt: [
+        definition.practice,
+        "",
+        "课后检查：完成下方 3 道选择题。题目只检查本课正文里的关键知识点，答对至少 2 题即可通过。",
+        `重点留意这些关键点：${definition.criteria.join("、")}。`,
+        `本轮要求：${roundMeta.instruction}`,
+      ].join("\n"),
       criteria: definition.criteria,
+      assessment: buildSpiralKnowledgeCheck(definition),
       estimatedMinutes,
     } satisfies FixedLesson;
   });

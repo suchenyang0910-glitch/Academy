@@ -1,5 +1,6 @@
 import { getD1 } from "../db";
 import { getCreditsBalance, POINTS_PER_USD } from "./credits-ledger";
+import { isMissingDatabaseRelationError } from "./db-errors";
 import { getPaymentCatalog } from "./telegram-payments";
 import type { AcademyIdentity } from "./academy-store";
 
@@ -81,26 +82,39 @@ async function getEligibleMainOffer(
 ) {
   const now = new Date().toISOString().replace("T", " ").slice(0, 19);
   const d1 = getD1();
-  const campaign = await d1
-    .prepare(
-      `SELECT id, reward_mode AS rewardMode,
-              stackable_with_credits AS stackableWithCredits,
-              eligibility_rule_json AS eligibilityRuleJson,
-              settlement_rule_version AS settlementRuleVersion
-       FROM campaign_rewards
-       WHERE status = 'active'
-         AND start_at <= ? AND end_at > ?
-       ORDER BY start_at DESC
-       LIMIT 1`,
-    )
-    .bind(now, now)
-    .first<{
-      id: string;
-      rewardMode: string;
-      stackableWithCredits: number;
-      eligibilityRuleJson: string;
-      settlementRuleVersion: string;
-    }>();
+  let campaign: {
+    id: string;
+    rewardMode: string;
+    stackableWithCredits: number;
+    eligibilityRuleJson: string;
+    settlementRuleVersion: string;
+  } | null = null;
+  try {
+    campaign = await d1
+      .prepare(
+        `SELECT id, reward_mode AS rewardMode,
+                stackable_with_credits AS stackableWithCredits,
+                eligibility_rule_json AS eligibilityRuleJson,
+                settlement_rule_version AS settlementRuleVersion
+         FROM campaign_rewards
+         WHERE status = 'active'
+           AND start_at <= ? AND end_at > ?
+         ORDER BY start_at DESC
+         LIMIT 1`,
+      )
+      .bind(now, now)
+      .first<{
+        id: string;
+        rewardMode: string;
+        stackableWithCredits: number;
+        eligibilityRuleJson: string;
+        settlementRuleVersion: string;
+      }>();
+  } catch (error) {
+    if (!isMissingDatabaseRelationError(error, ["campaign_rewards"])) {
+      throw error;
+    }
+  }
 
   if (!campaign) return { mainOffer: { type: "none" } as MainOffer, stackableWithCredits: true };
 

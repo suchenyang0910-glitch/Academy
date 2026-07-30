@@ -21,6 +21,32 @@ export type D1Database = {
 
 let pool: Pool | undefined;
 let d1: D1Database | undefined;
+let startupCheckScheduled = false;
+
+const STARTUP_REQUIRED_TABLES = [
+  "__academy_migrations",
+  "users",
+  "courses",
+  "lessons",
+  "enrollments",
+  "submissions",
+  "quiz_attempts",
+  "reminder_events",
+  "payment_orders",
+  "payment_transactions",
+  "seed_user_notes",
+  "credits_ledger",
+  "campaign_rewards",
+  "order_pricing_snapshots",
+  "evidence_items",
+  "conversion_events",
+  "uploaded_artifacts",
+  "competency_nodes",
+  "competency_proof_shares",
+  "agent_lab_projects",
+  "agent_runtime_checks",
+  "knowledge_sources",
+];
 
 function databaseUrl() {
   const value = process.env.ACADEMY_DATABASE_URL;
@@ -42,7 +68,53 @@ function getPool() {
     query_timeout: 10_000,
     application_name: "academy-mini-app",
   });
+  scheduleStartupDatabaseCheck(pool);
   return pool;
+}
+
+function scheduleStartupDatabaseCheck(nextPool: Pool) {
+  if (startupCheckScheduled) return;
+  startupCheckScheduled = true;
+  void nextPool
+    .query(
+      `SELECT
+         current_database() AS database,
+         current_user AS "user",
+         (SELECT COUNT(*)::int FROM information_schema.tables WHERE table_schema = 'public') AS tables,
+         (SELECT COUNT(*)::int FROM information_schema.tables WHERE table_schema = 'public' AND table_name = '__academy_migrations') AS has_migrations_table`,
+    )
+    .then(async (summary) => {
+      const migrationCount =
+        Number(summary.rows[0]?.has_migrations_table ?? 0) > 0
+          ? await nextPool
+              .query("SELECT COUNT(*)::int AS count FROM __academy_migrations")
+              .then((result) => Number(result.rows[0]?.count ?? 0))
+          : 0;
+      const tableRows = await nextPool.query(
+        "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'",
+      );
+      const names = new Set(tableRows.rows.map((row) => row.table_name));
+      const missingTables = STARTUP_REQUIRED_TABLES.filter(
+        (table) => !names.has(table),
+      );
+      const base = summary.rows[0] ?? {};
+      const message =
+        `[academy-db] type=postgres database=${base.database ?? "unknown"} ` +
+        `user=${base.user ?? "unknown"} tables=${base.tables ?? 0} ` +
+        `migrations=${migrationCount}`;
+      if (missingTables.length) {
+        console.warn(`${message} missing_tables=${missingTables.join(",")}`);
+      } else {
+        console.info(message);
+      }
+    })
+    .catch((error) => {
+      console.warn(
+        `[academy-db] startup_check_failed=${
+          error instanceof Error ? error.message : "unknown"
+        }`,
+      );
+    });
 }
 
 // Academy's service layer was deliberately written behind a small D1-like

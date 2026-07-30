@@ -9,9 +9,21 @@ type PaymentEnv = {
   ACADEMY_PAYMENT_SUPPORT?: string;
   ACADEMY_MINI_APP_URL?: string;
   ACADEMY_STARS_MONTHLY?: string;
+  ACADEMY_STARS_MONTH?: string;
+  ACADEMY_STARS_30D?: string;
+  ACADEMY_STARS_30_DAYS?: string;
   ACADEMY_STARS_QUARTERLY?: string;
+  ACADEMY_STARS_QUARTER?: string;
+  ACADEMY_STARS_90D?: string;
+  ACADEMY_STARS_90_DAYS?: string;
   ACADEMY_STARS_HALF_YEAR?: string;
+  ACADEMY_STARS_HALF_YEARLY?: string;
+  ACADEMY_STARS_180D?: string;
+  ACADEMY_STARS_180_DAYS?: string;
   ACADEMY_STARS_YEARLY?: string;
+  ACADEMY_STARS_YEAR?: string;
+  ACADEMY_STARS_365D?: string;
+  ACADEMY_STARS_365_DAYS?: string;
 };
 
 type PlanKey = "monthly" | "quarterly" | "half_year" | "yearly";
@@ -23,40 +35,56 @@ const PLANS: Record<
     usdPrice: string;
     durationDays: number;
     recurring: boolean;
-    envKey:
-      | "ACADEMY_STARS_MONTHLY"
-      | "ACADEMY_STARS_QUARTERLY"
-      | "ACADEMY_STARS_HALF_YEAR"
-      | "ACADEMY_STARS_YEARLY";
+    envKeys: Array<keyof PaymentEnv>;
   }
 > = {
   monthly: {
     label: "Academy 月付",
-    usdPrice: "$19.9",
+    usdPrice: "$9.9",
     durationDays: 30,
     recurring: true,
-    envKey: "ACADEMY_STARS_MONTHLY",
+    envKeys: [
+      "ACADEMY_STARS_MONTHLY",
+      "ACADEMY_STARS_MONTH",
+      "ACADEMY_STARS_30D",
+      "ACADEMY_STARS_30_DAYS",
+    ],
   },
   quarterly: {
     label: "Academy 季度",
     usdPrice: "$55.9",
     durationDays: 90,
     recurring: false,
-    envKey: "ACADEMY_STARS_QUARTERLY",
+    envKeys: [
+      "ACADEMY_STARS_QUARTERLY",
+      "ACADEMY_STARS_QUARTER",
+      "ACADEMY_STARS_90D",
+      "ACADEMY_STARS_90_DAYS",
+    ],
   },
   half_year: {
     label: "Academy 半年",
     usdPrice: "$109",
     durationDays: 180,
     recurring: false,
-    envKey: "ACADEMY_STARS_HALF_YEAR",
+    envKeys: [
+      "ACADEMY_STARS_HALF_YEAR",
+      "ACADEMY_STARS_HALF_YEARLY",
+      "ACADEMY_STARS_180D",
+      "ACADEMY_STARS_180_DAYS",
+    ],
   },
   yearly: {
     label: "Academy 年付",
     usdPrice: "$199",
     durationDays: 365,
     recurring: false,
-    envKey: "ACADEMY_STARS_YEARLY",
+    envKeys: [
+      "ACADEMY_STARS_YEARLY",
+      "ACADEMY_STARS_YEAR",
+      "ACADEMY_STARS_365D",
+      "ACADEMY_STARS_365_DAYS",
+    ],
   },
 };
 
@@ -65,9 +93,15 @@ function paymentEnv() {
 }
 
 function amountFor(planKey: PlanKey) {
-  const raw = paymentEnv()[PLANS[planKey].envKey];
-  const amount = Number(raw);
-  return Number.isInteger(amount) && amount > 0 ? amount : null;
+  const env = paymentEnv();
+  for (const key of PLANS[planKey].envKeys) {
+    const raw = env[key];
+    const amount = Number(raw);
+    if (Number.isInteger(amount) && amount > 0) {
+      return { amount, configuredBy: key };
+    }
+  }
+  return { amount: null, configuredBy: null };
 }
 
 function parseDatabaseDate(value: string) {
@@ -167,26 +201,39 @@ export async function sendTelegramBotMessage(payload: {
 
 export function getPaymentCatalog() {
   const configured = Boolean(paymentEnv().TELEGRAM_BOT_TOKEN);
+  const webhookConfigured = Boolean(paymentEnv().TELEGRAM_WEBHOOK_SECRET);
   return {
     provider: "telegram_stars" as const,
     currency: "XTR" as const,
-    webhookConfigured: Boolean(paymentEnv().TELEGRAM_WEBHOOK_SECRET),
+    webhookConfigured,
     enabled:
       configured &&
+      webhookConfigured &&
       (Object.keys(PLANS) as PlanKey[]).some(
-        (planKey) => amountFor(planKey) !== null,
+        (planKey) => amountFor(planKey).amount !== null,
       ),
     plans: (Object.entries(PLANS) as Array<
       [PlanKey, (typeof PLANS)[PlanKey]]
-    >).map(([key, plan]) => ({
-      key,
-      label: plan.label,
-      usdPrice: plan.usdPrice,
-      durationDays: plan.durationDays,
-      recurring: plan.recurring,
-      stars: amountFor(key),
-      enabled: configured && amountFor(key) !== null,
-    })),
+    >).map(([key, plan]) => {
+      const stars = amountFor(key);
+      return {
+        key,
+        label: plan.label,
+        usdPrice: plan.usdPrice,
+        durationDays: plan.durationDays,
+        recurring: plan.recurring,
+        stars: stars.amount,
+        configuredBy: stars.configuredBy,
+        enabled: configured && webhookConfigured && stars.amount !== null,
+        disabledReason: !configured
+          ? "missing_bot_token"
+          : stars.amount === null
+            ? "missing_stars_amount"
+            : !webhookConfigured
+              ? "missing_webhook_secret"
+              : null,
+      };
+    }),
   };
 }
 

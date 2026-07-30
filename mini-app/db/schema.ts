@@ -149,6 +149,81 @@ export const lessonLocalizations = sqliteTable(
   ],
 );
 
+export const courseContentVersions = sqliteTable(
+  "course_content_versions",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    courseId: text("course_id")
+      .notNull()
+      .references(() => courses.id),
+    version: text("version").notNull(),
+    sourceRef: text("source_ref").notNull().default("academy_seed"),
+    status: text("status").notNull().default("draft"),
+    changeSummary: text("change_summary").notNull().default(""),
+    createdBy: text("created_by"),
+    reviewedBy: text("reviewed_by"),
+    reviewedAt: text("reviewed_at"),
+    publishedAt: text("published_at"),
+    createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    uniqueIndex("course_content_versions_course_version_unique").on(
+      table.courseId,
+      table.version,
+    ),
+    index("course_content_versions_status_updated_idx").on(
+      table.status,
+      table.updatedAt,
+    ),
+    index("course_content_versions_course_status_idx").on(
+      table.courseId,
+      table.status,
+    ),
+  ],
+);
+
+export const courseQualityEvents = sqliteTable(
+  "course_quality_events",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    courseId: text("course_id")
+      .notNull()
+      .references(() => courses.id),
+    lessonId: text("lesson_id").references(() => lessons.id),
+    contentVersionId: integer("content_version_id").references(
+      () => courseContentVersions.id,
+    ),
+    eventType: text("event_type").notNull(),
+    severity: text("severity").notNull().default("watch"),
+    status: text("status").notNull().default("open"),
+    sourceType: text("source_type").notNull(),
+    sourceRef: text("source_ref").notNull(),
+    metricsJson: text("metrics_json").notNull().default("{}"),
+    recommendation: text("recommendation").notNull().default(""),
+    createdBy: text("created_by"),
+    resolvedBy: text("resolved_by"),
+    resolvedAt: text("resolved_at"),
+    createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    uniqueIndex("course_quality_events_source_unique").on(
+      table.sourceType,
+      table.sourceRef,
+    ),
+    index("course_quality_events_status_severity_idx").on(
+      table.status,
+      table.severity,
+      table.updatedAt,
+    ),
+    index("course_quality_events_course_lesson_idx").on(
+      table.courseId,
+      table.lessonId,
+    ),
+  ],
+);
+
 export const submissions = sqliteTable(
   "submissions",
   {
@@ -176,6 +251,47 @@ export const submissions = sqliteTable(
   (table) => [
     uniqueIndex("submissions_user_lesson_unique").on(table.userId, table.lessonId),
     index("submissions_user_idx").on(table.userId),
+  ],
+);
+
+export const quizAttempts = sqliteTable(
+  "quiz_attempts",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id),
+    enrollmentId: integer("enrollment_id")
+      .notNull()
+      .references(() => enrollments.id),
+    lessonId: text("lesson_id")
+      .notNull()
+      .references(() => lessons.id),
+    courseId: text("course_id")
+      .notNull()
+      .references(() => courses.id),
+    contentVersionId: integer("content_version_id").references(
+      () => courseContentVersions.id,
+    ),
+    attemptNumber: integer("attempt_number").notNull(),
+    isRevision: integer("is_revision").notNull().default(0),
+    questionCount: integer("question_count").notNull(),
+    correctCount: integer("correct_count").notNull(),
+    score: real("score").notNull().default(0),
+    passed: integer("passed").notNull().default(0),
+    answersJson: text("answers_json").notNull().default("{}"),
+    submittedOn: text("submitted_on").notNull(),
+    createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    uniqueIndex("quiz_attempts_user_lesson_attempt_unique").on(
+      table.userId,
+      table.lessonId,
+      table.attemptNumber,
+    ),
+    index("quiz_attempts_user_created_idx").on(table.userId, table.createdAt),
+    index("quiz_attempts_course_lesson_idx").on(table.courseId, table.lessonId),
+    index("quiz_attempts_content_version_idx").on(table.contentVersionId),
   ],
 );
 
@@ -212,6 +328,34 @@ export const feedback = sqliteTable(
   (table) => [
     index("feedback_status_created_idx").on(table.status, table.createdAt),
     index("feedback_user_created_idx").on(table.userId, table.createdAt),
+  ],
+);
+
+export const seedUserNotes = sqliteTable(
+  "seed_user_notes",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id),
+    noteType: text("note_type").notNull().default("follow_up"),
+    completionSource: text("completion_source"),
+    failureReason: text("failure_reason"),
+    status: text("status").notNull().default("open"),
+    content: text("content").notNull(),
+    recordedBy: text("recorded_by"),
+    recordedOn: text("recorded_on").notNull().default(sql`CURRENT_DATE`),
+    createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    index("seed_user_notes_user_created_idx").on(table.userId, table.createdAt),
+    index("seed_user_notes_type_status_idx").on(
+      table.noteType,
+      table.status,
+      table.createdAt,
+    ),
+    index("seed_user_notes_reason_idx").on(table.failureReason, table.createdAt),
   ],
 );
 
@@ -280,6 +424,213 @@ export const reviewQueueItems = sqliteTable(
       table.status,
       table.dueOn,
     ),
+  ],
+);
+
+export const evidenceItems = sqliteTable(
+  "evidence_items",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id),
+    evidenceType: text("evidence_type").notNull(),
+    sourceType: text("source_type").notNull(),
+    sourceRef: text("source_ref").notNull(),
+    courseId: text("course_id").references(() => courses.id),
+    lessonId: text("lesson_id").references(() => lessons.id),
+    assessmentStageKey: text("assessment_stage_key"),
+    sourceVersion: text("source_version").notNull().default("v1"),
+    status: text("status").notNull().default("accepted"),
+    score: real("score").notNull().default(0),
+    metadataJson: text("metadata_json").notNull().default("{}"),
+    occurredOn: text("occurred_on").notNull(),
+    createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    uniqueIndex("evidence_items_source_unique").on(
+      table.sourceType,
+      table.sourceRef,
+    ),
+    index("evidence_items_user_date_idx").on(table.userId, table.occurredOn),
+    index("evidence_items_user_status_idx").on(
+      table.userId,
+      table.status,
+      table.evidenceType,
+    ),
+    index("evidence_items_course_lesson_idx").on(table.courseId, table.lessonId),
+  ],
+);
+
+export const goalTemplates = sqliteTable("goal_templates", {
+  id: text("id").primaryKey(),
+  version: text("version").notNull(),
+  title: text("title").notNull(),
+  slogan: text("slogan").notNull(),
+  artifact: text("artifact").notNull(),
+  definitionOfDoneJson: text("definition_of_done_json").notNull().default("[]"),
+  status: text("status").notNull().default("active"),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const goalTemplateCheckpoints = sqliteTable(
+  "goal_template_checkpoints",
+  {
+    id: text("id").primaryKey(),
+    templateId: text("template_id")
+      .notNull()
+      .references(() => goalTemplates.id),
+    day: integer("day").notNull(),
+    label: text("label").notNull(),
+    title: text("title").notNull(),
+    outcome: text("outcome").notNull(),
+    evidenceJson: text("evidence_json").notNull().default("[]"),
+    definitionOfDoneJson: text("definition_of_done_json").notNull().default("[]"),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    uniqueIndex("goal_template_checkpoints_template_day_unique").on(
+      table.templateId,
+      table.day,
+    ),
+    index("goal_template_checkpoints_template_order_idx").on(
+      table.templateId,
+      table.sortOrder,
+    ),
+  ],
+);
+
+export const projectMilestones = sqliteTable(
+  "project_milestones",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id),
+    templateId: text("template_id")
+      .notNull()
+      .references(() => goalTemplates.id),
+    checkpointId: text("checkpoint_id")
+      .notNull()
+      .references(() => goalTemplateCheckpoints.id),
+    checkpointDay: integer("checkpoint_day").notNull(),
+    artifactUrl: text("artifact_url"),
+    evidenceText: text("evidence_text").notNull(),
+    evidenceJson: text("evidence_json").notNull().default("[]"),
+    status: text("status").notNull().default("accepted"),
+    score: real("score").notNull().default(0),
+    notes: text("notes"),
+    reviewedAt: text("reviewed_at"),
+    reviewedBy: text("reviewed_by"),
+    submittedAt: text("submitted_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    uniqueIndex("project_milestones_user_checkpoint_unique").on(
+      table.userId,
+      table.templateId,
+      table.checkpointId,
+    ),
+    index("project_milestones_user_status_idx").on(
+      table.userId,
+      table.status,
+      table.checkpointDay,
+    ),
+    index("project_milestones_status_day_idx").on(
+      table.status,
+      table.checkpointDay,
+    ),
+  ],
+);
+
+export const agentLabProjects = sqliteTable(
+  "agent_lab_projects",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id),
+    templateId: text("template_id")
+      .notNull()
+      .references(() => goalTemplates.id),
+    builderProvider: text("builder_provider").notNull().default("flowise"),
+    builderProjectRef: text("builder_project_ref"),
+    workflowRef: text("workflow_ref"),
+    workflowExportJson: text("workflow_export_json").notNull().default("{}"),
+    status: text("status").notNull().default("draft"),
+    runtimeStatus: text("runtime_status").notNull().default("not_tested"),
+    metadataJson: text("metadata_json").notNull().default("{}"),
+    createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    uniqueIndex("agent_lab_projects_user_template_provider_unique").on(
+      table.userId,
+      table.templateId,
+      table.builderProvider,
+    ),
+    index("agent_lab_projects_user_status_idx").on(table.userId, table.status),
+    index("agent_lab_projects_provider_status_idx").on(
+      table.builderProvider,
+      table.status,
+    ),
+  ],
+);
+
+export const agentRuntimeChecks = sqliteTable(
+  "agent_runtime_checks",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id),
+    agentProjectId: integer("agent_project_id")
+      .notNull()
+      .references(() => agentLabProjects.id),
+    checkType: text("check_type").notNull().default("manual_runtime"),
+    testCasesJson: text("test_cases_json").notNull().default("[]"),
+    resultJson: text("result_json").notNull().default("{}"),
+    status: text("status").notNull().default("recorded"),
+    score: real("score").notNull().default(0),
+    notes: text("notes"),
+    createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    index("agent_runtime_checks_project_created_idx").on(
+      table.agentProjectId,
+      table.createdAt,
+    ),
+    index("agent_runtime_checks_user_status_idx").on(table.userId, table.status),
+  ],
+);
+
+export const knowledgeSources = sqliteTable(
+  "knowledge_sources",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    sourceType: text("source_type").notNull(),
+    title: text("title").notNull(),
+    sourceUrl: text("source_url"),
+    canonicalRef: text("canonical_ref").notNull(),
+    license: text("license"),
+    relevance: text("relevance").notNull().default("unclassified"),
+    status: text("status").notNull().default("pending_review"),
+    reviewNotes: text("review_notes"),
+    metadataJson: text("metadata_json").notNull().default("{}"),
+    createdBy: text("created_by"),
+    reviewedBy: text("reviewed_by"),
+    reviewedAt: text("reviewed_at"),
+    createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    uniqueIndex("knowledge_sources_canonical_ref_unique").on(table.canonicalRef),
+    index("knowledge_sources_status_created_idx").on(table.status, table.createdAt),
+    index("knowledge_sources_type_status_idx").on(table.sourceType, table.status),
   ],
 );
 
@@ -524,6 +875,99 @@ export const orderPricingSnapshots = sqliteTable(
     ),
     index("order_pricing_snapshots_status_created_idx").on(
       table.status,
+      table.createdAt,
+    ),
+  ],
+);
+
+export const conversionEvents = sqliteTable(
+  "conversion_events",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id),
+    eventType: text("event_type").notNull(),
+    planKey: text("plan_key"),
+    metadataJson: text("metadata_json").notNull().default("{}"),
+    occurredAt: text("occurred_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    index("conversion_events_type_time_idx").on(table.eventType, table.occurredAt),
+    index("conversion_events_user_type_idx").on(table.userId, table.eventType),
+  ],
+);
+
+export const uploadedArtifacts = sqliteTable(
+  "uploaded_artifacts",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id),
+    purpose: text("purpose").notNull().default("project_milestone"),
+    originalFilename: text("original_filename").notNull(),
+    storedFilename: text("stored_filename").notNull(),
+    storagePath: text("storage_path").notNull(),
+    mimeType: text("mime_type").notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    sha256: text("sha256").notNull(),
+    status: text("status").notNull().default("stored"),
+    relatedSourceType: text("related_source_type"),
+    relatedSourceRef: text("related_source_ref"),
+    createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    index("uploaded_artifacts_user_created_idx").on(table.userId, table.createdAt),
+    index("uploaded_artifacts_sha256_idx").on(table.sha256),
+    index("uploaded_artifacts_related_source_idx").on(
+      table.relatedSourceType,
+      table.relatedSourceRef,
+    ),
+  ],
+);
+
+export const competencyNodes = sqliteTable(
+  "competency_nodes",
+  {
+    id: text("id").primaryKey(),
+    title: text("title").notNull(),
+    description: text("description").notNull(),
+    level: integer("level").notNull().default(1),
+    category: text("category").notNull().default("ai"),
+    weight: integer("weight").notNull().default(20),
+    evidencePolicyJson: text("evidence_policy_json").notNull().default("{}"),
+    status: text("status").notNull().default("active"),
+    createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    index("competency_nodes_category_status_idx").on(table.category, table.status),
+    index("competency_nodes_level_idx").on(table.level),
+  ],
+);
+
+export const competencyProofShares = sqliteTable(
+  "competency_proof_shares",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    token: text("token").notNull(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id),
+    status: text("status").notNull().default("active"),
+    snapshotJson: text("snapshot_json").notNull(),
+    createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    expiresAt: text("expires_at"),
+    revokedAt: text("revoked_at"),
+    lastViewedAt: text("last_viewed_at"),
+    viewCount: integer("view_count").notNull().default(0),
+  },
+  (table) => [
+    uniqueIndex("competency_proof_shares_token_unique").on(table.token),
+    index("competency_proof_shares_token_idx").on(table.token),
+    index("competency_proof_shares_user_created_idx").on(
+      table.userId,
       table.createdAt,
     ),
   ],

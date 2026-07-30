@@ -1,0 +1,55 @@
+{
+  "action": "import_localization_draft",
+  "locale": "vi",
+  "sourceVersion": "v1",
+  "status": "draft",
+  "importedBy": "academy-localization-template",
+  "allowOverwriteApproved": false,
+  "importNotes": [
+    "POST this JSON to /api/academy/admin/course-review with Authorization: Bearer <ACADEMY_CRON_SECRET>.",
+    "Fill translated fields before import.",
+    "Import creates draft/pending_review records only; approved translations are skipped by default.",
+    "User-facing lessons still require review_lesson_localization -> approved before they appear."
+  ],
+  "courses": [
+    {
+      "courseId": "ai-command-skills",
+      "sourceTitle": "AI Command Skills",
+      "title": "",
+      "subtitle": "",
+      "summary": ""
+    }
+  ],
+  "lessons": [
+    {
+      "lessonId": "ai-day-1",
+      "day": 1,
+      "sourceTitle": "Level 1 路 认识 AI：它是什么、不是什麽",
+      "title": "",
+      "objective": "",
+      "content": "",
+      "practicePrompt": "",
+      "criteriaJson": "{\n  \"criteria\": [\n    \"自己的解释\",\n    \"可协助部分\",\n    \"人负责部分\",\n    \"验证动作\"\n  ],\n  \"assessment\": {\n    \"type\": \"multiple_choice\",\n    \"questions\": [\n      {\n        \"type\": \"multiple_choice\",\n        \"question\": \"下面哪种说法最符合本课的 AI 使用原则？\",\n        \"options\": [\n          {\n            \"id\": \"a\",\n            \"label\": \"回答写得流畅，就可以直接当成事实使用。\"\n          },\n          {\n            \"id\": \"b\",\n            \"label\": \"AI 可以协助产出，但关键方向和事实验证仍由人负责。\"\n          },\n          {\n            \"id\": \"c\",\n            \"label\": \"只要给 AI 一个专家角色，它就会自动避免出错。\"\n          }\n        ],\n        \"correctOptionId\": \"b\",\n        \"explanation\": \"正确。AI 能放大产出效率，但不能替你承担方向判断或事实验证。\"\n      },\n      {\n        \"question\": \"根据本课，以下哪一项是核心原则？\",\n        \"options\": [\n          {\n            \"id\": \"a\",\n            \"label\": \"AI 根据语言和数据中的模式生成内容；流畅不等于正确\"\n          },\n          {\n            \"id\": \"b\",\n            \"label\": \"让 AI 自己决定关键标准，减少人的干预。\"\n          },\n          {\n            \"id\": \"c\",\n            \"label\": \"只要输出足够长，就代表理解已经足够。\"\n          }\n        ],\n        \"correctOptionId\": \"a\",\n        \"explanation\": \"本课的核心原则是：AI 根据语言和数据中的模式生成内容；流畅不等于正确。\"\n      },\n      {\n        \"question\": \"完成本课后，你应当具备哪项能力？\",\n        \"options\": [\n          {\n            \"id\": \"a\",\n            \"label\": \"记住更多 AI 营销术语，不需要实际判断。\"\n          },\n          {\n            \"id\": \"b\",\n            \"label\": \"能用自己的话解释 AI 的工作方式，并区分一个适合交给 AI 的任务和一个必须由人负责的判断。\"\n          },\n          {\n            \"id\": \"c\",\n            \"label\": \"让 AI 替你承担最终结果和责任。\"\n          }\n        ],\n        \"correctOptionId\": \"b\",\n        \"explanation\": \"本课的能力目标是：能用自己的话解释 AI 的工作方式，并区分一个适合交给 AI 的任务和一个必须由人负责的判断。\"\n      }\n    ]\n  },\n  \"translationNotes\": [\n    \"Keep option ids unchanged.\",\n    \"Translate labels/explanations only.\",\n    \"Do not translate code, commands, product names, IDs, JSON keys, or controlled values.\"\n  ]\n}"
+    },
+    {
+      "lessonId": "ai-day-2",
+      "day": 2,
+      "sourceTitle": "Level 2 路 AI 基本词汇与产品地图",
+      "title": "",
+      "objective": "",
+      "content": "",
+      "practicePrompt": "",
+      "criteriaJson": "{\n  \"criteria\": [\n    \"模型\",\n    \"应用\",\n    \"上下文\",\n    \"输出\",\n    \"待确认问题\"\n  ],\n  \"assessment\": {\n    \"type\": \"multiple_choice\",\n    \"questions\": [\n      {\n        \"type\": \"multiple_choice\",\n        \"question\": \"你在手机上打开 DeepSeek 聊天界面并输入问题，其中“聊天界面”最准确的名称是？\",\n        \"options\": [\n          {\n            \"id\": \"a\",\n            \"label\": \"应用；它调用模型并提供输入、文件等交互功能。\"\n          },\n          {\n            \"id\": \"b\",\n            \"label\": \"提示词；因为它可以显示对话。\"\n          },\n          {\n            \"id\": \"c\",\n            \"label\": \"上下文；因为它能打开网页。\"\n          }\n        ],\n        \"correctOptionId\": \"a\",\n        \"explanation\": \"正确。聊天界面是应用；模型是背后生成内容的能力。\"\n      },\n      {\n        \"question\": \"根据本课，以下哪一项是核心原则？\",\n        \"options\": [\n          {\n            \"id\": \"a\",\n            \"label\": \"模型、应用、对话、提示词、上下文、输出是六个不同概念\"\n          },\n          {\n            \"id\": \"b\",\n            \"label\": \"让 AI 自己决定关键标准，减少人的干预。\"\n          },\n          {\n            \"id\": \"c\",\n            \"label\": \"只要输出足够长，就代表理解已经足够。\"\n          }\n        ],\n        \"correctOptionId\": \"a\",\n        \"explanation\": \"本课的核心原则是：模型、应用、对话、提示词、上下文、输出是六个不同概念。\"\n      },\n      {\n        \"question\": \"完成本课后，你应当具备哪项能力？\",\n        \"options\": [\n          {\n            \"id\": \"a\",\n            \"label\": \"记住更多 AI 营销术语，不需要实际判断。\"\n          },\n          {\n            \"id\": \"b\",\n            \"label\": \"能解释六个基本术语，并说出自己正在使用的 AI 产品包含哪些能力。\"\n          },\n          {\n            \"id\": \"c\",\n            \"label\": \"让 AI 替你承担最终结果和责任。\"\n          }\n        ],\n        \"correctOptionId\": \"b\",\n        \"explanation\": \"本课的能力目标是：能解释六个基本术语，并说出自己正在使用的 AI 产品包含哪些能力。\"\n      }\n    ]\n  },\n  \"translationNotes\": [\n    \"Keep option ids unchanged.\",\n    \"Translate labels/explanations only.\",\n    \"Do not translate code, commands, product names, IDs, JSON keys, or controlled values.\"\n  ]\n}"
+    },
+    {
+      "lessonId": "ai-day-3",
+      "day": 3,
+      "sourceTitle": "Level 3 路 能力、边界与幻觉",
+      "title": "",
+      "objective": "",
+      "content": "",
+      "practicePrompt": "",
+      "criteriaJson": "{\n  \"criteria\": [\n    \"事实问题\",\n    \"待核实主张\",\n    \"原始来源\",\n    \"风险判断\"\n  ],\n  \"assessment\": {\n    \"type\": \"multiple_choice\",\n    \"questions\": [\n      {\n        \"type\": \"multiple_choice\",\n        \"question\": \"AI 对一条会影响付款决策的法规给出明确答案，最合适的下一步是？\",\n        \"options\": [\n          {\n            \"id\": \"a\",\n            \"label\": \"让 AI 再说一遍，若答案相同就执行。\"\n          },\n          {\n            \"id\": \"b\",\n            \"label\": \"先执行，出问题后再修改。\"\n          },\n          {\n            \"id\": \"c\",\n            \"label\": \"回到官方法规或专业人士处核实，再做决定。\"\n          }\n        ],\n        \"correctOptionId\": \"c\",\n        \"explanation\": \"正确。高风险、时效性或责任相关的事实必须回到原始来源验证。\"\n      },\n      {\n        \"question\": \"根据本课，以下哪一项是核心原则？\",\n        \"options\": [\n          {\n            \"id\": \"a\",\n            \"label\": \"AI 会在不知道时继续生成；不知道与说错常常看起来一样自然\"\n          },\n          {\n            \"id\": \"b\",\n            \"label\": \"让 AI 自己决定关键标准，减少人的干预。\"\n          },\n          {\n            \"id\": \"c\",\n            \"label\": \"只要输出足够长，就代表理解已经足够。\"\n          }\n        ],\n        \"correctOptionId\": \"a\",\n        \"explanation\": \"本课的核心原则是：AI 会在不知道时继续生成；不知道与说错常常看起来一样自然。\"\n      },\n      {\n        \"question\": \"完成本课后，你应当具备哪项能力？\",\n        \"options\": [\n          {\n            \"id\": \"a\",\n            \"label\": \"记住更多 AI 营销术语，不需要实际判断。\"\n          },\n          {\n            \"id\": \"b\",\n            \"label\": \"能识别 AI 回答中需要验证的主张，并为一个高风险结论设计最小验证动作。\"\n          },\n          {\n            \"id\": \"c\",\n            \"label\": \"让 AI 替你承担最终结果和责任。\"\n          }\n        ],\n        \"correctOptionId\": \"b\",\n        \"explanation\": \"本课的能力目标是：能识别 AI 回答中需要验证的主张，并为一个高风险结论设计最小验证动作。\"\n      }\n    ]\n  },\n  \"translationNotes\": [\n    \"Keep option ids unchanged.\",\n    \"Translate labels/explanations only.\",\n    \"Do not translate code, commands, product names, IDs, JSON keys, or controlled values.\"\n  ]\n}"
+    }
+  ]
+}

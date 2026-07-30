@@ -58,9 +58,14 @@ function verifySqlite(databasePath) {
     "submissions",
     "notes",
     "invitations",
+    "seed_user_notes",
     "credits_ledger",
     "campaign_rewards",
     "order_pricing_snapshots",
+    "competency_proof_shares",
+    "agent_lab_projects",
+    "agent_runtime_checks",
+    "knowledge_sources",
   ]) {
     if (!tables.includes(required)) {
       throw new Error(`Missing SQLite table: ${required}`);
@@ -99,9 +104,19 @@ async function verifyPostgres() {
       "submissions",
       "notes",
       "invitations",
+      "seed_user_notes",
       "credits_ledger",
       "campaign_rewards",
       "order_pricing_snapshots",
+      "goal_templates",
+      "goal_template_checkpoints",
+      "project_milestones",
+      "uploaded_artifacts",
+      "competency_nodes",
+      "competency_proof_shares",
+      "agent_lab_projects",
+      "agent_runtime_checks",
+      "knowledge_sources",
     ]) {
       if (!names.has(required)) throw new Error(`Missing Postgres table: ${required}`);
     }

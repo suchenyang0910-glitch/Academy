@@ -26,12 +26,20 @@ body {
     radial-gradient(circle at 18% 14%, rgba(255, 255, 255, 0.62), transparent 26rem),
     #d7d1c5;
   font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", Arial, sans-serif;
+  -webkit-text-size-adjust: 100%;
 }
 
 button,
+input,
 textarea,
 select {
   font: inherit;
+}
+
+input,
+textarea,
+select {
+  font-size: 16px;
 }
 
 button {
@@ -892,7 +900,7 @@ blockquote {
   border-left: 3px solid var(--terracotta);
   background: rgba(251, 248, 241, 0.72);
   color: var(--ink);
-  font: 400 15px/1.7 Georgia, "Songti SC", "SimSun", serif;
+  font: 400 16px/1.7 Georgia, "Songti SC", "SimSun", serif;
 }
 
 .composer textarea::placeholder {
@@ -1037,6 +1045,477 @@ blockquote {
 .mission-evidence span {
   color: #3b372f;
   font: 400 12px/1.65 Georgia, "Songti SC", serif;
+}
+
+.goal-template-card {
+  margin-top: 14px;
+  padding: 18px 16px;
+  border: 1px solid rgba(82, 104, 79, 0.26);
+  border-left: 4px solid var(--sage);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.58), rgba(255, 255, 255, 0.34)),
+    rgba(82, 104, 79, 0.055);
+}
+
+.goal-template-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: end;
+  margin-top: 8px;
+}
+
+.goal-template-head h2 {
+  margin: 0 0 6px;
+  font: 500 24px/1.12 Georgia, "Songti SC", serif;
+}
+
+.goal-template-head p {
+  margin: 0;
+  color: #575248;
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.goal-template-head > strong {
+  color: var(--sage);
+  font: 500 34px/1 Georgia, serif;
+}
+
+.goal-progress-line {
+  height: 5px;
+  margin-top: 14px;
+  overflow: hidden;
+  background: rgba(82, 104, 79, 0.14);
+}
+
+.goal-progress-line span {
+  display: block;
+  height: 100%;
+  background: var(--sage);
+}
+
+.goal-template-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 14px;
+  border: 1px solid var(--line);
+}
+
+.goal-template-grid > div {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+  padding: 11px;
+}
+
+.goal-template-grid > div + div {
+  border-left: 1px dashed var(--line);
+}
+
+.goal-template-grid span {
+  color: var(--muted);
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.goal-template-grid strong {
+  overflow-wrap: anywhere;
+  font: 500 11px/1.45 Georgia, "Songti SC", serif;
+}
+
+.agent-lab-card {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid rgba(191, 104, 72, 0.26);
+  background: rgba(191, 104, 72, 0.055);
+}
+
+.agent-lab-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.agent-lab-head strong,
+.agent-lab-head em {
+  display: block;
+  font: 500 12px/1.35 Georgia, "Songti SC", serif;
+}
+
+.agent-lab-head em {
+  color: var(--sage);
+  font-style: normal;
+  white-space: nowrap;
+}
+
+.agent-lab-card p,
+.agent-lab-card small {
+  margin: 0;
+  color: #696358;
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.agent-lab-form {
+  display: grid;
+  gap: 8px;
+}
+
+.agent-lab-form input,
+.agent-lab-form textarea {
+  width: 100%;
+  border: 1px solid rgba(31, 29, 25, 0.14);
+  background: rgba(255, 255, 255, 0.5);
+  color: #24211c;
+  font: 400 16px/1.5 Georgia, "Songti SC", serif;
+}
+
+.agent-lab-form input {
+  min-height: 40px;
+  padding: 8px 10px;
+}
+
+.agent-lab-form textarea {
+  min-height: 86px;
+  padding: 10px;
+  resize: vertical;
+}
+
+.agent-lab-form button {
+  min-height: 40px;
+  border: 0;
+  background: var(--ink);
+  color: var(--paper);
+  font: 500 13px/1.2 "Noto Sans SC", sans-serif;
+}
+
+.agent-runtime-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.agent-runtime-checks span {
+  padding: 5px 7px;
+  border: 1px solid rgba(82, 104, 79, 0.18);
+  background: rgba(255, 255, 255, 0.42);
+  color: #3f4d3b;
+  font-size: 10px;
+}
+
+.goal-checkpoint-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.goal-checkpoint {
+  appearance: none;
+  text-align: left;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(31, 29, 25, 0.1);
+  background: rgba(255, 255, 255, 0.34);
+  color: inherit;
+}
+
+.goal-checkpoint.is-current,
+.goal-checkpoint.is-selected {
+  border-color: rgba(82, 104, 79, 0.36);
+  background: rgba(82, 104, 79, 0.08);
+}
+
+.goal-checkpoint.is-selected {
+  outline: 2px solid rgba(82, 104, 79, 0.16);
+}
+
+.goal-checkpoint span {
+  color: var(--terracotta);
+  font: 500 9px/1.3 Georgia, serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.goal-checkpoint strong,
+.goal-checkpoint small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.goal-checkpoint strong {
+  margin-top: 5px;
+  color: #1f1d19;
+  font: 500 12px/1.25 Georgia, "Songti SC", serif;
+}
+
+.goal-checkpoint small {
+  margin-top: 5px;
+  color: #696358;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.goal-checkpoint em {
+  display: block;
+  margin-top: 7px;
+  color: var(--sage);
+  font-style: normal;
+  font-size: 10px;
+}
+
+.milestone-submit-box {
+  display: grid;
+  gap: 9px;
+  margin-top: 14px;
+  padding-top: 13px;
+  border-top: 1px solid rgba(31, 29, 25, 0.08);
+}
+
+.milestone-submit-box span {
+  display: block;
+  color: var(--terracotta);
+  font: 500 9px/1.4 Georgia, serif;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.milestone-submit-box strong {
+  display: block;
+  margin-top: 3px;
+  font: 500 14px/1.3 Georgia, "Songti SC", serif;
+}
+
+.milestone-submit-box input,
+.milestone-submit-box textarea {
+  width: 100%;
+  border: 1px solid rgba(31, 29, 25, 0.14);
+  background: rgba(255, 255, 255, 0.48);
+  color: #24211c;
+  font: 400 16px/1.55 Georgia, "Songti SC", serif;
+}
+
+.milestone-submit-box input {
+  min-height: 42px;
+  padding: 9px 10px;
+}
+
+.milestone-submit-box textarea {
+  min-height: 108px;
+  resize: vertical;
+  padding: 10px;
+}
+
+.runtime-test-grid {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid rgba(31, 29, 25, 0.12);
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.runtime-test-grid > strong {
+  font: 600 14px/1.35 Georgia, "Songti SC", serif;
+}
+
+.runtime-test-grid > small {
+  color: rgba(31, 29, 25, 0.58);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.runtime-test-case {
+  display: grid;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(31, 29, 25, 0.12);
+}
+
+.runtime-test-case:first-of-type {
+  border-top: 0;
+}
+
+.runtime-test-case textarea {
+  min-height: 74px;
+}
+
+.competency-card {
+  border: 1px solid rgba(31, 29, 25, 0.12);
+  background: rgba(255, 255, 255, 0.32);
+  padding: 18px;
+}
+
+.competency-card .section-heading {
+  align-items: start;
+}
+
+.competency-card .section-heading strong {
+  font: 500 34px/1 Georgia, serif;
+}
+
+.competency-proof-actions {
+  display: grid;
+  gap: 6px;
+  justify-items: end;
+}
+
+.competency-proof-actions button {
+  min-height: 30px;
+  border: 1px solid rgba(31, 29, 25, 0.18);
+  background: rgba(255, 255, 255, 0.54);
+  color: var(--ink);
+  padding: 5px 8px;
+  font: 500 11px/1.2 Arial, sans-serif;
+}
+
+.competency-proof-actions button:disabled {
+  opacity: 0.55;
+}
+
+.competency-card > p {
+  margin: 8px 0 14px;
+  color: rgba(31, 29, 25, 0.62);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.competency-share-link {
+  display: grid;
+  gap: 5px;
+  margin: 0 0 14px;
+  padding: 11px 12px;
+  border: 1px dashed rgba(193, 91, 69, 0.36);
+  background: rgba(193, 91, 69, 0.06);
+  font-size: 12px;
+}
+
+.competency-share-link span {
+  color: var(--terracotta);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.competency-share-link a {
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.competency-node-list {
+  display: grid;
+  gap: 9px;
+}
+
+.competency-node {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  padding: 11px;
+  border: 1px solid rgba(31, 29, 25, 0.1);
+  background: rgba(255, 255, 255, 0.42);
+}
+
+.competency-node span {
+  color: var(--terracotta);
+  font: 500 9px/1.4 Georgia, serif;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.competency-node strong,
+.competency-node small {
+  display: block;
+}
+
+.competency-node strong {
+  margin-top: 3px;
+  font: 600 14px/1.35 Georgia, "Songti SC", serif;
+}
+
+.competency-node small {
+  margin-top: 3px;
+  color: rgba(31, 29, 25, 0.58);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.competency-score {
+  text-align: right;
+}
+
+.competency-score b {
+  display: block;
+  font: 500 24px/1 Georgia, serif;
+}
+
+.competency-node > i {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 3px;
+  background: var(--terracotta);
+  opacity: 0.68;
+}
+
+.competency-not_started > i {
+  background: rgba(31, 29, 25, 0.22);
+}
+
+.competency-evidenced > i {
+  background: #57705b;
+}
+
+.artifact-upload-box {
+  display: grid;
+  gap: 3px;
+  border: 1px dashed rgba(31, 29, 25, 0.22);
+  background: rgba(255, 255, 255, 0.36);
+  padding: 10px;
+  cursor: pointer;
+}
+
+.artifact-upload-box small {
+  color: rgba(31, 29, 25, 0.58);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.milestone-submit-box .artifact-upload-box input {
+  display: none;
+}
+
+.uploaded-artifact-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.uploaded-artifact-list span {
+  border: 1px solid rgba(31, 29, 25, 0.12);
+  background: rgba(255, 255, 255, 0.48);
+  color: rgba(31, 29, 25, 0.7);
+  padding: 5px 7px;
+  font: 400 12px/1.35 Arial, sans-serif;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.form-error {
+  color: var(--terracotta);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+@media (max-width: 380px) {
+  .goal-checkpoint-list {
+    grid-template-columns: 1fr;
+  }
 }
 
 .supervision-completed {
@@ -1325,6 +1804,10 @@ blockquote {
   color: var(--sage);
 }
 
+.catalog-card .content-fallback-badge {
+  margin-top: 11px;
+}
+
 .course-path {
   --course-accent: var(--terracotta);
   padding: 24px 0 42px;
@@ -1523,6 +2006,10 @@ blockquote {
 
 .lesson-page-content {
   padding: 24px 20px 50px;
+}
+
+.lesson-page:focus-within .lesson-page-content {
+  padding-bottom: max(220px, 32dvh);
 }
 
 .lesson-page-content > h1 {
@@ -2018,6 +2505,34 @@ blockquote {
   white-space: nowrap;
 }
 
+.content-fallback-badge {
+  display: grid;
+  gap: 5px;
+  margin: 12px 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(185, 99, 69, 0.25);
+  border-left: 3px solid var(--terracotta);
+  background: rgba(185, 99, 69, 0.055);
+}
+
+.content-fallback-badge.compact {
+  padding: 8px 10px;
+}
+
+.content-fallback-badge span {
+  color: var(--terracotta);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.content-fallback-badge p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.55;
+}
+
 .feedback-card {
   display: grid;
   gap: 13px;
@@ -2112,6 +2627,35 @@ blockquote {
   line-height: 1.6;
 }
 
+.continuation-card {
+  display: grid;
+  gap: 1px;
+  margin: 12px 0;
+  border: 1px solid rgba(31, 32, 27, 0.1);
+  background: rgba(251, 248, 241, 0.5);
+}
+
+.continuation-card > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 10px;
+  background: rgba(255, 253, 247, 0.62);
+}
+
+.continuation-card span {
+  color: var(--muted);
+  font-size: 9px;
+  letter-spacing: 0.02em;
+}
+
+.continuation-card strong {
+  color: var(--ink);
+  font: 500 12px/1.25 Georgia, "Songti SC", serif;
+  text-align: right;
+}
+
 .pricing-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2158,6 +2702,39 @@ blockquote {
   display: block;
   margin-top: 11px;
   line-height: 1.55;
+}
+
+.payment-state-card {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 11px 12px;
+  border: 1px solid rgba(82, 104, 79, 0.24);
+  border-left: 3px solid var(--sage);
+  background: rgba(82, 104, 79, 0.055);
+}
+
+.payment-state-card.is-pending {
+  border-left-color: #a9792b;
+  background: rgba(169, 121, 43, 0.07);
+}
+
+.payment-state-card.is-failed,
+.payment-state-card.is-cancelled {
+  border-left-color: var(--terracotta);
+  background: rgba(185, 99, 69, 0.065);
+}
+
+.payment-state-card strong {
+  color: var(--ink);
+  font: 500 12px/1.25 Georgia, "Songti SC", serif;
+}
+
+.payment-state-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.6;
 }
 
 .referral-card {
@@ -2292,6 +2869,137 @@ blockquote {
   font: 400 13px/1.7 Georgia, "Songti SC", serif;
 }
 
+.reminder-history {
+  margin: 18px 0;
+  padding: 18px;
+  border: 1px solid var(--line);
+  background: rgba(255, 254, 248, 0.54);
+}
+
+.reminder-diagnostic {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.reminder-diagnostic h2 {
+  margin: 0;
+  font: 500 23px/1.1 Georgia, "Songti SC", "SimSun", serif;
+}
+
+.reminder-diagnostic p {
+  margin: 0;
+  color: #4d4940;
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.reminder-diagnostic > small {
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.55;
+}
+
+.reminder-diagnostic-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border: 1px solid var(--line);
+}
+
+.reminder-diagnostic-grid > div {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+  padding: 11px;
+}
+
+.reminder-diagnostic-grid > div + div {
+  border-left: 1px dashed var(--line);
+}
+
+.reminder-diagnostic-grid span {
+  color: var(--muted);
+  font-size: 8px;
+  letter-spacing: 0.08em;
+}
+
+.reminder-diagnostic-grid strong {
+  overflow-wrap: anywhere;
+  font: 500 11px/1.4 Georgia, "Songti SC", "SimSun", serif;
+}
+
+.reminder-history .section-heading {
+  margin-bottom: 10px;
+}
+
+.reminder-history .section-heading small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.reminder-history-empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.reminder-history-list {
+  display: grid;
+  gap: 0;
+  border-top: 1px solid var(--line);
+}
+
+.reminder-history-row {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 54px;
+  border-bottom: 1px solid var(--line);
+}
+
+.reminder-history-row strong,
+.reminder-history-row small,
+.reminder-history-row em {
+  display: block;
+}
+
+.reminder-history-row strong {
+  font-size: 13px;
+}
+
+.reminder-history-row small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.reminder-history-row em {
+  color: var(--terracotta);
+  font: 600 12px/1 Georgia, serif;
+  letter-spacing: 0.08em;
+}
+
+.reminder-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #9c978b;
+}
+
+.reminder-status-dot.is-delivered,
+.reminder-status-dot.is-opened {
+  background: var(--sage);
+}
+
+.reminder-status-dot.is-failed,
+.reminder-status-dot.is-missing_telegram_id {
+  background: var(--terracotta);
+}
+
 @keyframes quiet-pulse {
   50% {
     opacity: 0.45;
@@ -2363,5 +3071,197 @@ blockquote {
     scroll-behavior: auto !important;
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+.proof-public-shell {
+  min-height: 100dvh;
+  padding: 28px;
+  background:
+    radial-gradient(circle at top left, rgba(193, 91, 69, 0.1), transparent 30%),
+    var(--paper);
+  color: var(--ink);
+  display: grid;
+  place-items: center;
+}
+
+.proof-public-card {
+  width: min(760px, 100%);
+  border: 1px solid rgba(55, 52, 44, 0.18);
+  background: rgba(252, 248, 239, 0.94);
+  box-shadow: var(--shadow-soft);
+  padding: clamp(26px, 5vw, 54px);
+}
+
+.proof-public-empty {
+  text-align: center;
+}
+
+.proof-public-header,
+.proof-public-footer,
+.proof-public-node,
+.proof-public-grid {
+  display: flex;
+  gap: 18px;
+}
+
+.proof-public-header {
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 1px solid rgba(55, 52, 44, 0.16);
+  padding-bottom: 24px;
+}
+
+.proof-public-header h1 {
+  margin: 8px 0 0;
+  font-size: clamp(42px, 8vw, 76px);
+  line-height: 0.95;
+  letter-spacing: -0.06em;
+}
+
+.proof-public-muted {
+  color: var(--muted);
+}
+
+.proof-public-score {
+  min-width: 128px;
+  border: 1px solid rgba(193, 91, 69, 0.35);
+  padding: 18px;
+  text-align: center;
+}
+
+.proof-public-score span,
+.proof-public-grid span {
+  display: block;
+  font-family: var(--serif);
+  font-size: 44px;
+  line-height: 1;
+}
+
+.proof-public-score small,
+.proof-public-grid small,
+.proof-public-node-meta small {
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 11px;
+}
+
+.proof-public-rule {
+  margin: 24px 0;
+  padding: 16px 18px;
+  border-left: 4px solid var(--terracotta);
+  background: rgba(193, 91, 69, 0.07);
+}
+
+.proof-public-rule span {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+}
+
+.proof-public-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-top: 1px solid rgba(55, 52, 44, 0.14);
+  border-bottom: 1px solid rgba(55, 52, 44, 0.14);
+}
+
+.proof-public-grid > div {
+  padding: 20px 16px;
+  border-right: 1px dashed rgba(55, 52, 44, 0.16);
+}
+
+.proof-public-grid > div:last-child {
+  border-right: 0;
+}
+
+.proof-public-section {
+  margin-top: 30px;
+}
+
+.proof-public-section h2 {
+  font-size: 18px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--terracotta);
+}
+
+.proof-public-node-list {
+  display: grid;
+  gap: 12px;
+}
+
+.proof-public-node {
+  justify-content: space-between;
+  align-items: flex-start;
+  border: 1px solid rgba(55, 52, 44, 0.14);
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.32);
+}
+
+.proof-public-node h3 {
+  margin: 0 0 6px;
+  font-size: 20px;
+}
+
+.proof-public-node p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.proof-public-node-meta {
+  min-width: 110px;
+  text-align: right;
+}
+
+.proof-public-node-meta strong {
+  display: block;
+  font-family: var(--serif);
+  font-size: 34px;
+}
+
+.proof-public-node-meta span {
+  display: block;
+  color: var(--green);
+}
+
+.proof-public-footer {
+  justify-content: space-between;
+  margin-top: 28px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(55, 52, 44, 0.14);
+  color: var(--muted);
+  font-size: 13px;
+}
+
+@media (max-width: 560px) {
+  .proof-public-shell {
+    padding: 14px;
+  }
+
+  .proof-public-header,
+  .proof-public-footer,
+  .proof-public-node {
+    flex-direction: column;
+  }
+
+  .proof-public-score,
+  .proof-public-node-meta {
+    width: 100%;
+    text-align: left;
+  }
+
+  .proof-public-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .proof-public-grid > div {
+    border-right: 0;
+    border-bottom: 1px dashed rgba(55, 52, 44, 0.16);
+  }
+
+  .proof-public-grid > div:last-child {
+    border-bottom: 0;
   }
 }

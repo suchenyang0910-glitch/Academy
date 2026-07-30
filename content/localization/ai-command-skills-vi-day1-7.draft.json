@@ -1,0 +1,611 @@
+{
+  "action": "import_localization_draft",
+  "locale": "vi",
+  "sourceVersion": "v1",
+  "status": "draft",
+  "importedBy": "academy-localization-draft-vi-day1-7",
+  "allowOverwriteApproved": false,
+  "importNotes": [
+    "POST JSON này tới /api/academy/admin/course-review với Authorization: Bearer <ACADEMY_CRON_SECRET>.",
+    "Đây là bản nháp tiếng Việt cho AI Day 1-7; cần review_lesson_localization -> approved trước khi hiển thị chính thức.",
+    "Giữ nguyên option ids, product names, IDs, JSON keys và controlled values."
+  ],
+  "courses": [
+    {
+      "courseId": "ai-command-skills",
+      "sourceTitle": "AI Command Skills",
+      "title": "Kỹ năng chỉ huy AI",
+      "subtitle": "Không chỉ dùng công cụ, mà học cách giao việc cho AI",
+      "summary": "Lộ trình 60 ngày giúp người học hiểu AI, biết đặt nhiệm vụ rõ ràng, kiểm tra kết quả và từng bước xây dựng một trợ lý kiến thức cá nhân có thể chạy được."
+    }
+  ],
+  "lessons": [
+    {
+      "lessonId": "ai-day-1",
+      "day": 1,
+      "sourceTitle": "Level 1 路 认识 AI：它是什么、不是什麽",
+      "title": "Level 1 · Hiểu AI: nó là gì và không phải là gì",
+      "objective": "Có thể dùng lời của mình giải thích cách AI tạo câu trả lời, đồng thời phân biệt việc nào nên giao cho AI hỗ trợ và việc nào con người phải chịu trách nhiệm.",
+      "content": "Hôm nay chưa học prompt phức tạp. Trước hết cần hiểu đúng vai trò của AI.\n\nAI không phải là đồng nghiệp biết mọi sự thật. Nó giống một thực tập sinh rất nhanh: có thể đọc, tóm tắt, viết nháp, phân loại và đề xuất phương án. Nhưng nó tạo nội dung dựa trên mô hình ngôn ngữ và dữ liệu đã học; câu trả lời trôi chảy không đồng nghĩa với đúng.\n\nCách dùng an toàn hơn là chia việc thành ba phần: AI hỗ trợ sản xuất bản nháp và xử lý thông tin; con người quyết định mục tiêu, tiêu chuẩn và trách nhiệm cuối cùng; kết quả quan trọng phải có hành động kiểm chứng.\n\nVí dụ đúng: dùng AI tóm tắt phản hồi khách hàng, sau đó bạn kiểm tra dữ liệu gốc và tự quyết định ưu tiên sản phẩm. Ví dụ sai: thấy AI viết rất tự tin về một quy định thanh toán rồi lập tức làm theo.\n\nBài kiểm tra sau bài sẽ hỏi về: AI có thể hỗ trợ gì, con người phải giữ phần nào, vì sao cần kiểm chứng.",
+      "practicePrompt": "Sau khi làm quiz, hãy ghi một ví dụ công việc thật của bạn: phần nào AI có thể hỗ trợ, phần nào bạn phải tự quyết định, và bạn sẽ kiểm chứng kết quả bằng cách nào.",
+      "criteriaJson": {
+        "criteria": [
+          "Giải thích bằng lời của mình",
+          "Phần AI có thể hỗ trợ",
+          "Phần con người chịu trách nhiệm",
+          "Hành động kiểm chứng"
+        ],
+        "assessment": {
+          "type": "multiple_choice",
+          "questions": [
+            {
+              "type": "multiple_choice",
+              "question": "Cách nói nào phù hợp nhất với nguyên tắc dùng AI trong bài này?",
+              "options": [
+                {
+                  "id": "a",
+                  "label": "Nếu câu trả lời viết trôi chảy thì có thể dùng trực tiếp như sự thật."
+                },
+                {
+                  "id": "b",
+                  "label": "AI có thể hỗ trợ tạo đầu ra, nhưng hướng quan trọng và kiểm chứng sự thật vẫn do con người phụ trách."
+                },
+                {
+                  "id": "c",
+                  "label": "Chỉ cần đặt AI vào vai chuyên gia thì nó sẽ tự tránh sai sót."
+                }
+              ],
+              "correctOptionId": "b",
+              "explanation": "Đúng. AI có thể tăng tốc độ sản xuất, nhưng không thay bạn chịu trách nhiệm về hướng đi và kiểm chứng."
+            },
+            {
+              "question": "Theo bài học, nguyên tắc cốt lõi là gì?",
+              "options": [
+                {
+                  "id": "a",
+                  "label": "AI tạo nội dung dựa trên mẫu ngôn ngữ và dữ liệu; trôi chảy không có nghĩa là đúng."
+                },
+                {
+                  "id": "b",
+                  "label": "Nên để AI tự quyết định tiêu chuẩn quan trọng để giảm sự can thiệp của con người."
+                },
+                {
+                  "id": "c",
+                  "label": "Đầu ra càng dài thì chứng tỏ AI càng hiểu đủ."
+                }
+              ],
+              "correctOptionId": "a",
+              "explanation": "Cốt lõi của bài là: AI có thể viết tự nhiên, nhưng người dùng vẫn phải kiểm tra độ đúng."
+            },
+            {
+              "question": "Sau bài này, bạn cần có năng lực nào?",
+              "options": [
+                {
+                  "id": "a",
+                  "label": "Nhớ nhiều thuật ngữ marketing về AI mà không cần phán đoán thực tế."
+                },
+                {
+                  "id": "b",
+                  "label": "Giải thích cách AI hoạt động bằng lời của mình và phân biệt việc AI hỗ trợ với việc con người phải quyết định."
+                },
+                {
+                  "id": "c",
+                  "label": "Để AI chịu trách nhiệm cho kết quả cuối cùng."
+                }
+              ],
+              "correctOptionId": "b",
+              "explanation": "Mục tiêu năng lực là hiểu vai trò của AI và giữ lại phần phán đoán cho con người."
+            }
+          ]
+        },
+        "translationNotes": [
+          "Keep option ids unchanged.",
+          "Translate user-facing labels/explanations only.",
+          "Do not translate product names or controlled values."
+        ]
+      }
+    },
+    {
+      "lessonId": "ai-day-2",
+      "day": 2,
+      "sourceTitle": "Level 2 路 AI 基本词汇与产品地图",
+      "title": "Level 2 · Từ vựng nền tảng và bản đồ sản phẩm AI",
+      "objective": "Có thể giải thích sáu thuật ngữ cơ bản và nói rõ sản phẩm AI mình đang dùng gồm những năng lực nào.",
+      "content": "Trước khi dùng AI tốt, bạn cần phân biệt sáu khái niệm thường bị trộn lẫn.\n\n1. Model: năng lực tạo nội dung phía sau, ví dụ một mô hình ngôn ngữ.\n2. App: sản phẩm bạn mở trên điện thoại hoặc web, ví dụ giao diện chat, nút upload file, lịch sử hội thoại.\n3. Conversation: một phiên trao đổi giữa bạn và AI.\n4. Prompt: phần hướng dẫn hoặc yêu cầu bạn nhập vào.\n5. Context: thông tin AI đang có trong phiên đó, gồm yêu cầu, tài liệu, ví dụ và các tin nhắn trước.\n6. Output: kết quả AI trả về, có thể là văn bản, bảng, JSON, kế hoạch hoặc đoạn mã.\n\nMột lỗi phổ biến là tưởng “app” chính là “model”. Thực tế cùng một model có thể nằm trong nhiều app khác nhau; cùng một app cũng có thể đổi model phía sau.\n\nBài kiểm tra sẽ yêu cầu bạn phân biệt app, model, prompt, context và output.",
+      "practicePrompt": "Chọn một sản phẩm AI bạn hay dùng. Viết ngắn: app là gì, model hoặc năng lực phía sau là gì nếu bạn biết, bạn nhập prompt nào, context gồm gì, output mong muốn là gì.",
+      "criteriaJson": {
+        "criteria": [
+          "Model",
+          "App",
+          "Context",
+          "Output",
+          "Câu hỏi cần xác nhận"
+        ],
+        "assessment": {
+          "type": "multiple_choice",
+          "questions": [
+            {
+              "type": "multiple_choice",
+              "question": "Bạn mở giao diện chat DeepSeek trên điện thoại và nhập câu hỏi. “Giao diện chat” được gọi chính xác nhất là gì?",
+              "options": [
+                {
+                  "id": "a",
+                  "label": "App; nó gọi model và cung cấp chức năng nhập liệu, file hoặc tương tác."
+                },
+                {
+                  "id": "b",
+                  "label": "Prompt; vì nó có thể hiển thị hội thoại."
+                },
+                {
+                  "id": "c",
+                  "label": "Context; vì nó có thể mở trang web."
+                }
+              ],
+              "correctOptionId": "a",
+              "explanation": "Đúng. Giao diện chat là app; model là năng lực phía sau tạo câu trả lời."
+            },
+            {
+              "question": "Theo bài học, nguyên tắc cốt lõi là gì?",
+              "options": [
+                {
+                  "id": "a",
+                  "label": "Model, app, conversation, prompt, context và output là sáu khái niệm khác nhau."
+                },
+                {
+                  "id": "b",
+                  "label": "Nên để AI tự quyết định tiêu chuẩn quan trọng để giảm sự can thiệp của con người."
+                },
+                {
+                  "id": "c",
+                  "label": "Đầu ra càng dài thì chứng tỏ AI càng hiểu đủ."
+                }
+              ],
+              "correctOptionId": "a",
+              "explanation": "Bài này giúp bạn tách rõ các khái niệm nền tảng để tránh dùng sai hoặc kỳ vọng sai."
+            },
+            {
+              "question": "Sau bài này, bạn cần có năng lực nào?",
+              "options": [
+                {
+                  "id": "a",
+                  "label": "Nhớ nhiều thuật ngữ marketing về AI mà không cần phán đoán thực tế."
+                },
+                {
+                  "id": "b",
+                  "label": "Giải thích sáu thuật ngữ cơ bản và nói rõ sản phẩm AI mình dùng đang có năng lực nào."
+                },
+                {
+                  "id": "c",
+                  "label": "Để AI chịu trách nhiệm cho kết quả cuối cùng."
+                }
+              ],
+              "correctOptionId": "b",
+              "explanation": "Mục tiêu là đọc được bản đồ sản phẩm AI ở mức cơ bản, không bị lẫn app với model."
+            }
+          ]
+        },
+        "translationNotes": [
+          "Keep technical terms readable for Vietnamese learners.",
+          "Keep option ids unchanged."
+        ]
+      }
+    },
+    {
+      "lessonId": "ai-day-3",
+      "day": 3,
+      "sourceTitle": "Level 3 路 能力、边界与幻觉",
+      "title": "Level 3 · Năng lực, giới hạn và ảo giác của AI",
+      "objective": "Có thể nhận ra các tuyên bố cần kiểm chứng trong câu trả lời của AI và thiết kế một hành động kiểm chứng nhỏ nhất cho kết luận có rủi ro cao.",
+      "content": "AI giỏi tạo câu trả lời có vẻ hợp lý. Nhưng khi không biết, nó vẫn có thể tiếp tục tạo văn bản. Đây là lý do “không biết” và “nói sai” đôi khi nhìn rất giống nhau.\n\nBạn cần đặc biệt kiểm chứng bốn loại nội dung: số liệu, luật/quy định, thông tin có thời hạn, và kết luận ảnh hưởng đến tiền bạc hoặc trách nhiệm.\n\nCách xử lý không phải là cấm dùng AI. Cách đúng là dùng AI để liệt kê giả thuyết, gợi ý nguồn cần kiểm tra, tạo checklist; sau đó bạn quay lại nguồn gốc như tài liệu chính thức, dữ liệu nội bộ, chuyên gia hoặc thử nghiệm nhỏ.\n\nVí dụ: AI nói một chính sách thanh toán ở quốc gia X đã thay đổi. Hành động tốt không phải là hỏi lại AI thêm một lần, mà là mở nguồn chính thức hoặc hỏi chuyên gia trước khi ra quyết định.\n\nBài kiểm tra sẽ tập trung vào: khi nào phải kiểm chứng và nên kiểm chứng ở đâu.",
+      "practicePrompt": "Tìm một câu trả lời AI gần đây có chứa số liệu, quy định hoặc kết luận kinh doanh. Ghi lại một tuyên bố cần kiểm chứng và nguồn bạn sẽ dùng để kiểm chứng.",
+      "criteriaJson": {
+        "criteria": [
+          "Câu hỏi sự thật",
+          "Tuyên bố cần kiểm chứng",
+          "Nguồn gốc",
+          "Đánh giá rủi ro"
+        ],
+        "assessment": {
+          "type": "multiple_choice",
+          "questions": [
+            {
+              "type": "multiple_choice",
+              "question": "AI đưa ra một câu trả lời chắc chắn về quy định có thể ảnh hưởng tới quyết định thanh toán. Bước tiếp theo phù hợp nhất là gì?",
+              "options": [
+                {
+                  "id": "a",
+                  "label": "Yêu cầu AI nói lại; nếu câu trả lời giống nhau thì làm theo."
+                },
+                {
+                  "id": "b",
+                  "label": "Làm trước, nếu có vấn đề thì sửa sau."
+                },
+                {
+                  "id": "c",
+                  "label": "Quay lại nguồn quy định chính thức hoặc chuyên gia để xác minh rồi mới quyết định."
+                }
+              ],
+              "correctOptionId": "c",
+              "explanation": "Đúng. Sự thật có rủi ro cao, có thời hạn hoặc liên quan trách nhiệm phải được kiểm chứng từ nguồn gốc."
+            },
+            {
+              "question": "Theo bài học, nguyên tắc cốt lõi là gì?",
+              "options": [
+                {
+                  "id": "a",
+                  "label": "AI có thể tiếp tục tạo câu trả lời khi không biết; không biết và nói sai thường trông rất tự nhiên."
+                },
+                {
+                  "id": "b",
+                  "label": "Nên để AI tự quyết định tiêu chuẩn quan trọng để giảm sự can thiệp của con người."
+                },
+                {
+                  "id": "c",
+                  "label": "Đầu ra càng dài thì chứng tỏ AI càng hiểu đủ."
+                }
+              ],
+              "correctOptionId": "a",
+              "explanation": "Đây là lý do người học phải biết nhận diện thông tin cần xác minh."
+            },
+            {
+              "question": "Sau bài này, bạn cần có năng lực nào?",
+              "options": [
+                {
+                  "id": "a",
+                  "label": "Nhớ nhiều thuật ngữ marketing về AI mà không cần phán đoán thực tế."
+                },
+                {
+                  "id": "b",
+                  "label": "Nhận ra tuyên bố cần kiểm chứng trong câu trả lời AI và đặt hành động kiểm chứng nhỏ nhất."
+                },
+                {
+                  "id": "c",
+                  "label": "Để AI chịu trách nhiệm cho kết quả cuối cùng."
+                }
+              ],
+              "correctOptionId": "b",
+              "explanation": "Mục tiêu là dùng AI nhanh hơn nhưng vẫn giữ được kiểm soát sự thật và rủi ro."
+            }
+          ]
+        },
+        "translationNotes": [
+          "Keep option ids unchanged."
+        ]
+      }
+    },
+    {
+      "lessonId": "ai-day-4",
+      "day": 4,
+      "sourceTitle": "Level 4 路 对话、上下文与迭代",
+      "title": "Level 4 · Hội thoại, ngữ cảnh và lặp lại",
+      "objective": "Có thể dùng ba vòng hội thoại để biến một kết quả thô thành bản nháp dùng được và giải thích mỗi vòng đã bổ sung thông tin gì.",
+      "content": "Một câu trả lời đầu tiên của AI thường chỉ là bản nháp. Kết quả tốt thường đến từ nhiều vòng làm rõ.\n\nMỗi vòng nên thay đổi một biến quan trọng: bổ sung bối cảnh, thay đổi đối tượng người đọc, yêu cầu định dạng rõ hơn, hoặc đưa ví dụ để AI bắt chước. Nếu bạn thay đổi quá nhiều thứ cùng lúc, bạn sẽ không biết điều gì thật sự làm đầu ra tốt hơn.\n\nQuy trình đơn giản gồm ba vòng: Vòng 1 nói mục tiêu. Vòng 2 bổ sung bối cảnh còn thiếu. Vòng 3 yêu cầu định dạng và tiêu chuẩn kiểm tra. Sau mỗi vòng, nhìn xem kết quả tốt hơn ở điểm nào và còn thiếu gì.\n\nVí dụ: “Viết giới thiệu sản phẩm” quá rộng. Tốt hơn là bổ sung: sản phẩm cho ai, dùng trong tình huống nào, giọng văn thế nào, độ dài bao nhiêu, cuối cùng cần kêu gọi hành động gì.\n\nBài kiểm tra sẽ hỏi bạn cách cải thiện đầu ra mà không làm quá tải prompt.",
+      "practicePrompt": "Chọn một yêu cầu thô bạn từng đưa cho AI. Viết lại thành 3 vòng: mục tiêu ban đầu, bối cảnh bổ sung, định dạng/tiêu chuẩn kiểm tra.",
+      "criteriaJson": {
+        "criteria": [
+          "Mục tiêu ban đầu",
+          "Bối cảnh bổ sung",
+          "Định dạng rõ ràng",
+          "Khác biệt sau ba vòng"
+        ],
+        "assessment": {
+          "type": "multiple_choice",
+          "questions": [
+            {
+              "type": "multiple_choice",
+              "question": "Khi bản đầu tiên quá chung chung, cách nào giúp cải thiện ổn định nhất?",
+              "options": [
+                {
+                  "id": "a",
+                  "label": "Bổ sung một bối cảnh còn thiếu hoặc làm rõ định dạng, rồi quan sát riêng thay đổi đó tạo khác biệt gì."
+                },
+                {
+                  "id": "b",
+                  "label": "Thêm một lúc hai mươi quy tắc mới để AI tự hiểu trọng tâm."
+                },
+                {
+                  "id": "c",
+                  "label": "Đổi model ngay lập tức và không xem lại mô tả nhiệm vụ."
+                }
+              ],
+              "correctOptionId": "a",
+              "explanation": "Đúng. Mỗi vòng chỉ nên điều chỉnh biến quan trọng để biết thông tin nào thật sự cải thiện kết quả."
+            },
+            {
+              "question": "Theo bài học, nguyên tắc cốt lõi là gì?",
+              "options": [
+                {
+                  "id": "a",
+                  "label": "Một câu trả lời chỉ là bản nháp; kết quả tốt thường đến từ nhiều vòng làm rõ."
+                },
+                {
+                  "id": "b",
+                  "label": "Nên để AI tự quyết định tiêu chuẩn quan trọng để giảm sự can thiệp của con người."
+                },
+                {
+                  "id": "c",
+                  "label": "Đầu ra càng dài thì chứng tỏ AI càng hiểu đủ."
+                }
+              ],
+              "correctOptionId": "a",
+              "explanation": "Bài này dạy cách dùng hội thoại như quá trình sửa bản nháp, không phải một lần ăn ngay."
+            },
+            {
+              "question": "Sau bài này, bạn cần có năng lực nào?",
+              "options": [
+                {
+                  "id": "a",
+                  "label": "Nhớ nhiều thuật ngữ marketing về AI mà không cần phán đoán thực tế."
+                },
+                {
+                  "id": "b",
+                  "label": "Dùng ba vòng hội thoại để cải thiện bản nháp và nói rõ mỗi vòng bổ sung thông tin gì."
+                },
+                {
+                  "id": "c",
+                  "label": "Để AI chịu trách nhiệm cho kết quả cuối cùng."
+                }
+              ],
+              "correctOptionId": "b",
+              "explanation": "Mục tiêu là biết lặp lại có kiểm soát, không ném thêm yêu cầu một cách hỗn loạn."
+            }
+          ]
+        },
+        "translationNotes": [
+          "Keep option ids unchanged."
+        ]
+      }
+    },
+    {
+      "lessonId": "ai-day-5",
+      "day": 5,
+      "sourceTitle": "Level 5 路 基础 Prompt：说清一件事",
+      "title": "Level 5 · Prompt cơ bản: nói rõ một việc",
+      "objective": "Có thể viết một prompt cơ bản cho nhiệm vụ đơn giản, rủi ro thấp, bao gồm mục tiêu, tài liệu, định dạng và giới hạn.",
+      "content": "Prompt không cần hoa mỹ. Trước hết nó phải giống một bản giao việc rõ ràng.\n\nMột prompt cơ bản nên có bốn phần: mục tiêu cần làm, tài liệu hoặc thông tin đầu vào, định dạng đầu ra mong muốn, và giới hạn hoặc tiêu chuẩn kiểm tra. Vai trò như “chuyên gia 10 năm kinh nghiệm” chỉ hữu ích khi nó thật sự thay đổi góc nhìn; nó không thay thế được nhiệm vụ rõ ràng.\n\nMẫu đơn giản: “Hãy dựa trên [tài liệu] để làm [mục tiêu]. Xuất ra [định dạng]. Giới hạn [độ dài/giọng văn/phạm vi]. Nếu thiếu thông tin, hãy liệt kê câu hỏi cần xác nhận.”\n\nVí dụ đúng: “Dựa trên 10 phản hồi khách hàng dưới đây, phân loại thành 3 nhóm vấn đề, xuất bảng gồm vấn đề, ví dụ, mức độ ảnh hưởng. Không bịa thêm dữ liệu.”\n\nBài kiểm tra sẽ hỏi phần nào là cần thiết và phần nào chỉ là trang trí.",
+      "practicePrompt": "Viết một prompt cơ bản cho việc thật của bạn. Bắt buộc có: mục tiêu, tài liệu hoặc bối cảnh, định dạng đầu ra, giới hạn và cách bạn sẽ kiểm tra kết quả.",
+      "criteriaJson": {
+        "criteria": [
+          "Mục tiêu",
+          "Tài liệu thật",
+          "Định dạng đầu ra",
+          "Giới hạn",
+          "Tiêu chuẩn nghiệm thu"
+        ],
+        "assessment": {
+          "type": "multiple_choice",
+          "questions": [
+            {
+              "type": "multiple_choice",
+              "question": "Phần nào sau đây không phải là thành phần cần thiết của một bản giao việc AI cơ bản?",
+              "options": [
+                {
+                  "id": "a",
+                  "label": "Mục tiêu cần hoàn thành và tài liệu có thể dùng."
+                },
+                {
+                  "id": "b",
+                  "label": "Định dạng mong muốn và giới hạn."
+                },
+                {
+                  "id": "c",
+                  "label": "Danh xưng phóng đại như “chuyên gia mạnh nhất vũ trụ”."
+                }
+              ],
+              "correctOptionId": "c",
+              "explanation": "Đúng. Trước hết cần rõ mục tiêu, tài liệu, định dạng và giới hạn; danh xưng vai trò không phải điều kiện bắt buộc."
+            },
+            {
+              "question": "Theo bài học, nguyên tắc cốt lõi là gì?",
+              "options": [
+                {
+                  "id": "a",
+                  "label": "Mục tiêu, tài liệu, yêu cầu và cách nghiệm thu rõ ràng quan trọng hơn vai trò hoa mỹ."
+                },
+                {
+                  "id": "b",
+                  "label": "Nên để AI tự quyết định tiêu chuẩn quan trọng để giảm sự can thiệp của con người."
+                },
+                {
+                  "id": "c",
+                  "label": "Đầu ra càng dài thì chứng tỏ AI càng hiểu đủ."
+                }
+              ],
+              "correctOptionId": "a",
+              "explanation": "Bài này đặt nền cho prompt thực dụng: giao việc rõ trước, trang trí sau."
+            },
+            {
+              "question": "Sau bài này, bạn cần có năng lực nào?",
+              "options": [
+                {
+                  "id": "a",
+                  "label": "Nhớ nhiều thuật ngữ marketing về AI mà không cần phán đoán thực tế."
+                },
+                {
+                  "id": "b",
+                  "label": "Viết prompt cho nhiệm vụ đơn giản với mục tiêu, tài liệu, định dạng và giới hạn rõ ràng."
+                },
+                {
+                  "id": "c",
+                  "label": "Để AI chịu trách nhiệm cho kết quả cuối cùng."
+                }
+              ],
+              "correctOptionId": "b",
+              "explanation": "Mục tiêu là biết giao một việc nhỏ, rõ và có thể kiểm tra."
+            }
+          ]
+        },
+        "translationNotes": [
+          "Keep option ids unchanged."
+        ]
+      }
+    },
+    {
+      "lessonId": "ai-day-6",
+      "day": 6,
+      "sourceTitle": "Level 6 路 进阶 Prompt：示例、角色与拆分",
+      "title": "Level 6 · Prompt nâng cao: ví dụ, góc nhìn và chia nhỏ nhiệm vụ",
+      "objective": "Có thể dùng một trong ba cách: ví dụ, góc nhìn hoặc chia nhỏ nhiệm vụ để làm prompt cơ bản ổn định hơn.",
+      "content": "Khi prompt cơ bản đã rõ mà đầu ra vẫn chưa ổn định, bạn có ba công cụ nâng cấp.\n\nMột là ví dụ. Nếu bạn muốn AI viết theo phong cách hoặc cấu trúc cụ thể, hãy đưa một ví dụ tốt. Ví dụ giúp AI bớt đoán.\n\nHai là góc nhìn hoặc vai trò. Vai trò chỉ có ích khi nó thay đổi cách đánh giá, ví dụ “hãy xem như người phụ trách vận hành kiểm tra rủi ro”, chứ không phải chỉ thêm danh hiệu cho hay.\n\nBa là chia nhỏ nhiệm vụ. Thay vì yêu cầu AI vừa đọc, vừa phân tích, vừa viết báo cáo trong một lần, hãy tách thành: trích xuất dữ liệu, phân nhóm, sau đó viết kết luận.\n\nCách kiểm tra tốt nhất là chỉ thay đổi một yếu tố mỗi lần. Nếu thêm ví dụ, hãy giữ nguyên nhiệm vụ và so sánh trước/sau.",
+      "practicePrompt": "Lấy prompt Day 5 của bạn. Chọn một cách nâng cấp: thêm ví dụ, thêm góc nhìn có ích, hoặc chia nhiệm vụ thành 2-3 bước. Ghi lại khác biệt trước/sau.",
+      "criteriaJson": {
+        "criteria": [
+          "Phiên bản cơ bản",
+          "Công cụ mới thêm",
+          "So sánh trước/sau",
+          "Giải thích bằng lời của mình"
+        ],
+        "assessment": {
+          "type": "multiple_choice",
+          "questions": [
+            {
+              "type": "multiple_choice",
+              "question": "Muốn biết “ví dụ” có cải thiện đầu ra hay không, cách thử nghiệm tốt nhất là gì?",
+              "options": [
+                {
+                  "id": "a",
+                  "label": "Giữ nguyên nhiệm vụ, chỉ thêm một ví dụ, rồi so sánh kết quả trước/sau."
+                },
+                {
+                  "id": "b",
+                  "label": "Đổi model, đổi nhiệm vụ, đổi định dạng cùng lúc rồi xem câu trả lời cuối."
+                },
+                {
+                  "id": "c",
+                  "label": "Không cần so sánh, cứ tin rằng có ví dụ thì chắc chắn tốt hơn."
+                }
+              ],
+              "correctOptionId": "a",
+              "explanation": "Đúng. Chỉ thay đổi một yếu tố quan trọng mỗi lần mới biết ví dụ có thật sự giúp cải thiện hay không."
+            },
+            {
+              "question": "Theo bài học, nguyên tắc cốt lõi là gì?",
+              "options": [
+                {
+                  "id": "a",
+                  "label": "Ví dụ và chia nhỏ nhiệm vụ giúp giảm đoán mò; vai trò chỉ nên dùng khi nó thật sự đổi khung đánh giá."
+                },
+                {
+                  "id": "b",
+                  "label": "Nên để AI tự quyết định tiêu chuẩn quan trọng để giảm sự can thiệp của con người."
+                },
+                {
+                  "id": "c",
+                  "label": "Đầu ra càng dài thì chứng tỏ AI càng hiểu đủ."
+                }
+              ],
+              "correctOptionId": "a",
+              "explanation": "Bài này giúp nâng chất lượng prompt bằng cách giảm sự mơ hồ, không phải thêm từ ngữ cho đẹp."
+            },
+            {
+              "question": "Sau bài này, bạn cần có năng lực nào?",
+              "options": [
+                {
+                  "id": "a",
+                  "label": "Nhớ nhiều thuật ngữ marketing về AI mà không cần phán đoán thực tế."
+                },
+                {
+                  "id": "b",
+                  "label": "Dùng ví dụ, góc nhìn hoặc chia nhỏ nhiệm vụ để làm prompt cơ bản ổn định hơn."
+                },
+                {
+                  "id": "c",
+                  "label": "Để AI chịu trách nhiệm cho kết quả cuối cùng."
+                }
+              ],
+              "correctOptionId": "b",
+              "explanation": "Mục tiêu là biết chọn công cụ nâng cấp phù hợp và đo được cải thiện."
+            }
+          ]
+        },
+        "translationNotes": [
+          "Keep option ids unchanged."
+        ]
+      }
+    },
+    {
+      "lessonId": "ai-day-7",
+      "day": 7,
+      "sourceTitle": "Level 7 路 结构化分析与决策辅助",
+      "title": "Level 7 · Phân tích có cấu trúc và hỗ trợ quyết định",
+      "objective": "Có thể tách một quyết định thật thành các lựa chọn, tiêu chí đánh giá, rủi ro và hành động kiểm chứng nhỏ nhất.",
+      "content": "AI rất phù hợp để mở rộng góc nhìn trước khi ra quyết định: liệt kê phương án, so sánh ưu nhược điểm, nêu rủi ro, đặt câu hỏi còn thiếu. Nhưng AI không nên thay bạn quyết định cuối cùng.\n\nMột khung đơn giản gồm bốn phần: lựa chọn có thể làm, tiêu chí đánh giá, rủi ro chính, và sự thật cần kiểm chứng. Sau đó con người mới đặt trọng số: điều gì quan trọng hơn, chấp nhận rủi ro nào, bước thử nhỏ nhất là gì.\n\nVí dụ: có nên mua một công cụ AI mới không? AI có thể giúp so sánh giá, tính năng, rủi ro dữ liệu và thời gian học. Nhưng bạn phải quyết định trọng số: tiết kiệm thời gian quan trọng hơn hay bảo mật dữ liệu quan trọng hơn.\n\nBài kiểm tra sẽ hỏi phần nào AI có thể hỗ trợ và phần nào con người phải giữ quyền quyết định.",
+      "practicePrompt": "Chọn một quyết định thật trong tuần này. Viết 3 phương án, 3 tiêu chí đánh giá, rủi ro lớn nhất, 2 sự thật cần kiểm chứng và lựa chọn tạm thời của bạn.",
+      "criteriaJson": {
+        "criteria": [
+          "Ba phương án",
+          "Tiêu chí đánh giá",
+          "Rủi ro",
+          "Sự thật cần kiểm chứng",
+          "Lựa chọn của con người"
+        ],
+        "assessment": {
+          "type": "multiple_choice",
+          "questions": [
+            {
+              "type": "multiple_choice",
+              "question": "Khi dùng AI hỗ trợ quyết định, phần nào bắt buộc con người phải chịu trách nhiệm cuối cùng?",
+              "options": [
+                {
+                  "id": "a",
+                  "label": "Liệt kê các phương án có thể."
+                },
+                {
+                  "id": "b",
+                  "label": "Đặt trọng số đánh giá và đưa ra lựa chọn cuối cùng."
+                },
+                {
+                  "id": "c",
+                  "label": "Tạo một danh sách rủi ro."
+                }
+              ],
+              "correctOptionId": "b",
+              "explanation": "Đúng. AI có thể giúp mở rộng thông tin, nhưng ưu tiên giá trị và trách nhiệm cuối cùng phải nằm ở con người."
+            },
+            {
+              "question": "Theo bài học, nguyên tắc cốt lõi là gì?",
+              "options": [
+                {
+                  "id": "a",
+                  "label": "AI có thể trải ra lựa chọn và bằng chứng; trọng số và quyết định cuối cùng phải do con người chịu trách nhiệm."
+                },
+                {
+                  "id": "b",
+                  "label": "Nên để AI tự quyết định tiêu chuẩn quan trọng để giảm sự can thiệp của con người."
+                },
+                {
+                  "id": "c",
+                  "label": "Đầu ra càng dài thì chứng tỏ AI càng hiểu đủ."
+                }
+              ],
+              "correctOptionId": "a",
+              "explanation": "AI hỗ trợ phân tích, còn con người giữ quyền lựa chọn và chịu trách nhiệm."
+            },
+            {
+              "question": "Sau bài này, bạn cần có năng lực nào?",
+              "options": [
+                {
+                  "id": "a",
+                  "label": "Nhớ nhiều thuật ngữ marketing về AI mà không cần phán đoán thực tế."
+                },
+                {
+                  "id": "b",
+                  "label": "Tách một quyết định thật thành phương án, tiêu chí, rủi ro và hành động kiểm chứng nhỏ nhất."
+                },
+                {
+                  "id": "c",
+                  "label": "Để AI chịu trách nhiệm cho kết quả cuối cùng."
+                }
+              ],
+              "correctOptionId": "b",
+              "explanation": "Mục tiêu là dùng AI làm rõ quyết định, không giao quyết định cho AI."
+            }
+          ]
+        },
+        "translationNotes": [
+          "Keep option ids unchanged."
+        ]
+      }
+    }
+  ]
+}

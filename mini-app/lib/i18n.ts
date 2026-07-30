@@ -19,12 +19,15 @@ type Copy = {
   accessPaid: string;
   accessReward: string;
   accessExpired: string;
+  accessExpiredAction: string;
   creditsTitle: string;
   creditsAvailable: string;
   creditsPending: string;
   creditsAnchor: string;
   creditsMaxRedeem: string;
   creditsRule: string;
+  creditsLedgerTitle: string;
+  creditsLedgerEmpty: string;
   campaignValidUntil: (date: string) => string;
   campaignTitle: string;
   campaignNone: string;
@@ -46,9 +49,19 @@ type Copy = {
   paymentStatusPaid: string;
   paymentStatusFailed: string;
   paymentStatusCancelled: string;
+  paymentStatusPendingDetail: string;
+  paymentStatusPaidDetail: string;
+  paymentStatusFailedDetail: string;
+  paymentStatusCancelledDetail: string;
+  paymentRefundTitle: string;
+  paymentRefundPolicy: string;
+  paymentOpenInTelegramRequired: string;
+  paymentInvoiceFailed: string;
+  pricingPreviewFailed: string;
   referralTitle: string;
   referralRule: string;
   referralQualifiedDefinition: string;
+  referralValidBehavior: string;
   referralNextRate: (rate: number) => string;
   contentNotice: string;
   contentNoticeAction: string;
@@ -104,12 +117,15 @@ const COPY: Record<AppLocale, Copy> = {
     accessPaid: "付费订阅",
     accessReward: "奖励权益",
     accessExpired: "已到期",
+    accessExpiredAction: "试用已结束，先处理使用权限",
     creditsTitle: "积分与优惠",
     creditsAvailable: "可用积分",
     creditsPending: "待入账",
     creditsAnchor: "锚定比例",
     creditsMaxRedeem: "单次抵扣",
     creditsRule: "积分仅用于抵扣下一单，单次最多抵扣 50%。",
+    creditsLedgerTitle: "最近积分流水",
+    creditsLedgerEmpty: "暂无积分流水。学习奖励、邀请奖励或活动奖励入账后，这里会留下记录。",
     campaignValidUntil: (date) => `截止 ${date}`,
     campaignTitle: "当前活动",
     campaignNone: "无",
@@ -127,11 +143,27 @@ const COPY: Record<AppLocale, Copy> = {
     paymentStatusPaid: "支付成功，正在刷新权限…",
     paymentStatusFailed: "支付失败",
     paymentStatusCancelled: "已取消",
+    paymentStatusPendingDetail:
+      "Telegram 已打开支付流程，但服务端还在等待 successful_payment 回调。请稍等，不要重复创建多张发票。",
+    paymentStatusPaidDetail:
+      "前端已收到 paid 状态，权限仍以 Telegram successful_payment 服务端回调为准。系统会自动刷新。",
+    paymentStatusFailedDetail:
+      "支付没有完成，订单不会发放权限。你可以重新创建发票；若 Stars 已扣但权限未变，请联系支持核对交易。",
+    paymentStatusCancelledDetail:
+      "你已取消支付，没有产生新权限，也不会消耗积分抵扣。",
+    paymentRefundTitle: "退款与权益说明",
+    paymentRefundPolicy:
+      "收到 Telegram refunded_payment 后，系统会把支付流水和对应订阅权限标记为已退款；前端显示 paid 不能单独作为发放依据。",
+    paymentOpenInTelegramRequired: "请从 Telegram Mini App 内发起 Stars 支付",
+    paymentInvoiceFailed: "Stars 发票创建失败",
+    pricingPreviewFailed: "结算预览失败",
     referralTitle: "邀请朋友一起训练",
     referralRule:
       "邀请奖励统一返积分：前 3 个有效邀请分别返首单实付金额的 10% / 15% / 20% 积分，第 4 个起固定 10%。",
     referralQualifiedDefinition:
       "有效邀请 = Telegram 认证、完成选课、首单付费成功，并在首单后 7 天内产生至少 3 个有效学习日。",
+    referralValidBehavior:
+      "仅注册、打开链接或空账号不算有效邀请；被邀请者必须认证并产生有效学习行为，奖励才会进入积分账本。",
     referralNextRate: (rate) =>
       `当前下一位有效邀请预计返 ${rate}% 积分；积分仅用于抵扣下一单，单次最多抵扣 50%。`,
     contentNotice: "本课程正文暂以中文提供；翻译版本会单独发布，不会用机器翻译覆盖审核内容。",
@@ -186,12 +218,15 @@ const COPY: Record<AppLocale, Copy> = {
     accessPaid: "Đã đăng ký",
     accessReward: "Quyền lợi thưởng",
     accessExpired: "Hết hạn",
+    accessExpiredAction: "Dùng thử đã kết thúc, hãy xử lý quyền sử dụng trước",
     creditsTitle: "Tín dụng & ưu đãi",
     creditsAvailable: "Tín dụng khả dụng",
     creditsPending: "Chờ ghi nhận",
     creditsAnchor: "Tỷ lệ quy đổi",
     creditsMaxRedeem: "Giảm tối đa",
     creditsRule: "Tín dụng chỉ dùng cho đơn tiếp theo, tối đa giảm 50% mỗi đơn.",
+    creditsLedgerTitle: "Lịch sử tín dụng gần đây",
+    creditsLedgerEmpty: "Chưa có lịch sử tín dụng. Thưởng học, thưởng mời bạn hoặc ưu đãi sẽ được ghi lại ở đây.",
     campaignValidUntil: (date) => `Hết hạn ${date}`,
     campaignTitle: "Ưu đãi hiện tại",
     campaignNone: "Không có",
@@ -209,11 +244,27 @@ const COPY: Record<AppLocale, Copy> = {
     paymentStatusPaid: "Thanh toán thành công, đang cập nhật…",
     paymentStatusFailed: "Thanh toán thất bại",
     paymentStatusCancelled: "Đã hủy",
+    paymentStatusPendingDetail:
+      "Telegram đã mở thanh toán, nhưng máy chủ còn chờ callback successful_payment. Vui lòng đợi, đừng tạo nhiều hóa đơn cùng lúc.",
+    paymentStatusPaidDetail:
+      "Ứng dụng đã nhận paid; quyền sử dụng vẫn chỉ tăng sau callback successful_payment từ Telegram.",
+    paymentStatusFailedDetail:
+      "Thanh toán chưa hoàn tất nên quyền chưa được cấp. Bạn có thể tạo lại hóa đơn; nếu Stars đã bị trừ, hãy liên hệ hỗ trợ để kiểm tra.",
+    paymentStatusCancelledDetail:
+      "Bạn đã hủy thanh toán. Không có quyền mới và điểm giảm giá không bị dùng.",
+    paymentRefundTitle: "Hoàn tiền và quyền sử dụng",
+    paymentRefundPolicy:
+      "Khi nhận refunded_payment từ Telegram, hệ thống sẽ đánh dấu giao dịch và quyền tương ứng là đã hoàn tiền; paid trên giao diện không tự cấp quyền.",
+    paymentOpenInTelegramRequired: "Hãy thanh toán Stars trong Telegram Mini App",
+    paymentInvoiceFailed: "Tạo hóa đơn Stars thất bại",
+    pricingPreviewFailed: "Xem trước giá thất bại",
     referralTitle: "Mời bạn cùng học",
     referralRule:
       "Thưởng mời bạn bằng tín dụng: 3 lời mời hiệu lực đầu tiên nhận 10% / 15% / 20%, từ lời mời thứ 4 cố định 10%.",
     referralQualifiedDefinition:
       "Lời mời hiệu lực = xác thực Telegram, chọn khóa, thanh toán đơn đầu và trong 7 ngày sau đó có ít nhất 3 ngày học hiệu lực.",
+    referralValidBehavior:
+      "Chỉ đăng ký, mở link hoặc tài khoản trống không được tính. Người được mời phải xác thực và có hành vi học hợp lệ thì thưởng mới vào sổ tín dụng.",
     referralNextRate: (rate) =>
       `Lời mời hiệu lực tiếp theo dự kiến nhận ${rate}% tín dụng; tín dụng chỉ dùng cho đơn sau, tối đa giảm 50%.`,
     contentNotice: "Nội dung bài học hiện có bằng tiếng Trung; bản dịch được kiểm duyệt sẽ phát hành riêng.",
@@ -268,12 +319,15 @@ const COPY: Record<AppLocale, Copy> = {
     accessPaid: "បានជាវ",
     accessReward: "អត្ថប្រយោជន៍រង្វាន់",
     accessExpired: "ផុតកំណត់",
+    accessExpiredAction: "ការសាកល្បងបានបញ្ចប់ សូមដោះស្រាយសិទ្ធិប្រើប្រាស់ជាមុន",
     creditsTitle: "ពិន្ទុ និងអត្ថប្រយោជន៍",
     creditsAvailable: "ពិន្ទុអាចប្រើបាន",
     creditsPending: "កំពុងរង់ចាំបញ្ចូល",
     creditsAnchor: "អត្រាបម្លែង",
     creditsMaxRedeem: "បញ្ចុះអតិបរមា",
     creditsRule: "ពិន្ទុប្រើសម្រាប់បញ្ចុះតម្លៃការបង់លើកក្រោយ បញ្ចុះបានអតិបរមា 50% ក្នុងមួយការបង់។",
+    creditsLedgerTitle: "កំណត់ត្រាពិន្ទុថ្មីៗ",
+    creditsLedgerEmpty: "មិនទាន់មានកំណត់ត្រាពិន្ទុទេ។ រង្វាន់សិក្សា រង្វាន់អញ្ជើញ ឬរង្វាន់យុទ្ធនាការ នឹងបង្ហាញនៅទីនេះ។",
     campaignValidUntil: (date) => `ផុតកំណត់ ${date}`,
     campaignTitle: "ព្រឹត្តិការណ៍បច្ចុប្បន្ន",
     campaignNone: "គ្មាន",
@@ -291,11 +345,27 @@ const COPY: Record<AppLocale, Copy> = {
     paymentStatusPaid: "បានបង់ប្រាក់ ហើយកំពុងធ្វើបច្ចុប្បន្នភាព…",
     paymentStatusFailed: "បង់ប្រាក់បរាជ័យ",
     paymentStatusCancelled: "បានបោះបង់",
+    paymentStatusPendingDetail:
+      "Telegram បានបើកដំណើរការបង់ប្រាក់ ប៉ុន្តែម៉ាស៊ីនមេនៅរង់ចាំ callback successful_payment។ សូមរង់ចាំ កុំបង្កើតវិក្កយបត្រច្រើន។",
+    paymentStatusPaidDetail:
+      "ផ្នែកមុខបានទទួល paid ប៉ុន្តែសិទ្ធិប្រើប្រាស់បន្ថែមតាម callback successful_payment ពី Telegram ប៉ុណ្ណោះ។",
+    paymentStatusFailedDetail:
+      "ការបង់ប្រាក់មិនបានបញ្ចប់ ដូច្នេះមិនផ្តល់សិទ្ធិថ្មីទេ។ ប្រសិនបើ Stars ត្រូវបានដក សូមទាក់ទងជំនួយ។",
+    paymentStatusCancelledDetail:
+      "អ្នកបានបោះបង់ការបង់ប្រាក់។ មិនមានសិទ្ធិថ្មី ហើយពិន្ទុបញ្ចុះតម្លៃមិនត្រូវបានប្រើទេ។",
+    paymentRefundTitle: "ការសងប្រាក់ និងសិទ្ធិ",
+    paymentRefundPolicy:
+      "ពេលទទួល refunded_payment ពី Telegram ប្រព័ន្ធនឹងសម្គាល់ប្រតិបត្តិការ និងសិទ្ធិពាក់ព័ន្ធថាបានសងប្រាក់។ paid នៅផ្នែកមុខមិនអាចផ្តល់សិទ្ធិដោយខ្លួនឯងបានទេ។",
+    paymentOpenInTelegramRequired: "សូមបង់ Stars ក្នុង Telegram Mini App",
+    paymentInvoiceFailed: "បង្កើតវិក្កយបត្រ Stars បរាជ័យ",
+    pricingPreviewFailed: "មើលតម្លៃជាមុនបរាជ័យ",
     referralTitle: "អញ្ជើញមិត្តរួមហ្វឹកហាត់",
     referralRule:
       "រង្វាន់អញ្ជើញជាពិន្ទុ៖ អញ្ជើញមានសុពលភាព 3 ដំបូង 10% / 15% / 20% និងចាប់ពីលើកទី 4 ថេរ 10%។",
     referralQualifiedDefinition:
       "អញ្ជើញមានសុពលភាព = បញ្ជាក់ Telegram, ជ្រើសវគ្គ, បង់ប្រាក់លើកដំបូង និងក្នុង 7 ថ្ងៃបន្ទាប់មានយ៉ាងហោចណាស់ 3 ថ្ងៃសិក្សាមានសុពលភាព។",
+    referralValidBehavior:
+      "គ្រាន់តែចុះឈ្មោះ បើកតំណ ឬគណនីទទេ មិនគិតទេ។ អ្នកត្រូវផ្ទៀងផ្ទាត់ និងមានសកម្មភាពសិក្សាមានសុពលភាព មុនពេលរង្វាន់ចូលកំណត់ត្រាពិន្ទុ។",
     referralNextRate: (rate) =>
       `អញ្ជើញមានសុពលភាពបន្ទាប់ រំពឹងបាន ${rate}% ពិន្ទុ; ពិន្ទុប្រើបានលើការបង់លើកក្រោយ បញ្ចុះអតិបរមា 50%។`,
     contentNotice: "ខ្លឹមសារមេរៀនបច្ចុប្បន្នជាភាសាចិន។ ការបកប្រែដែលបានពិនិត្យនឹងចេញផ្សាយដាច់ដោយឡែក។",
@@ -350,12 +420,15 @@ const COPY: Record<AppLocale, Copy> = {
     accessPaid: "สมาชิกแบบชำระเงิน",
     accessReward: "สิทธิประโยชน์รางวัล",
     accessExpired: "หมดอายุ",
+    accessExpiredAction: "หมดช่วงทดลองใช้ฟรี กรุณาจัดการสิทธิ์ใช้งานก่อน",
     creditsTitle: "เครดิตและโปรโมชัน",
     creditsAvailable: "เครดิตที่ใช้ได้",
     creditsPending: "รอเข้าบัญชี",
     creditsAnchor: "อัตราแลกเปลี่ยน",
     creditsMaxRedeem: "ลดสูงสุด",
     creditsRule: "เครดิตใช้ลดค่าใช้จ่ายครั้งถัดไป ลดได้สูงสุด 50% ต่อคำสั่งซื้อ",
+    creditsLedgerTitle: "ประวัติเครดิตล่าสุด",
+    creditsLedgerEmpty: "ยังไม่มีประวัติเครดิต รางวัลจากการเรียน การชวนเพื่อน หรือโปรโมชันจะแสดงที่นี่",
     campaignValidUntil: (date) => `หมดเขต ${date}`,
     campaignTitle: "โปรโมชันปัจจุบัน",
     campaignNone: "ไม่มี",
@@ -373,11 +446,27 @@ const COPY: Record<AppLocale, Copy> = {
     paymentStatusPaid: "ชำระเงินสำเร็จ กำลังอัปเดต…",
     paymentStatusFailed: "ชำระเงินล้มเหลว",
     paymentStatusCancelled: "ยกเลิกแล้ว",
+    paymentStatusPendingDetail:
+      "Telegram เปิดขั้นตอนชำระเงินแล้ว แต่เซิร์ฟเวอร์ยังรอ callback successful_payment กรุณารอสักครู่และอย่าสร้างใบแจ้งหนี้ซ้ำหลายใบ",
+    paymentStatusPaidDetail:
+      "หน้าจอได้รับ paid แล้ว แต่สิทธิ์จะเพิ่มจริงตาม callback successful_payment จาก Telegram เท่านั้น ระบบจะรีเฟรชให้อัตโนมัติ",
+    paymentStatusFailedDetail:
+      "การชำระเงินไม่สำเร็จ จึงยังไม่เพิ่มสิทธิ์ หาก Stars ถูกหักแต่สิทธิ์ไม่เปลี่ยน โปรดติดต่อฝ่ายช่วยเหลือ",
+    paymentStatusCancelledDetail:
+      "คุณยกเลิกการชำระเงิน ไม่มีสิทธิ์ใหม่ และเครดิตส่วนลดจะไม่ถูกใช้",
+    paymentRefundTitle: "การคืนเงินและสิทธิ์ใช้งาน",
+    paymentRefundPolicy:
+      "เมื่อได้รับ refunded_payment จาก Telegram ระบบจะทำเครื่องหมายธุรกรรมและสิทธิ์ที่เกี่ยวข้องว่าได้รับคืนเงินแล้ว paid บนหน้าจอไม่ใช่หลักฐานการให้สิทธิ์โดยลำพัง",
+    paymentOpenInTelegramRequired: "กรุณาชำระ Stars ใน Telegram Mini App",
+    paymentInvoiceFailed: "สร้างใบแจ้งหนี้ Stars ไม่สำเร็จ",
+    pricingPreviewFailed: "ดูตัวอย่างราคาไม่สำเร็จ",
     referralTitle: "ชวนเพื่อนมาฝึกด้วยกัน",
     referralRule:
       "รางวัลชวนเพื่อนเป็นเครดิต: 3 คำเชิญที่มีผลแรกได้ 10% / 15% / 20% หลังจากนั้นคงที่ 10%",
     referralQualifiedDefinition:
       "คำเชิญที่มีผล = ยืนยัน Telegram, เลือกคอร์ส, ชำระเงินครั้งแรก และภายใน 7 วันหลังชำระมีอย่างน้อย 3 วันเรียนที่มีผล",
+    referralValidBehavior:
+      "แค่สมัคร เปิดลิงก์ หรือบัญชีว่างยังไม่นับ ผู้ถูกชวนต้องยืนยันตัวตนและมีพฤติกรรมเรียนที่มีผลก่อน รางวัลจึงจะเข้าบัญชีเครดิต",
     referralNextRate: (rate) =>
       `คำเชิญที่มีผลถัดไปคาดว่าจะได้ ${rate}% เครดิต; เครดิตใช้ได้กับคำสั่งซื้อถัดไป ลดได้สูงสุด 50%`,
     contentNotice: "เนื้อหาบทเรียนปัจจุบันเป็นภาษาจีน เวอร์ชันแปลที่ผ่านการตรวจสอบจะเผยแพร่แยกต่างหาก",

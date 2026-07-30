@@ -1,4 +1,5 @@
 import { getD1 } from "../db";
+import { isMissingDatabaseRelationError } from "./db-errors";
 
 export const POINTS_PER_USD = 100;
 
@@ -23,12 +24,7 @@ export type CreditsLedgerEntry = {
 };
 
 function isMissingCreditsLedgerError(error: unknown) {
-  if (!error || typeof error !== "object") return false;
-  const candidate = error as { code?: string; message?: string };
-  return (
-    candidate.code === "42P01" ||
-    /relation "credits_ledger" does not exist/i.test(candidate.message ?? "")
-  );
+  return isMissingDatabaseRelationError(error, ["credits_ledger"]);
 }
 
 function syntheticLedgerEntry(input: {

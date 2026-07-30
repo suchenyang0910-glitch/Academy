@@ -21,7 +21,7 @@
 | `D` | 主优惠折扣额（minor） |
 | `A` | 折后价：`A = max(0, P - D)` |
 | `CmaxAmt` | 最大可抵扣金额：`CmaxAmt = floor(A / 2)` |
-| `usdCents` | `usdPrice` 解析成 cents（如 `$19.9` → 1990） |
+| `usdCents` | `usdPrice` 解析成 cents（如 `$9.9` → 990） |
 | `CmaxPts` | 最大可抵扣积分：`CmaxPts = floor(CmaxAmt * usdCents / P)` |
 | `B` | 可用积分余额（points） |
 | `R` | 实际抵扣积分：`R = min(B, CmaxPts)`（仅在允许抵扣时） |
@@ -66,4 +66,3 @@
 由于当前 mini-app 仅使用 `node:test` 做“构建 + 静态回归断言”，因此本任务对应的工程门禁为：
 - 在 `mini-app/tests/rendered-html.test.mjs` 增加关键实现断言（序列、封顶、不可叠加、快照字段写入）
 - `npm test` 必须通过（含 `npm run build`）
-

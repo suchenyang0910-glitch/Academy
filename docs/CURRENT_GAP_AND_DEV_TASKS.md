@@ -235,6 +235,8 @@
 - [x] Academy Core 保存项目身份、workflow/export 引用、runtime check 结果。
 - [x] Flowise workflow export 结构校验第一版：Runtime Audit 会检查 export 是否可识别为 Flowise 图结构，至少包含节点、边和 Agent/RAG/LLM/Tool 等关键节点；Dashboard 展示节点数、边数、关键节点数和失败原因。
 - [x] Remote Runtime Probe 第一版：Runtime Audit 会访问用户提供的 runtime/reference URL，读取有限内容样本，检查 HTML/API/Chat/Demo/Flowise 等运行线索；Dashboard 展示 probe signals，避免只凭 HTTP 200 误判。
+- [x] Flowise 远程执行增强第一段：当 runtime/reference 可推导出 prediction endpoint 时，Runtime Audit 会真实发送测试问题，记录远程执行成功条数与回答摘要。
+- [x] Runtime 远程探测安全边界：只允许公网 http/https 地址，拒绝 localhost、内网 IP、metadata 主机和自动跳转，避免用户提交的 Demo URL 被滥用为服务器内网探测入口。
 - [ ] 真正远程 Runtime 自动执行用户 Demo。
 - [ ] 校验 Flowise workflow 真实运行结果。
 

@@ -47,6 +47,7 @@
 | ACAD-E-008 | E | E-08 | Legacy CLI 整体归档删除 | Kickoff + Team E E-08 | 删除 `bot/main.py`、文档更新、回归验证 | done |
 | ACAD-E-009 | E | E-09 | Disabled legacy 写入脚本物理删除 | Kickoff + Team E E-09 | 删除 `scripts/add_note.py`、`scripts/save_lesson.py`、文档更新、回归验证 | done |
 | ACAD-E-010 | E | E-10 | E 系列收口总审计 | Kickoff + Team E E-10 | 最终审计文档、口径修正、关闭建议 | done |
+| ACAD-B-008 | B | B-08 | Runtime 远程执行增强第一段 | Kickoff + Team B B-08 | Flowise 远程执行探测、审计增强、回归验证 | done |
 
 ## 3. 本轮文档产出任务（已完成）
 

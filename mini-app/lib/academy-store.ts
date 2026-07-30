@@ -290,6 +290,21 @@ type StructuredRuntimeEvidenceCheck = {
   errors: string[];
 };
 
+type RemoteRuntimeExecutionCheck = {
+  mode: "flowise_prediction_v1" | "not_available";
+  available: boolean;
+  endpoint: string | null;
+  attemptedCaseCount: number;
+  successfulCaseCount: number;
+  executions: Array<{
+    question: string;
+    ok: boolean;
+    status: number | null;
+    error: string | null;
+    answerPreview: string;
+  }>;
+};
+
 type CompetencyGraphNode = {
   id: string;
   title: string;
@@ -1964,6 +1979,195 @@ function urlFromReference(value: string | null | undefined) {
   }
 }
 
+function isBlockedIpv4(hostname: string) {
+  const parts = hostname.split(".");
+  if (parts.length !== 4) return false;
+  const octets = parts.map((part) => Number(part));
+  if (octets.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) {
+    return false;
+  }
+  const [first, second] = octets;
+  return (
+    first === 0 ||
+    first === 10 ||
+    first === 127 ||
+    first === 169 && second === 254 ||
+    first === 172 && second >= 16 && second <= 31 ||
+    first === 192 && second === 168 ||
+    first === 100 && second >= 64 && second <= 127 ||
+    first === 198 && [18, 19].includes(second)
+  );
+}
+
+function isBlockedIpv6(hostname: string) {
+  const normalized = hostname.replace(/^\[/, "").replace(/\]$/, "").toLowerCase();
+  return (
+    normalized === "::" ||
+    normalized === "::1" ||
+    normalized.startsWith("fc") ||
+    normalized.startsWith("fd") ||
+    normalized.startsWith("fe80:") ||
+    normalized.startsWith("::ffff:127.") ||
+    normalized.startsWith("::ffff:10.") ||
+    normalized.startsWith("::ffff:192.168.") ||
+    normalized.startsWith("::ffff:169.254.")
+  );
+}
+
+function validatePublicRuntimeUrl(value: string | null | undefined) {
+  const normalized = urlFromReference(value);
+  if (!normalized) {
+    return { ok: false, url: null, error: "runtime_url_invalid" };
+  }
+  const parsed = new URL(normalized);
+  const hostname = parsed.hostname.toLowerCase().replace(/\.$/, "");
+  if (
+    hostname === "localhost" ||
+    hostname.endsWith(".localhost") ||
+    hostname === "metadata.google.internal" ||
+    hostname === "host.docker.internal"
+  ) {
+    return { ok: false, url: null, error: "runtime_url_private_host" };
+  }
+  if (isBlockedIpv4(hostname) || isBlockedIpv6(hostname)) {
+    return { ok: false, url: null, error: "runtime_url_private_ip" };
+  }
+  return { ok: true, url: normalized, error: null };
+}
+
+function flowisePredictionEndpoint(reference: string | null | undefined) {
+  const safeUrl = validatePublicRuntimeUrl(reference);
+  if (!safeUrl.ok || !safeUrl.url) return null;
+  let parsed: URL;
+  try {
+    parsed = new URL(safeUrl.url);
+  } catch {
+    return null;
+  }
+  const segments = parsed.pathname.split("/").filter(Boolean);
+  const predictionIndex = segments.findIndex((segment) => segment === "prediction");
+  if (
+    predictionIndex >= 1 &&
+    segments[predictionIndex - 1] === "v1" &&
+    segments[predictionIndex + 1]
+  ) {
+    return `${parsed.origin}/api/v1/prediction/${segments[predictionIndex + 1]}`;
+  }
+  for (const marker of ["chatflows", "chatflow", "chatbot"]) {
+    const markerIndex = segments.findIndex((segment) => segment === marker);
+    if (markerIndex >= 0 && segments[markerIndex + 1]) {
+      return `${parsed.origin}/api/v1/prediction/${segments[markerIndex + 1]}`;
+    }
+  }
+  const queryChatflowId =
+    parsed.searchParams.get("chatflowId") ??
+    parsed.searchParams.get("chatflowid");
+  return queryChatflowId
+    ? `${parsed.origin}/api/v1/prediction/${queryChatflowId}`
+    : null;
+}
+
+function extractRuntimeAnswer(payload: unknown): string {
+  if (typeof payload === "string") return payload.trim();
+  if (!payload || typeof payload !== "object") return "";
+  const record = payload as Record<string, unknown>;
+  for (const key of ["text", "answer", "message", "response", "output"]) {
+    const value = record[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  for (const key of ["data", "messages", "result"]) {
+    const value = record[key];
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        const nested = extractRuntimeAnswer(item);
+        if (nested) return nested;
+      }
+    } else {
+      const nested = extractRuntimeAnswer(value);
+      if (nested) return nested;
+    }
+  }
+  return "";
+}
+
+async function executeRemoteRuntimeCheck(
+  reference: string | null,
+  runtimeTests: RuntimeTestCase[],
+): Promise<RemoteRuntimeExecutionCheck> {
+  const endpoint = flowisePredictionEndpoint(reference);
+  if (!endpoint) {
+    return {
+      mode: "not_available",
+      available: false,
+      endpoint: null,
+      attemptedCaseCount: 0,
+      successfulCaseCount: 0,
+      executions: [],
+    };
+  }
+  const testCases = runtimeTests
+    .filter((item) => item.question.trim().length >= 5)
+    .slice(0, 3);
+  const executions: RemoteRuntimeExecutionCheck["executions"] = [];
+  for (const testCase of testCases) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8_000);
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          question: testCase.question.trim(),
+          streaming: false,
+          overrideConfig: {
+            sessionId: "academy-runtime-check",
+          },
+        }),
+        signal: controller.signal,
+        redirect: "manual",
+        cache: "no-store",
+      });
+      const contentType = response.headers.get("content-type") ?? "";
+      const body = /json/i.test(contentType)
+        ? await response.json().catch(() => null)
+        : await response.text().catch(() => "");
+      const answer = extractRuntimeAnswer(body);
+      executions.push({
+        question: testCase.question,
+        ok: response.ok && answer.length >= 10,
+        status: response.status,
+        error:
+          !response.ok
+            ? `http_${response.status}`
+            : answer.length >= 10
+              ? null
+              : "answer_too_short",
+        answerPreview: answer.slice(0, 280),
+      });
+    } catch (error) {
+      executions.push({
+        question: testCase.question,
+        ok: false,
+        status: null,
+        error: error instanceof Error ? error.name || error.message : "fetch_failed",
+        answerPreview: "",
+      });
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  return {
+    mode: "flowise_prediction_v1",
+    available: true,
+    endpoint,
+    attemptedCaseCount: executions.length,
+    successfulCaseCount: executions.filter((item) => item.ok).length,
+    executions,
+  };
+}
+
 function parseJsonMaybe(value: unknown): unknown {
   if (typeof value !== "string") return value;
   const trimmed = value.trim();
@@ -2117,28 +2321,43 @@ async function evaluateStructuredAgentRuntimeCheck(input: {
   const runtimeUrl =
     urlFromReference(input.workflowRef) ?? urlFromReference(input.builderProjectRef);
   const referenceCheck = await checkArtifactRuntime(runtimeUrl, 7);
+  const remoteExecution = referenceCheck.ok
+    ? await executeRemoteRuntimeCheck(runtimeUrl, input.runtimeTests)
+    : ({
+        mode: "not_available",
+        available: false,
+        endpoint: null,
+        attemptedCaseCount: 0,
+        successfulCaseCount: 0,
+        executions: [],
+      } satisfies RemoteRuntimeExecutionCheck);
   const errors: string[] = [];
   if (validCases.length < 3) errors.push("runtime_tests_min_3");
   if (citationCases.length < 2) errors.push("runtime_tests_citations_min_2");
   errors.push(...workflowValidation.errors);
   if (!referenceCheck.ok) errors.push(referenceCheck.error ?? "runtime_reference_unreachable");
+  if (remoteExecution.available && remoteExecution.successfulCaseCount < 1) {
+    errors.push("remote_runtime_execution_failed");
+  }
   const score = Math.min(
     100,
     validCases.length * 18 +
       citationCases.length * 10 +
       workflowValidation.score +
-      (referenceCheck.ok ? 20 : 0),
+      (referenceCheck.ok ? 20 : 0) +
+      Math.min(12, remoteExecution.successfulCaseCount * 4),
   );
   return {
     status: errors.length === 0 && score >= 80 ? "passed" : "failed",
     score,
     audit: {
-      mode: "structured_runtime_v1",
+      mode: "structured_runtime_v2",
       validCaseCount: validCases.length,
       citationCaseCount: citationCases.length,
       workflowExportProvided,
       flowiseWorkflow: workflowValidation,
       referenceCheck,
+      remoteExecution,
       errors,
     },
   };
@@ -5768,14 +5987,26 @@ async function checkArtifactRuntime(
       contentLength: null,
     };
   }
+  const safeUrl = validatePublicRuntimeUrl(artifactUrl);
+  if (!safeUrl.ok || !safeUrl.url) {
+    return {
+      ok: false,
+      url: artifactUrl,
+      method: "not_required",
+      status: null,
+      error: safeUrl.error,
+      contentType: null,
+      contentLength: null,
+    };
+  }
 
   async function attempt(method: "HEAD" | "GET") {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 5_000);
     try {
-      const response = await fetch(artifactUrl, {
+      const response = await fetch(safeUrl.url, {
         method,
-        redirect: "follow",
+        redirect: "manual",
         signal: controller.signal,
         cache: "no-store",
       });
@@ -5795,7 +6026,7 @@ async function checkArtifactRuntime(
         : undefined;
       return {
         ok: response.ok && (method !== "GET" || Boolean(probe?.hasRuntimeSignal)),
-        url: response.url || artifactUrl,
+        url: response.url || safeUrl.url,
         method,
         status: response.status,
         error: !response.ok
@@ -6807,6 +7038,13 @@ export async function getSeedValidationMetrics() {
             : {},
         ),
       );
+      const remoteExecution = parseJsonObject(
+        JSON.stringify(
+          audit.remoteExecution && typeof audit.remoteExecution === "object"
+            ? audit.remoteExecution
+            : {},
+        ),
+      );
       const flowiseWorkflow = parseJsonObject(
         JSON.stringify(
           audit.flowiseWorkflow && typeof audit.flowiseWorkflow === "object"
@@ -6837,6 +7075,10 @@ export async function getSeedValidationMetrics() {
         referenceProbeSignals: Array.isArray(runtimeProbe.signals)
           ? runtimeProbe.signals.filter((item): item is string => typeof item === "string")
           : [],
+        remoteExecutionAvailable: Boolean(remoteExecution.available),
+        remoteExecutionEndpoint: String(remoteExecution.endpoint ?? ""),
+        remoteExecutionAttemptedCaseCount: Number(remoteExecution.attemptedCaseCount ?? 0),
+        remoteExecutionSuccessfulCaseCount: Number(remoteExecution.successfulCaseCount ?? 0),
         errors,
         createdAt: row.createdAt,
       };

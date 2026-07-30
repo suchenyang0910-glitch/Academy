@@ -107,7 +107,7 @@ function runtimeAuditRows(
   items: Awaited<ReturnType<typeof getSeedValidationMetrics>>["runtimeAuditItems"],
 ) {
   if (!items.length) {
-    return `<tr><td colspan="10" class="empty">No structured runtime audit yet.</td></tr>`;
+    return `<tr><td colspan="11" class="empty">No structured runtime audit yet.</td></tr>`;
   }
   return items
     .map(
@@ -121,6 +121,7 @@ function runtimeAuditRows(
         <td>${item.workflowExportProvided ? "yes" : "no"}</td>
         <td>${item.workflowValid ? "valid" : "invalid"} · ${escapeHtml(item.workflowNodeCount)}/${escapeHtml(item.workflowEdgeCount)}/${escapeHtml(item.workflowUsefulNodeCount)}</td>
         <td>${item.referenceOk ? `ok ${escapeHtml(item.referenceStatus ?? "")}` : "failed"} · ${escapeHtml(item.referenceProbeSignals.join(", ") || "no_probe")}</td>
+        <td>${item.remoteExecutionAvailable ? `${escapeHtml(item.remoteExecutionSuccessfulCaseCount)}/${escapeHtml(item.remoteExecutionAttemptedCaseCount)} · ${escapeHtml(item.remoteExecutionEndpoint || "derived_endpoint")}` : "not_available"}</td>
         <td>${escapeHtml(item.errors.join(", ") || "—")}</td>
       </tr>`,
     )
@@ -273,9 +274,9 @@ function renderDashboard(validation: Awaited<ReturnType<typeof getSeedValidation
 
       <section>
         <h2>Structured Runtime Audit</h2>
-        <p>Agent Lab runtime check 不再信任自评。它必须留下测试用例、引用线索、可识别的 Flowise workflow export 和可访问 runtime/reference 链接；失败行会说明具体缺口。</p>
+        <p>Agent Lab runtime check 不再信任自评。它必须留下测试用例、引用线索、可识别的 Flowise workflow export、可访问 runtime/reference 链接，并在可推导 Flowise endpoint 时尝试真实远程执行。</p>
         <table>
-          <thead><tr><th>ID</th><th>User</th><th>Status</th><th>Score</th><th>Cases</th><th>Citations</th><th>Export</th><th>Flowise</th><th>Reference</th><th>Errors</th></tr></thead>
+          <thead><tr><th>ID</th><th>User</th><th>Status</th><th>Score</th><th>Cases</th><th>Citations</th><th>Export</th><th>Flowise</th><th>Reference</th><th>Remote Exec</th><th>Errors</th></tr></thead>
           <tbody>${runtimeAuditRows(validation.runtimeAuditItems)}</tbody>
         </table>
       </section>

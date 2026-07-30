@@ -9,7 +9,7 @@ E:\academy
 ├─ README.md
 ├─ REQUIREMENTS.md
 ├─ bot\                   # legacy 早期 Bot 原型
-├─ data\                  # legacy SQLite 数据
+├─ data\                  # 本地占位目录，不再承载产品数据库
 ├─ mini-app\              # 当前主线产品
 │  ├─ app\                # Next / Vinext 页面与 API 路由
 │  ├─ db\                 # PostgreSQL / D1 兼容访问层与 schema
@@ -19,7 +19,7 @@ E:\academy
 │  ├─ scripts\            # 迁移、导入、内容抓取脚本
 │  └─ tests\              # mini-app 构建与结构测试
 ├─ scripts\               # 本地启动与初始化脚本
-└─ tests\                 # legacy bot 单元测试
+└─ tests\                 # Bot 运维脚本与桥接层测试
 ```
 
 ## 2. 当前主线模块清单
@@ -57,23 +57,19 @@ E:\academy
 
 | 路径 | 现状 | 问题 |
 |---|---|---|
-| `bot/database.py` | 早期 SQLite 数据访问 | 与主线数据模型不一致 |
-| `bot/commands.py` | 早期 `/academy` 文本命令 | 仍按 14 天原型口径返回内容 |
-| `bot/main.py` | 早期 CLI 包装器 | 继续沿用会强化双轨维护 |
 | `bot/reminders.py` | 本地提醒文案选择器 | 仍有参考价值，但需要和主线提醒口径统一 |
 | `bot/send_reminder.py` | 本地提醒发送脚本 | 可保留为过渡层 |
 | `bot/setup_webhook.py` | Telegram webhook 配置脚本 | 可保留，但职责应仅限运维配置 |
-| `data/academy.db` | legacy SQLite 数据库 | 不应继续作为主学习事实源 |
-| `tests/test_commands.py` | legacy 命令测试 | 仅覆盖旧原型 |
+| `data/.gitkeep` | 占位文件 | `data/` 不再保存产品数据库文件 |
 
 ### legacy 的边界规则
 
-1. 不再给 `bot/database.py` 和 `bot/commands.py` 增加新产品逻辑。
-2. 不再把 `data/academy.db` 当作当前学习记录权威来源。
+1. 不再恢复任何 legacy CLI 入口。
+2. 不再把 `data/` 当作当前学习记录权威来源。
 3. 所有新增功能优先进入 `mini-app/`。
 4. `bot/` 只允许做两类事情：
    - Telegram 入口和运维辅助；
-   - 过渡期兼容层。
+   - 调用主线 API 的轻量桥接层。
 
 ## 4. 当前边界判断
 
@@ -89,9 +85,8 @@ Telegram
 
 ```text
 Telegram
-  -> bot.commands
-  -> bot.database
-  -> legacy SQLite
+  -> legacy CLI / 本地脚本
+  -> legacy 本地存储
 ```
 
 因为这会造成：
@@ -101,29 +96,22 @@ Telegram
 3. 业务口径不一致：提醒、进度、订阅、邀请、支付无法统一
 4. 测试和维护成本持续上升
 
-## 5. 建议的下一步迁移顺序
+## 5. 当前收口结果
 
-### P0
+### 已完成
 
-1. 让 Bot 查询类能力改为调用 `mini-app` API：
-   - `/academy`
-   - `/academy history`
-   - `/academy next`
-   - `/academy notes`
-2. 保留 `bot/send_reminder.py` 作为发送器，但提醒内容和用户状态从主线 API 获取。
-3. 停止在 `bot/database.py` 写入新的学习数据。
+1. `bot/main.py`、`bot/commands.py`、`bot/database.py` 已删除。
+2. `scripts/add_note.py`、`scripts/save_lesson.py`、`scripts/init_db.py` 已删除。
+3. `bot/send_reminder.py` 保留为唯一 reminder 运维脚本，并通过主线 API 获取内容。
+4. `bot/setup_webhook.py` 保留为 webhook 运维脚本。
+5. 不再存在 legacy CLI 业务入口。
 
-### P1
+### 当前保留原则
 
 1. 为 Bot 新建一个轻量 API client，例如 `bot/academy_api.py`。
-2. 把 `bot/commands.py` 改成格式化主线 API 返回值，而不是自己查 SQLite。
-3. 将 `tests/test_commands.py` 从 SQLite fixture 改为 API mock。
-
-### P2
-
-1. 归档 `bot/database.py`。
-2. 归档 `data/academy.db` 的产品用途，只保留迁移或历史备份意义。
-3. 将 legacy 测试移入 `tests/legacy/` 或删除。
+2. 不再恢复 `bot/main.py` 一类 legacy CLI 壳层。
+3. reminder 回归保留在 `tests/test_send_reminder.py` 等脚本级测试中。
+4. `data/` 只保留目录占位，不再承载产品数据库。
 
 ## 6. 一句话判断
 

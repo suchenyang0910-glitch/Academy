@@ -7,12 +7,12 @@
 
 ## 2. 覆盖范围
 
-### 2.1 命令解析（bot.commands）
+### 2.1 运维脚本（bot.send_reminder）
 
 | Case ID | 输入 | Mock | 预期 |
 |---|---|---|---|
-| D03-CMD-001 | `/academy note xxx` | mock `academy_api.create_note` | 入参为 `xxx`，返回提示文案 |
-| D03-CMD-002 | `/academy next` | mock `academy_api.fetch_summary/fetch_day` | 根据 summary 推导 next day 并输出 |
+| D03-CMD-001 | `--level 2 --dry-run` | mock `post_json` | 拉取 reminder JSON 并打印 |
+| D03-CMD-002 | `--level 2` | mock `post_json` | 调用 reminder API 与 Telegram 发送链路 |
 
 ### 2.2 API client（bot.academy_api）
 
@@ -31,4 +31,3 @@
 ## 3. 门禁
 
 - `python -m unittest discover -s tests -p "test_*.py"` 必须通过
-

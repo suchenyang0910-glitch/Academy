@@ -231,7 +231,6 @@
 
 负责模块：
 
-- `bot/main.py`
 - `bot/send_reminder.py`
 - `bot/reminders.py`
 - `bot/setup_webhook.py`
@@ -260,12 +259,12 @@
 - 目标：让 Bot 查询不再读 legacy SQLite；
 - 输出：
   - `bot/academy_api.py` 或等价轻量 client；
-  - `/academy`、`/academy history`、`/academy notes` 等查询改为 API 获取；
-  - 格式化展示层。
+  - reminder 运维入口继续通过主线 API 获取内容；
+  - 不再保留 legacy CLI 壳层。
 
 完成定义：
 
-- `bot/commands.py` 不再自己查 `bot/database.py`；
+- `bot/send_reminder.py` 等运维脚本不再自己查 legacy 本地数据库；
 - Bot 与 Mini App 返回同一业务口径。
 
 ### C-03 提醒链路收敛到主线状态
@@ -283,7 +282,7 @@
 
 ### C-04 停止 legacy 写入
 
-- 目标：彻底冻结 `bot/database.py` 的新业务写入路径；
+- 目标：彻底冻结 legacy 本地数据库的新业务写入路径；
 - 输出：
   - 写入点排查清单；
   - 替换为 API 调用或只读兼容；
@@ -336,7 +335,7 @@
 
 - 目标：把 legacy Bot 测试从 SQLite 事实切到 API mock；
 - 输出：
-  - `tests/test_commands.py` 更新；
+  - `tests/test_send_reminder.py` 等运维脚本测试更新；
   - API mock fixture；
   - legacy 边界用例。
 

@@ -843,20 +843,17 @@ Mini App
 
 ## 10. Telegram Bot
 
-### 10.1 基础命令
+### 10.1 当前保留 Telegram 命令
 
 | 命令 | 功能 |
 |---|---|
-| `/academy` | 今日摘要和打开 Mini App |
-| `/academy courses` | 查看和管理选课 |
-| `/academy day <N>` | 查看指定学习日 |
-| `/academy history` | 查看进度和最近记录 |
-| `/academy note <内容>` | 保存当天笔记 |
-| `/academy notes [day]` | 查看笔记 |
-| `/academy quiz` | 开始今日 Quiz |
-| `/academy next` | 查看下一课程 |
+| `/academy` | Telegram Bot 首页入口，返回当前可用命令与产品状态说明 |
+| `/academy today` | Telegram Bot 返回今日监督摘要 |
 | `/academy pause` | 暂停提醒 |
-| `/academy feedback` | 提交问题或建议 |
+| `/academy resume` | 恢复提醒 |
+| `/paysupport` | 提供支付支持入口 |
+
+其余历史文本命令（如 `history`、`notes`、`next`、`day`）不再保留为 Bot / CLI 能力，统一改由 Mini App 承载。legacy CLI 已整体归档删除，当前文本命令主链路由 `mini-app` 处理。
 
 ### 10.2 Bot 职责
 

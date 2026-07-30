@@ -33,7 +33,7 @@
 
 - 产品目标：Telegram Bot + Mini App 学习监督闭环；
 - 当前主线：`mini-app/`；
-- legacy 边界：`bot/database.py`、`bot/commands.py` 不再承载新业务逻辑；
+- legacy 边界：`bot/database.py` 与 `bot/main.py` 已退役删除，仅保留 reminder / webhook 运维脚本；
 - 商业规则：试用、订阅、邀请返积分、单订单单主优惠、积分抵扣上限 50%；
 - 数据规则：`credits_ledger`、`campaign_rewards`、`order_pricing_snapshots`；
 - 技术规则：统一结算、账本优先、快照先于支付、活动配置化、默认不可叠加。
@@ -91,7 +91,6 @@
 
 负责范围：
 
-- `bot/main.py`
 - `bot/send_reminder.py`
 - `bot/reminders.py`
 - `bot/setup_webhook.py`
@@ -107,7 +106,7 @@
 
 禁止事项：
 
-- 不得继续扩展 `bot/database.py`、`bot/commands.py` 业务能力；
+- 不得恢复 `bot/database.py`、`bot/main.py` 或重新引入 legacy CLI 业务能力；
 - 不得让 Bot 成为新的业务事实源。
 
 ### Team D：测试、质量与发布团队

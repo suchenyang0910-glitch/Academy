@@ -1,6 +1,6 @@
 """Academy 灰色幽默提醒文案与随机选择。
 
-cron 可调用 ``python bot/main.py --cmd reminder --level 1 --user-id <telegram_id>``。
+cron 可调用 ``python bot/send_reminder.py --level 1``。
 同一用户最近 5 次收到的文案会被排除。
 """
 

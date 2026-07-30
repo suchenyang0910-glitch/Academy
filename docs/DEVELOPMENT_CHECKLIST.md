@@ -140,9 +140,8 @@
 ### C-02 Bot 查询 API 化
 
 - [ ] 已新增 `bot/academy_api.py` 或等价层
-- [ ] `/academy` 已走主线 API
-- [ ] `/academy history` 已走主线 API
-- [ ] `/academy notes` 已走主线 API
+- [ ] reminder 运维入口已走主线 API
+- [ ] 已删除 legacy CLI 壳层
 - [ ] Bot 不再直接查 legacy SQLite
 
 ### C-03 提醒链路主线化
@@ -177,9 +176,9 @@
 
 ### D-03 Bot 测试迁移
 
-- [ ] `tests/test_commands.py` 已更新
+- [ ] reminder / webhook 相关测试已更新
 - [ ] 已使用 API mock
-- [ ] 已覆盖 legacy 边界
+- [ ] 已覆盖 reminder 运维边界
 
 ### D-04 本地脚本验证
 

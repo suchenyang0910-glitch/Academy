@@ -7,7 +7,7 @@ Academy 是一个运行在 Telegram Bot 与 Telegram Mini App 中的学习监督
 ## 当前代码主线
 
 - 当前主线产品实现位于 `mini-app/`，这里承载课程、身份、进度、评分、提醒、邀请和支付闭环。
-- `bot/commands.py`、`bot/database.py`、`bot/main.py` 属于早期 14 天 SQLite Bot 原型，现已标记为 `legacy`。
+- `bot/send_reminder.py`、`bot/setup_webhook.py` 属于仍保留的运维脚本；legacy SQLite 与旧 CLI 已从仓库主路径移除。
 - `bot/` 后续只应承担 Telegram 入口或通知职责，并改为调用 `mini-app` API；不再作为独立学习事实源继续演进。
 - 项目结构图与“当前主线 / 遗留模块清单”见 [docs/PROJECT_STRUCTURE.md](./docs/PROJECT_STRUCTURE.md)。
 

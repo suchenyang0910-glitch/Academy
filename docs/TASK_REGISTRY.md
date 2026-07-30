@@ -34,9 +34,19 @@
 | ACAD-C-004 | C | C-04 | 停止 legacy SQLite 写入 | Kickoff + Team C C-04 | 写入点封禁或替换 | done |
 | ACAD-D-001 | D | D-01 | 结算与积分测试矩阵 | Kickoff + Team D D-01 | 回归测试用例 | done |
 | ACAD-D-002 | D | D-02 | 邀请奖励测试矩阵 | Kickoff + Team D D-02 | 发奖/幂等/撤销用例 | done |
-| ACAD-D-003 | D | D-03 | Bot 回归测试迁移到 API mock | Kickoff + Team D D-03 | test_commands API mock | done |
+| ACAD-D-003 | D | D-03 | Bot 回归测试迁移到 API mock | Kickoff + Team D D-03 | Bot API mock 测试矩阵与脚本回归 | done |
 | ACAD-D-004 | D | D-04 | 本地启动与迁移验证脚本复核 | Kickoff + Team D D-04 | 脚本可重复启动与迁移 | done |
 | ACAD-D-005 | D | D-05 | 发布门禁与回滚预案 | Kickoff + Team D D-05 | 门禁、回滚、观察项 | done |
+| ACAD-E-001 | E | E-01 | Legacy Bot / SQLite 彻底退役收口 | Kickoff + Team E E-01 | 只读兼容清单、删除/封禁清单、迁移说明 | done |
+| ACAD-E-002 | E | E-02 | Legacy Bot / SQLite 物理归档删除 | Kickoff + Team E E-02 | 删除记录、文档更新、回归验证 | done |
+| ACAD-E-003 | E | E-03 | Legacy 数据文件与 CLI 语义最终收口 | Kickoff + Team E E-03 | 数据文件清理、入口说明更新、回归验证 | done |
+| ACAD-E-004 | E | E-04 | Bot 兼容壳层最小化 | Kickoff + Team E E-04 | CLI 收口、文档更新、回归验证 | done |
+| ACAD-E-005 | E | E-05 | Bot 文本兼容面最小化 | Kickoff + Team E E-05 | 文本命令收口、文档更新、回归验证 | done |
+| ACAD-E-006 | E | E-06 | Bot 文本兼容层物理折叠 | Kickoff + Team E E-06 | 模块删除、文档更新、回归验证 | done |
+| ACAD-E-007 | E | E-07 | Bot CLI 最终收口到 reminder | Kickoff + Team E E-07 | 删除 `--text`、文档更新、回归验证 | done |
+| ACAD-E-008 | E | E-08 | Legacy CLI 整体归档删除 | Kickoff + Team E E-08 | 删除 `bot/main.py`、文档更新、回归验证 | done |
+| ACAD-E-009 | E | E-09 | Disabled legacy 写入脚本物理删除 | Kickoff + Team E E-09 | 删除 `scripts/add_note.py`、`scripts/save_lesson.py`、文档更新、回归验证 | done |
+| ACAD-E-010 | E | E-10 | E 系列收口总审计 | Kickoff + Team E E-10 | 最终审计文档、口径修正、关闭建议 | done |
 
 ## 3. 本轮文档产出任务（已完成）
 

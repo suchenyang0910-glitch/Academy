@@ -1,6 +1,6 @@
-# Academy 当前代码与 v3.6 需求差距清单 / 开发任务拆解
+# Academy 当前代码与 v3.7 需求差距清单 / 开发任务拆解
 
-更新时间：2026-07-28
+更新时间：2026-08-08
 
 本文用于把最新版需求落到可执行开发任务。当前代码已经具备 Telegram Mini App 基座、PostgreSQL 数据层、固定课程、选课、今日任务、选择题检查、提交、笔记、进度、提醒、邀请、积分账本、Telegram Stars 雏形、DeepSeek/Ollama AI 点评、四语言 UI 基础和若干后台接口。
 
@@ -15,7 +15,9 @@
 - Telegram 身份验证与用户资料记录：Telegram ID、昵称、用户名、头像、语言、时区。
 - 课程目录与选课：必选 1 门，最多 3 门，支持独立 enrollment day。
 - 今日任务：聚合已选课程的当天任务，并支持额外学习入口。
+- 主动/被动学习：今日页已区分“系统今日必修”和“完成主线后的加学/预习”，主动学习记录为 extra evidence，不替代明天主线。
 - 课程完成：选择题检查、提交、修正提交、规则评分、AI 点评降级。
+- 课程结构：所有课程通过生成器兜底为“知识讲解 → 示例 → 3–5 道选择题 → Evidence”，避免用户未学习就直接写作业。
 - 学习资产：笔记、进度、复习队列、阶段测评、提醒历史。
 - 移动端体验：已处理 iOS 输入框聚焦放大、键盘遮挡提交按钮等问题。
 
@@ -37,6 +39,7 @@
 - 课程正文与 UI 文案开始分离；课程缺少翻译时回退中文审核版，并显示提示。
 - 已新增 `mini-app/lib/runtime-copy.ts`，将 Today Mission、课程、笔记、进度、Lesson、Assessment、Review、个人中心、支付、邀请、提醒等高频 runtime copy 从 `page.tsx` 抽出。
 - 已新增 `npm run content:i18n:check-copy`，用于检查关键 UI/提醒/支付/邀请文案是否覆盖四语言。
+- 已新增 `learningModeRuntimeCopy` / `courseDomainRuntimeCopy`，主动/被动学习入口和课程域 / Evidence 标签进入四语言文案池。
 - 今日监督状态文案已抽到 `supervisionRuntimeCopy`，连续中断、需要补课、今日完成、今日监督不再散落在 `page.tsx`。
 - 积分流水类型与状态文案已抽到 `creditsLedgerTypeCopy` / `creditsLedgerStatusCopy`，Profile/邀请奖励相关 copy 不再由页面组件直接维护。
 - Goal Template / Agent Lab 的 Runtime 检查、workflow export、上传证据、提交里程碑等文案已抽到 `goalRuntimeCopy`，首个 AI 21 天模板的核心交互开始进入四语言文案池。
@@ -58,6 +61,7 @@
 - 已有首个 AI Goal Template：`personal-knowledge-assistant-21d`。
 - 已有 Day 0 / Day 7 / Day 21 检查点。
 - 首页开始展示 Today Mission、Prototype Progress、Next Evidence。
+- 首页已新增主动/被动学习双入口：被动学习优先打开未完成主线，主动学习在主线完成后进入加学内容。
 - AI Prototype Progress 已开始从 accepted evidence 聚合。
 - 已补齐 `TEMPLATE_DESIGN_GUIDE.md`：新增目标模板准入标准、Template Card、Definition of Done、Evidence Model、Progress Mapping、Recovery Loop 和拒绝清单。
 - 已新增 `npm run templates:check`：发布前确认模板规范存在、需求文档链接有效、首个目标模板仍保留 DoD、检查点、证据和进度映射。
@@ -65,7 +69,7 @@
 仍缺：
 
 - 首页还需要进一步弱化课程列表，把 Mission、Evidence、Prototype Progress 放到更核心位置。
-- 不同课程目标与 Evidence 的映射还不够统一。
+- 不同课程目标与 Evidence 的映射已有第一版课程域标签，但还需要进入统一数据模型和后台配置，而不是只停留在 runtime copy。
 
 ### Gap B：Evidence Model 已有骨架，但还没完全成为唯一事实来源
 
@@ -90,8 +94,10 @@
 已完成：
 
 - AI Day 1–7 已按基础概念优先重构。
+- AI Day 1–7 已进一步按零基础学习顺序打磨：认识 AI、模型/应用/输入/上下文/输出、上下文、幻觉、Prompt 基础、示例/角色/拆步骤、Workflow。
 - 知识检查改为 3 道选择题，至少答对 2 题通过。
 - 主观输入改为实操证据/反思，不再作为基础知识唯一通过条件。
+- 每节课已通过 `ensureStructuredLessonFlow` 做结构兜底：缺少选择题时自动补 3 道关键检查题，缺少结构说明时自动补知识讲解、示例和 Evidence 说明。
 - AI 课程正文已显式展示核心原则与能力目标：通用选择题考到的“核心原则 / 能力目标”必须先出现在正文里，避免用户觉得还没学就被考。
 - 课程质量门禁已补齐：`npm run content:quality:check` 会检查 AI Day 1–14 是否先教学再检查、选择题数量是否为 3–5、Day 8–14 是否包含知识/例子/检查/最小实操，并已接入发布预检。
 - 选择题提交后会即时聚合该 lesson 的首交表现；首交样本达到 3 次且通过率低于 60% 时，自动写入 Course Review Center 的 open quality event。
@@ -165,6 +171,9 @@
 - [x] 提醒历史、测试提醒、提醒诊断。
 - [x] $9.9/月价格与 Stars 禁用原因展示。
 - [x] Runtime copy 初步模块化：Today/Course/Notes/Progress/Profile/Payment/Invite/Reminder。
+- [x] 主动/被动学习入口：被动学习处理今日主线，主动学习处理完成主线后的加学内容。
+- [x] 课程结构兜底：每节课统一为知识讲解、示例、选择题检查和 Evidence 保存规则。
+- [x] AI Day 1–7 零基础课程正文打磨，并加入内容质量门禁。
 - [x] 学习写入服务端权限门禁：`resolveReviewQueueEntry` 已补上 `assertLearningAccess`，并新增 `npm run access:check` 检查选课、提交、笔记、阶段测试、复习队列、上传、里程碑和 Agent Lab 写入都在服务端检查访问权限。
 
 剩余 P0：
@@ -270,6 +279,7 @@
 
 ### P0：上线稳定与真机验收
 
+- [ ] 重新部署当前本地 commit 到线上 Mini App。
 - [ ] 在 VPS 执行 `npm run deploy:check`，确认生产 PostgreSQL 已包含最新迁移与自检表。
 - [x] 本地/服务器发布前静态 P0 验收门禁：`npm run acceptance:check` 已覆盖 Mini App 真机验收依赖的关键入口，并已接入发布预检。
 - [x] 真机验收记录模板：`npm run acceptance:new` 可生成一次验收记录文件，避免 P0 检查只停留在口头或临时笔记。
@@ -280,7 +290,8 @@
 - [x] 提醒健康命令：`npm run reminders:check -- --base-url https://academy.linkx.club` 会检查 systemd timer 和后台 Reminder Delivery Health 面板。
 - [ ] 线上验证提醒链路：中断提醒、测试提醒、提醒历史和后台诊断能闭环，并记录 Telegram 实际送达结果。
 - [x] 本地课程结构门禁：`npm run content:quality:check` 已覆盖 AI Day 1–14；其中 Day 8–14 必须具备“知识 / 例子 / 检查 / 最小实操”，并确认选择题在正文之后。
-- [ ] 发布后仍需在 Telegram 真机中复测 AI Day 8–14 的实际阅读体验，确认页面呈现顺序和滚动体验符合预期。
+- [x] AI Day 1–7 零基础概念课程已覆盖认识 AI、模型/应用、上下文、幻觉、Prompt 基础、示例/角色/拆步骤和 Workflow。
+- [ ] 发布后仍需在 Telegram 真机中复测 AI Day 1–14 的实际阅读体验，确认页面呈现顺序、选择题体验和滚动体验符合预期。
 
 ### P1：21 天种子验证闭环
 

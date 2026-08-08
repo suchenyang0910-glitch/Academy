@@ -350,11 +350,23 @@ Academy 可以说明用户完成了哪些任务、取得了哪些结果，但不
 
 1. English
 2. AI
-3. Business
-4. Quiz
-5. Founder Note
+3. Management
+4. Psychology
+5. Business Opportunity / Case Study
+6. Quiz
+7. Founder Note
 
 Quiz 和 Founder Note 作为独立课程展示和选择，必须拥有自己的课程目标、内容和完成条件。
+
+不同课程域对应不同 Evidence：
+
+| 课程域 | 核心目标 | 主要 Evidence |
+|---|---|---|
+| AI | 从工具使用走向可运行原型 | Quiz、工作流、Demo、Runtime check、项目里程碑 |
+| English | 完成真实日常/商务沟通 | 选择题、短句替换、朗读/录音、场景对话、邮件写作 |
+| Management | 管理自己、任务、项目和协作 | 行动清单、SOP、复盘、计划拆解、执行记录 |
+| Psychology | 理解行为、动机、决策和学习坚持 | 情境判断、反思记录、行为实验、习惯追踪 |
+| Business Opportunity / Case Study | 识别机会、判断案例、完成真实验证 | 机会分析、用户访谈记录、购买意向、案例判断、Founder Note |
 
 对 AI Builder 目标，课程目录不应成为起点：Goal Planner 先展示项目交付物和下一里程碑，再把需要的课程节点插入今日计划。对 English / Business 等基础能力，用户仍可直接从课程目录开始。
 
@@ -1344,6 +1356,8 @@ OpenMAIC 等外部课堂项目可能经历许可证变化、商业授权条款�
 ### 18.12 GitHub 信息噪声与课程污染
 
 扫描 GitHub 是 Knowledge Hub 的研究能力，不是每日学习闭环。不得把新抓取的仓库自动变成正式课程或推荐给用户。来源须经过相关性、许可证、维护状态、可复现实验、人工审核和课程版本审查；否则只作为待研究素材。
+
+首批外部 AI 学习源登记在 `docs/KNOWLEDGE_HUB_SOURCE_REGISTER.md`。其中 Microsoft `AI-For-Beginners` 只作为 AI 基础补充源，用于人工改写解释、示例、恢复任务或术语校对；不得替换当前 21 天 AI 主路径，也不得自动生成课程、改变 Quiz 标准或计算用户进度。
 
 ---
 

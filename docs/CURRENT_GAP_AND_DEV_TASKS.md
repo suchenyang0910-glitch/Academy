@@ -243,6 +243,8 @@
 ### P2-3 内容与本地化运营
 
 - [x] Knowledge Hub 素材库：资料只进入 pending review，不自动生成课程。
+- [x] Knowledge Hub 外部源登记清单：`docs/KNOWLEDGE_HUB_SOURCE_REGISTER.md` 已记录 AI、English、Management、Psychology、Business Opportunity / Case Study 等多能力域专业课程与文档源，仅作为 P2/P3 补充知识源，不进入 MVP 主路径。
+- [x] 课程域已扩展为 AI、English、Management、Psychology、Business Opportunity / Case Study、Quiz、Founder Note；每个课程域必须有独立目标和 Evidence 类型，不能用统一“看完课程”计算完成。
 - [x] Course Review Center：课程版本、翻译版本、质量事件。
 - [x] 本地化模板生成、草稿校验、导入前质量检查。
 - [x] AI Day 1–7 vi/km/th draft。

@@ -11,10 +11,12 @@ import {
 } from "../lib/i18n";
 import {
   assessmentRuntimeCopy,
+  courseDomainRuntimeCopy,
   courseRuntimeCopy,
   creditsLedgerStatusCopy,
   creditsLedgerTypeCopy,
   goalRuntimeCopy,
+  learningModeRuntimeCopy,
   lessonRuntimeCopy,
   notesRuntimeCopy,
   profileRuntimeCopy,
@@ -1185,6 +1187,55 @@ function TodayView({
   );
   const completedTodayCount = completedCourseIds.size;
   const courseCopy = courseRuntimeCopy(locale);
+  const modeCopy = learningModeRuntimeCopy(locale);
+  const todayCopy = todayRuntimeCopy(locale);
+  const openReviewItems = data.reviewQueue.filter((item) => item.status === "open");
+  const incompleteTodayLesson = data.today.find(
+    (item) => !hasAcceptedMainlineEvidence(item),
+  );
+  const primaryMission =
+    data.assessmentRecommendations.length > 0
+      ? {
+          eyebrow: "TODAY'S MISSION",
+          title: todayCopy.missionAssessmentTitle,
+          detail:
+            data.assessmentRecommendations[0]?.message ??
+            todayCopy.missionAssessmentDetail,
+          evidence: todayCopy.missionAssessmentEvidence,
+        }
+      : openReviewItems.length > 0
+        ? {
+            eyebrow: "TODAY'S MISSION",
+            title: todayCopy.missionReviewTitle,
+            detail:
+              openReviewItems[0]?.recommendation ??
+              todayCopy.missionReviewDetail,
+            evidence: todayCopy.missionReviewEvidence,
+          }
+        : incompleteTodayLesson
+          ? {
+              eyebrow: "TODAY'S MISSION",
+              title: todayCopy.missionLessonTitle,
+              detail:
+                incompleteTodayLesson.lesson?.objective ??
+                todayCopy.missionLessonDetail,
+              evidence: todayCopy.missionLessonEvidence,
+            }
+          : {
+              eyebrow: "TODAY'S MISSION",
+              title: todayCopy.missionDoneTitle,
+              detail: todayCopy.missionDoneDetail,
+              evidence: todayCopy.missionDoneEvidence,
+            };
+  const remainingMainlineCount = data.today.filter(
+    (item) => !hasAcceptedMainlineEvidence(item),
+  ).length;
+  const firstRequiredLesson = data.today.find(
+    (item) => item.lesson && !hasAcceptedMainlineEvidence(item),
+  );
+  const firstActiveLesson =
+    learningAhead.find((item) => item.lesson && !hasAcceptedLessonEvidence(item)) ??
+    learningAhead.find((item) => item.lesson);
   const studyAheadMessage =
     data.supervision.lagDays >= 2
       ? courseCopy.lockedByInterruption
@@ -1231,6 +1282,40 @@ function TodayView({
       >
         <span>{supervisionRuntimeCopy(data.supervision, locale).label}</span>
         <p>{supervisionRuntimeCopy(data.supervision, locale).message}</p>
+      </section>
+
+      <section className="learning-mode-panel" aria-label="Learning mode">
+        <div className="learning-mode-head">
+          <span className="eyebrow">ACTIVE / PASSIVE</span>
+          <h2>{modeCopy.title}</h2>
+          <p>{modeCopy.subtitle}</p>
+        </div>
+        <div className="learning-mode-grid">
+          <article className="learning-mode-card passive">
+            <span>{modeCopy.passiveLabel}</span>
+            <strong>{modeCopy.passiveTitle}</strong>
+            <p>{modeCopy.passiveDetail(remainingMainlineCount)}</p>
+            <button
+              type="button"
+              onClick={() => firstRequiredLesson && onSelect(firstRequiredLesson)}
+              disabled={!firstRequiredLesson}
+            >
+              {firstRequiredLesson ? modeCopy.passiveAction : modeCopy.passiveDone}
+            </button>
+          </article>
+          <article className="learning-mode-card active">
+            <span>{modeCopy.activeLabel}</span>
+            <strong>{modeCopy.activeTitle}</strong>
+            <p>{modeCopy.activeDetail(learningAhead.length)}</p>
+            <button
+              type="button"
+              onClick={() => firstActiveLesson && onSelect(firstActiveLesson)}
+              disabled={!firstActiveLesson}
+            >
+              {firstActiveLesson ? modeCopy.activeAction : modeCopy.activeLocked}
+            </button>
+          </article>
+        </div>
       </section>
 
       {data.goalTemplate && (
@@ -2141,6 +2226,7 @@ function CoursesView({
       <div className="catalog-list">
         {catalog.map((course) => {
           const active = activeIds.has(course.id);
+          const domain = courseDomainRuntimeCopy(locale, course.id);
           return (
             <button
               type="button"
@@ -2153,6 +2239,11 @@ function CoursesView({
               <span>{course.subtitle}</span>
               <h2>{course.title}</h2>
               <p>{course.summary}</p>
+              <div className="course-domain-tags">
+                <span>{domain.domain}</span>
+                <span>{domain.evidence}</span>
+              </div>
+              <small className="course-domain-mode">{domain.mode}</small>
               {course.isContentFallback && (
                 <ContentFallbackNotice
                   copy={copy}
@@ -2161,7 +2252,7 @@ function CoursesView({
                   compact
                 />
               )}
-              <div>
+              <div className="catalog-card-meta">
                 <strong>{course.durationDays} DAYS</strong>
                 <small>{courseCopy.minutesPerDay(course.dailyMinutes)}</small>
                 <em>{active ? courseCopy.viewPath : courseCopy.notSelected}</em>
@@ -2206,6 +2297,7 @@ function CoursePathView({
 }) {
   const copy = courseRuntimeCopy(locale);
   const appCopy = copyFor(locale);
+  const domain = courseDomainRuntimeCopy(locale, course.id);
   return (
     <section className="course-path" style={{ "--course-accent": course.accent } as React.CSSProperties}>
       <button className="path-back" type="button" onClick={onBack}>
@@ -2214,6 +2306,11 @@ function CoursePathView({
       <span className="eyebrow">{course.subtitle.toUpperCase()}</span>
       <h1>{course.title}</h1>
       <p>{course.summary}</p>
+      <div className="course-domain-panel">
+        <span>{domain.domain}</span>
+        <strong>{domain.evidence}</strong>
+        <p>{domain.mode}</p>
+      </div>
       {course.isContentFallback && (
         <ContentFallbackNotice
           copy={appCopy}
@@ -2354,6 +2451,16 @@ function LessonSheet({
           />
         )}
 
+        <section className="lesson-flow" aria-label={copy.flowTitle}>
+          <span>{copy.flowLearn}</span>
+          <i aria-hidden="true" />
+          <span>{copy.flowExample}</span>
+          <i aria-hidden="true" />
+          <span>{copy.flowCheck}</span>
+          <i aria-hidden="true" />
+          <span>{copy.flowEvidence}</span>
+        </section>
+
         <section className="objective-block">
           <span>{copy.todayObjective}</span>
           <p>{lesson.objective}</p>
@@ -2432,6 +2539,10 @@ function LessonSheet({
               />
             </>
           )}
+          <section className="evidence-rule-card">
+            <span>{copy.evidenceStepTitle}</span>
+            <p>{copy.evidenceStepBody}</p>
+          </section>
           <div className="lesson-submit-bar">
             <div className="answer-meta">
               <span>

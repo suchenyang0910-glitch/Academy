@@ -107,6 +107,27 @@ for (const lesson of AI_LESSONS.slice(0, 14)) {
   validateGeneratedAiQuestionCoverage(lesson);
 }
 
+const beginnerRequiredTokens = [
+  ["知识讲解", "示例", "AI 可以协助", "不能替你负责"],
+  ["模型", "应用", "上下文", "输出"],
+  ["上下文", "目标", "限制", "成功标准"],
+  ["幻觉", "事实", "高风险", "验证"],
+  ["Prompt", "目标", "材料", "格式", "限制"],
+  ["示例", "角色", "拆步骤", "单变量"],
+  ["Workflow", "输入", "处理", "检查", "输出"],
+];
+
+for (const [index, tokens] of beginnerRequiredTokens.entries()) {
+  const lesson = AI_LESSONS[index];
+  const lessonText = `${lesson.title}\n${lesson.content}\n${lesson.practicePrompt}`;
+  for (const token of tokens) {
+    assert(
+      lessonText.includes(token),
+      `${lesson.id}: beginner AI Day ${index + 1} missing token: ${token}`,
+    );
+  }
+}
+
 for (const lesson of AI_LESSONS.slice(7, 14)) {
   const content = String(lesson.content ?? "");
   for (const token of ["知识：", "例子：", "检查：", "最小实操："]) {

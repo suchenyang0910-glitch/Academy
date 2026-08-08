@@ -25,6 +25,8 @@ test("builds the Academy product shell without starter content", async () => {
   assert.match(css, /\.lesson-page:focus-within \.lesson-page-content/);
   assert.match(runtimeCopy, /export function todayRuntimeCopy/);
   assert.match(runtimeCopy, /export function courseRuntimeCopy/);
+  assert.match(runtimeCopy, /export function learningModeRuntimeCopy/);
+  assert.match(runtimeCopy, /export function courseDomainRuntimeCopy/);
   assert.match(runtimeCopy, /export function notesRuntimeCopy/);
   assert.match(runtimeCopy, /export function progressRuntimeCopy/);
   assert.match(runtimeCopy, /export function lessonRuntimeCopy/);
@@ -54,7 +56,11 @@ test("ships fixed curricula with choice-based checks and the reminder pool", asy
   assert.match(curriculum, /可复核的数据结论至少包括四件事/);
   assert.match(curriculum, /AI 可以做初稿作者、改写助手和翻译助手/);
   assert.match(curriculum, /function buildSpiralKnowledgeCheck/);
+  assert.match(curriculum, /function buildLessonEvidenceCheck/);
+  assert.match(curriculum, /function ensureStructuredLessonFlow/);
+  assert.match(curriculum, /\.map\(ensureStructuredLessonFlow\)/);
   assert.match(curriculum, /assessment: buildSpiralKnowledgeCheck\(definition\)/);
+  assert.match(curriculum, /Evidence：提交前先完成选择题检查/);
   assert.match(curriculum, /核心原则：\$\{core\}/);
   assert.match(curriculum, /能力目标：\$\{objective\}/);
   assert.match(reminders, /recentTemplateIds\.slice\(0, 5\)/);
@@ -424,11 +430,15 @@ test("ships a persisted four-language interface foundation", async () => {
   assert.match(page, /resolveAppLocale/);
   assert.match(page, /todayRuntimeCopy/);
   assert.match(page, /courseRuntimeCopy/);
+  assert.match(page, /learningModeRuntimeCopy/);
+  assert.match(page, /courseDomainRuntimeCopy/);
   assert.match(page, /goalRuntimeCopy/);
   assert.match(page, /requestRuntimeCopy/);
   assert.match(page, /notesRuntimeCopy/);
   assert.match(page, /progressRuntimeCopy/);
   assert.match(page, /lessonRuntimeCopy/);
+  assert.match(page, /lesson-flow/);
+  assert.match(page, /evidence-rule-card/);
   assert.match(page, /assessmentRuntimeCopy/);
   assert.match(page, /reviewRuntimeCopy/);
   assert.match(page, /function hasAcceptedLessonEvidence/);
@@ -515,6 +525,8 @@ test("ships a persisted four-language interface foundation", async () => {
   assert.match(page, /AcademyRequestError/);
   assert.match(page, /initialClientLocale/);
   assert.match(page, /courseCopy\.extensionPaths/);
+  assert.match(page, /learning-mode-panel/);
+  assert.match(page, /course-domain-tags/);
   assert.doesNotMatch(page, /先处理阶段测试/);
   assert.doesNotMatch(page, /待复习内容/);
   assert.doesNotMatch(page, /选择 1–3 门课程/);
@@ -573,6 +585,11 @@ test("ships a persisted four-language interface foundation", async () => {
   assert.match(runtimeCopy, /effectiveLearningDays/);
   assert.match(runtimeCopy, /missionAssessmentTitle/);
   assert.match(runtimeCopy, /lessonCheckTitle/);
+  assert.match(runtimeCopy, /flowLearn/);
+  assert.match(runtimeCopy, /flowExample/);
+  assert.match(runtimeCopy, /flowCheck/);
+  assert.match(runtimeCopy, /flowEvidence/);
+  assert.match(runtimeCopy, /evidenceStepTitle/);
   assert.match(runtimeCopy, /submitAssessment/);
   assert.match(runtimeCopy, /recoveryMission/);
   assert.match(schema, /uiLocale/);

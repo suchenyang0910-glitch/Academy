@@ -298,6 +298,140 @@ export function courseRuntimeCopy(locale: AppLocale) {
   }[locale];
 }
 
+export function learningModeRuntimeCopy(locale: AppLocale) {
+  return {
+    "zh-Hans": {
+      title: "学习模式",
+      subtitle: "被动学习负责把你拉回主线；主动学习负责让你多走一步。",
+      passiveLabel: "被动学习",
+      passiveTitle: "系统今日必修",
+      passiveDetail: (count: number) =>
+        count > 0
+          ? `还有 ${count} 门主线课需要留下证据。`
+          : "今日主线已经完成。",
+      passiveAction: "先完成主线",
+      passiveDone: "主线已清空",
+      activeLabel: "主动学习",
+      activeTitle: "想多学就加学",
+      activeDetail: (count: number) =>
+        count > 0
+          ? `已解锁 ${count} 节预习/加学内容，只记为额外证据。`
+          : "完成主线后会开放后续 3 节，不抢明天任务。",
+      activeAction: "进入加学",
+      activeLocked: "先完成主线",
+    },
+    vi: {
+      title: "Chế độ học",
+      subtitle: "Bị động kéo bạn về bài chính; chủ động giúp bạn đi thêm một bước.",
+      passiveLabel: "Học bị động",
+      passiveTitle: "Nhiệm vụ bắt buộc hôm nay",
+      passiveDetail: (count: number) =>
+        count > 0 ? `Còn ${count} bài chính cần bằng chứng.` : "Bài chính hôm nay đã xong.",
+      passiveAction: "Làm bài chính",
+      passiveDone: "Đã xong",
+      activeLabel: "Học chủ động",
+      activeTitle: "Muốn học thêm thì tiếp tục",
+      activeDetail: (count: number) =>
+        count > 0
+          ? `Đã mở ${count} bài học thêm; chỉ tính là bằng chứng phụ.`
+          : "Hoàn thành bài chính để mở 3 bài tiếp theo.",
+      activeAction: "Học thêm",
+      activeLocked: "Làm bài chính trước",
+    },
+    km: {
+      title: "របៀបសិក្សា",
+      subtitle: "ការសិក្សាបែបរំលឹកនាំអ្នកត្រឡប់ទៅភារកិច្ចសំខាន់; ការសិក្សាសកម្មអោយអ្នកទៅបន្ត។",
+      passiveLabel: "សិក្សាបែបរំលឹក",
+      passiveTitle: "ភារកិច្ចចាំបាច់ថ្ងៃនេះ",
+      passiveDetail: (count: number) =>
+        count > 0 ? `នៅសល់ ${count} មេរៀនសំខាន់ត្រូវមានភស្តុតាង។` : "ភារកិច្ចសំខាន់ថ្ងៃនេះរួចរាល់។",
+      passiveAction: "ធ្វើភារកិច្ចសំខាន់",
+      passiveDone: "រួចរាល់",
+      activeLabel: "សិក្សាសកម្ម",
+      activeTitle: "ចង់រៀនបន្ថែម",
+      activeDetail: (count: number) =>
+        count > 0 ? `បានបើក ${count} មេរៀនបន្ថែម; គិតជាភស្តុតាងបន្ថែម។` : "បញ្ចប់ភារកិច្ចសំខាន់ដើម្បីបើក 3 មេរៀនបន្ទាប់។",
+      activeAction: "រៀនបន្ថែម",
+      activeLocked: "ធ្វើភារកិច្ចសំខាន់សិន",
+    },
+    th: {
+      title: "โหมดการเรียน",
+      subtitle: "แบบถูกเตือนพาคุณกลับสู่เส้นหลัก; แบบเชิงรุกช่วยให้ไปต่ออีกก้าว",
+      passiveLabel: "เรียนแบบถูกเตือน",
+      passiveTitle: "งานหลักวันนี้",
+      passiveDetail: (count: number) =>
+        count > 0 ? `ยังเหลือ ${count} บทหลักที่ต้องมีหลักฐาน` : "งานหลักวันนี้เสร็จแล้ว",
+      passiveAction: "ทำบทหลักก่อน",
+      passiveDone: "เสร็จแล้ว",
+      activeLabel: "เรียนเชิงรุก",
+      activeTitle: "อยากเรียนเพิ่ม",
+      activeDetail: (count: number) =>
+        count > 0 ? `เปิดแล้ว ${count} บทเสริม นับเป็นหลักฐานเสริม` : "ทำบทหลักให้เสร็จก่อน จะเปิด 3 บทถัดไป",
+      activeAction: "เรียนเพิ่ม",
+      activeLocked: "ทำบทหลักก่อน",
+    },
+  }[locale];
+}
+
+export function courseDomainRuntimeCopy(locale: AppLocale, courseId: string) {
+  const copy = {
+    "zh-Hans": {
+      ai: {
+        domain: "AI",
+        evidence: "Quiz / Workflow / Demo",
+        mode: "先理解概念，再做出可运行原型。",
+      },
+      english: {
+        domain: "English",
+        evidence: "听说 / 对话 / 邮件",
+        mode: "先学表达，再完成真实沟通动作。",
+      },
+      business: {
+        domain: "Business Case",
+        evidence: "机会分析 / 访谈 / 购买意向",
+        mode: "先判断案例，再做真实验证。",
+      },
+      founder: {
+        domain: "Founder Note",
+        evidence: "反思 / 决策 / SOP",
+        mode: "把想法变成可回看的判断记录。",
+      },
+      quiz: {
+        domain: "Quiz",
+        evidence: "选择题 / 复习 / 错误模式",
+        mode: "主动提取知识，而不是只看熟悉感。",
+      },
+    },
+    vi: {
+      ai: { domain: "AI", evidence: "Quiz / Workflow / Demo", mode: "Hiểu khái niệm rồi làm prototype chạy được." },
+      english: { domain: "English", evidence: "Nghe nói / đối thoại / email", mode: "Học mẫu câu rồi làm hành động giao tiếp thật." },
+      business: { domain: "Business Case", evidence: "Cơ hội / phỏng vấn / ý định mua", mode: "Đánh giá case rồi xác thực thật." },
+      founder: { domain: "Founder Note", evidence: "Phản tư / quyết định / SOP", mode: "Biến suy nghĩ thành ghi chép có thể xem lại." },
+      quiz: { domain: "Quiz", evidence: "Trắc nghiệm / ôn tập / lỗi", mode: "Chủ động nhớ lại, không chỉ thấy quen." },
+    },
+    km: {
+      ai: { domain: "AI", evidence: "Quiz / Workflow / Demo", mode: "យល់គំនិតមុន រួចធ្វើ prototype ដែលដំណើរការ។" },
+      english: { domain: "English", evidence: "ស្តាប់និយាយ / សន្ទនា / អ៊ីមែល", mode: "រៀនប្រយោគ រួចធ្វើសកម្មភាពទំនាក់ទំនងពិត។" },
+      business: { domain: "Business Case", evidence: "ឱកាស / សម្ភាសន៍ / ចេតនាទិញ", mode: "វិនិច្ឆ័យករណី រួចធ្វើការផ្ទៀងផ្ទាត់ពិត។" },
+      founder: { domain: "Founder Note", evidence: "ឆ្លុះបញ្ចាំង / សម្រេចចិត្ត / SOP", mode: "បម្លែងគំនិតទៅជាកំណត់ត្រាដែលពិនិត្យវិញបាន។" },
+      quiz: { domain: "Quiz", evidence: "សំណួរ / រំលឹក / គំរូកំហុស", mode: "ទាញយកចំណេះដឹងសកម្ម មិនមែនត្រឹមស្គាល់។" },
+    },
+    th: {
+      ai: { domain: "AI", evidence: "Quiz / Workflow / Demo", mode: "เข้าใจแนวคิดก่อน แล้วทำต้นแบบที่รันได้" },
+      english: { domain: "English", evidence: "ฟังพูด / สนทนา / อีเมล", mode: "เรียนสำนวน แล้วใช้สื่อสารจริง" },
+      business: { domain: "Business Case", evidence: "โอกาส / สัมภาษณ์ / ความตั้งใจซื้อ", mode: "ตัดสินเคส แล้วตรวจสอบกับของจริง" },
+      founder: { domain: "Founder Note", evidence: "ทบทวน / ตัดสินใจ / SOP", mode: "เปลี่ยนความคิดเป็นบันทึกที่ตรวจย้อนหลังได้" },
+      quiz: { domain: "Quiz", evidence: "ตัวเลือก / ทบทวน / รูปแบบความผิด", mode: "ดึงความรู้ด้วยตัวเอง ไม่ใช่แค่รู้สึกคุ้น" },
+    },
+  }[locale];
+  if (courseId === "ai-command-skills") return copy.ai;
+  if (courseId === "english") return copy.english;
+  if (courseId === "business") return copy.business;
+  if (courseId === "founder-note") return copy.founder;
+  if (courseId === "quiz") return copy.quiz;
+  return copy.business;
+}
+
 export function notesRuntimeCopy(locale: AppLocale) {
   return {
     "zh-Hans": {
@@ -703,9 +837,17 @@ export function lessonRuntimeCopy(locale: AppLocale) {
     "zh-Hans": {
       backToday: "‹ 返回今日",
       todayObjective: "今天的目标",
+      flowTitle: "学习顺序",
+      flowLearn: "知识",
+      flowExample: "示例",
+      flowCheck: "选择题",
+      flowEvidence: "证据",
       learnFirstTitle: "先学，再做",
       startPractice: "我已看完，开始练习 →",
       lessonCheckTitle: "完成本课检查",
+      evidenceStepTitle: "Evidence 保存规则",
+      evidenceStepBody:
+        "先完成本课 3–5 道选择题。通过后，系统会把本次结果记为学习证据；未通过则进入修正状态。",
       mustLeaveOutput: "必须留下输出",
       practiceLocked: "先完成上方的学习卡。看完句型和示例后，再开始写你的答案。",
       historyReadOnly:
@@ -727,9 +869,17 @@ export function lessonRuntimeCopy(locale: AppLocale) {
     vi: {
       backToday: "‹ Về hôm nay",
       todayObjective: "Mục tiêu hôm nay",
+      flowTitle: "Thứ tự học",
+      flowLearn: "Kiến thức",
+      flowExample: "Ví dụ",
+      flowCheck: "Quiz",
+      flowEvidence: "Bằng chứng",
       learnFirstTitle: "Học trước, làm sau",
       startPractice: "Tôi đã đọc xong, bắt đầu luyện →",
       lessonCheckTitle: "Hoàn thành kiểm tra bài",
+      evidenceStepTitle: "Quy tắc lưu Evidence",
+      evidenceStepBody:
+        "Làm 3–5 câu trắc nghiệm trước. Khi đạt, hệ thống lưu kết quả này làm bằng chứng học; nếu chưa đạt, bài sẽ ở trạng thái cần sửa.",
       mustLeaveOutput: "Cần để lại đầu ra",
       practiceLocked: "Hãy hoàn thành thẻ học phía trên trước, rồi mới trả lời.",
       historyReadOnly:
@@ -752,9 +902,17 @@ export function lessonRuntimeCopy(locale: AppLocale) {
     km: {
       backToday: "‹ ត្រឡប់ទៅថ្ងៃនេះ",
       todayObjective: "គោលដៅថ្ងៃនេះ",
+      flowTitle: "លំដាប់សិក្សា",
+      flowLearn: "ចំណេះដឹង",
+      flowExample: "ឧទាហរណ៍",
+      flowCheck: "Quiz",
+      flowEvidence: "ភស្តុតាង",
       learnFirstTitle: "រៀនមុន បន្ទាប់មកអនុវត្ត",
       startPractice: "ខ្ញុំបានអានរួច ចាប់ផ្តើមហាត់ →",
       lessonCheckTitle: "បញ្ចប់ការត្រួតពិនិត្យមេរៀន",
+      evidenceStepTitle: "ច្បាប់រក្សាទុក Evidence",
+      evidenceStepBody:
+        "ធ្វើសំណួរ 3–5 ជាមុន។ បើឆ្លងកាត់ ប្រព័ន្ធនឹងរក្សាទុកលទ្ធផលនេះជាភស្តុតាងសិក្សា; បើមិនទាន់ឆ្លងកាត់ នឹងចូលស្ថានភាពត្រូវកែ។",
       mustLeaveOutput: "ត្រូវមានលទ្ធផល",
       practiceLocked: "សូមបញ្ចប់កាតសិក្សាខាងលើជាមុន បន្ទាប់មកចាប់ផ្តើមឆ្លើយ។",
       historyReadOnly:
@@ -777,9 +935,17 @@ export function lessonRuntimeCopy(locale: AppLocale) {
     th: {
       backToday: "‹ กลับวันนี้",
       todayObjective: "เป้าหมายวันนี้",
+      flowTitle: "ลำดับการเรียน",
+      flowLearn: "ความรู้",
+      flowExample: "ตัวอย่าง",
+      flowCheck: "Quiz",
+      flowEvidence: "หลักฐาน",
       learnFirstTitle: "เรียนก่อน แล้วค่อยทำ",
       startPractice: "อ่านจบแล้ว เริ่มฝึก →",
       lessonCheckTitle: "ทำแบบตรวจบทเรียน",
+      evidenceStepTitle: "กติกาการบันทึก Evidence",
+      evidenceStepBody:
+        "ทำคำถามแบบเลือกตอบ 3–5 ข้อก่อน เมื่อผ่าน ระบบจะบันทึกผลนี้เป็นหลักฐานการเรียน; ถ้ายังไม่ผ่าน จะอยู่ในสถานะต้องแก้ไข",
       mustLeaveOutput: "ต้องมีผลงาน",
       practiceLocked: "ทำการ์ดเรียนด้านบนให้จบก่อน แล้วค่อยเริ่มตอบ",
       historyReadOnly:

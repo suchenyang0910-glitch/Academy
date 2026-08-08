@@ -636,6 +636,275 @@ AI 不会自动知道你的背景、受众、格式要求和限制条件。你�
   },
 };
 
+const AI_BEGINNER_REFINEMENTS: Partial<Record<number, Partial<AiLevel>>> = {
+  1: {
+    title: "认识 AI：先别急着写 Prompt",
+    core: "AI 是帮你生成草稿和方案的工具，不是替你承担判断和责任的人。",
+    teaching: `知识讲解：
+今天先不要学复杂 Prompt。很多新手一上来就问“怎么写提示词”，但真正卡住的不是提示词，而是还没分清 AI 到底能做什么、不能做什么。
+
+你可以把 AI 想成一个速度很快、知识面很广、但不会替你承担后果的实习生。它擅长把你给的材料整理成更清晰的文字，也擅长给出多个方案、提炼要点、改写语气、生成代码草稿。它不擅长替你决定方向，也不能自动保证事实一定正确。
+
+这里有三个基本概念：
+1. AI 会生成内容，但生成不等于事实正确。
+2. AI 可以提高产出速度，但最终判断仍然属于人。
+3. 越重要、越高风险的结果，越需要人去验证。
+
+示例：
+你让 AI 帮你整理今天的产品需求，这是适合的。因为它可以帮你把零散记录变成列表、优先级和待确认问题。
+
+但如果 AI 说“这个功能一定会让用户付费”，这就不能直接相信。付费意愿需要访谈、测试和真实付款来验证。
+
+所以今天只记住一句话：AI 可以协助你工作，但不能替你负责结果。`,
+    objective:
+      "能用自己的话解释 AI 能协助什么、不能替人决定什么，并说出一个结果验证动作。",
+    practice:
+      "选择今天一个真实工作场景，先判断：AI 可以协助哪一部分？人必须负责哪一部分？最后用什么动作验证结果？",
+    criteria: ["AI 协助", "人负责", "事实验证", "结果责任"],
+    assessment: {
+      type: "multiple_choice",
+      question: "今天这节课最核心的 AI 使用原则是什么？",
+      options: [
+        { id: "a", label: "AI 输出很流畅，所以可以直接当事实使用。" },
+        { id: "b", label: "AI 可以协助产出，但方向、判断和验证仍由人负责。" },
+        { id: "c", label: "只要 Prompt 写得够长，AI 就不会犯错。" },
+      ],
+      correctOptionId: "b",
+      explanation:
+        "正确。AI 能提高效率，但不能替你承担方向判断、事实验证和结果责任。",
+    },
+  },
+  2: {
+    title: "AI 产品地图：模型、应用、输入、上下文、输出",
+    core: "先分清模型、应用、输入、上下文和输出，后面才不会被产品界面绕晕。",
+    teaching: `知识讲解：
+很多人说“我在用 AI”，但其实里面有好几层东西。分不清这些层，就很容易误会 AI 的能力。
+
+第一层是模型。模型是负责生成文字、代码、图片或分析结果的能力本体，例如某个 DeepSeek、OpenAI 或 Claude 模型。
+
+第二层是应用。应用是你真正打开使用的产品界面，例如 ChatGPT 网页、Telegram Bot、Cursor、Notion AI。应用会把你的输入交给模型，也可能额外提供文件上传、联网、语音、记忆等功能。
+
+第三层是输入。输入就是你发给 AI 的内容，包括问题、材料、要求、文件、截图。
+
+第四层是上下文。上下文是模型这次回答时能看到的信息，包括当前对话、你上传的文件、系统规则、历史记忆等。AI 看不到的内容，通常就不能直接使用。
+
+第五层是输出。输出是 AI 最后给你的结果。输出可能有用，也可能有错，需要根据场景验证。
+
+示例：
+你在 Telegram Mini App 里问：“帮我总结今天课程。”这里 Mini App 是应用；背后的 DeepSeek 是模型；你的问题是输入；课程正文和历史记录是上下文；最后生成的总结是输出。
+
+如果你没有把课程正文给它，它却总结得很像真的，这就要小心：它可能是在猜。`,
+    objective:
+      "能区分 AI 模型、应用、输入、上下文和输出，并判断一个 AI 产品正在使用哪几层能力。",
+    practice:
+      "打开一个你常用的 AI 产品，把一次真实对话拆成：应用、模型、输入、上下文、输出。",
+    criteria: ["模型", "应用", "输入", "上下文", "输出"],
+    assessment: {
+      type: "multiple_choice",
+      question: "你打开 ChatGPT 网页并输入问题，其中“网页聊天界面”最准确属于什么？",
+      options: [
+        { id: "a", label: "应用，它负责提供交互界面并调用背后的模型。" },
+        { id: "b", label: "上下文，因为它能显示历史聊天。" },
+        { id: "c", label: "输出，因为它看起来像答案。" },
+      ],
+      correctOptionId: "a",
+      explanation:
+        "正确。网页聊天界面是应用；模型是背后生成内容的能力。",
+    },
+  },
+  3: {
+    title: "上下文：AI 不是读心术",
+    core: "AI 只能基于它当前能看到的信息回答；你没给的背景，它通常只能猜。",
+    teaching: `知识讲解：
+新手最常见的误会是：以为 AI 应该知道自己脑子里的背景。其实 AI 不是读心术。它只能根据当前上下文回答。
+
+上下文包括：你刚刚说过的话、你上传的文件、系统给它的规则、应用允许它读取的历史信息。上下文之外的信息，它通常不知道。
+
+所以当你问“帮我优化这个方案”，但没有告诉它目标用户、预算、时间、约束和成功标准，它只能按通用经验回答。回答看起来可能很完整，但未必适合你的真实场景。
+
+示例：
+模糊输入：帮我写一个学习计划。
+
+更好的输入：我是 30–45 岁在海外工作的中国用户，英语几乎不能交流，每天只能学 20 分钟，目标是在 60 天后完成 10 分钟日常对话。请给我 Day 1 的学习内容。
+
+第二个输入更好，不是因为更长，而是因为它补充了关键上下文：用户是谁、当前水平、时间限制、目标结果。
+
+今天要学会的是：当 AI 答得不准时，不要马上怪模型笨，先检查自己有没有给足上下文。`,
+    objective:
+      "能判断一次 AI 回答缺少哪些上下文，并补充目标、对象、限制和成功标准。",
+    practice:
+      "找一个你问过 AI 但结果不满意的问题，补充目标、背景、限制和成功标准后再问一次。",
+    criteria: ["上下文", "目标", "限制", "成功标准"],
+    assessment: {
+      type: "multiple_choice",
+      question: "AI 回答很泛泛时，最应该先检查什么？",
+      options: [
+        { id: "a", label: "是否给了足够的目标、背景、限制和成功标准。" },
+        { id: "b", label: "是否用了足够夸张的专家角色。" },
+        { id: "c", label: "是否让 AI 一次输出更多字。" },
+      ],
+      correctOptionId: "a",
+      explanation:
+        "正确。很多泛泛的回答来自上下文不足，而不是模型完全不能做。",
+    },
+  },
+  4: {
+    title: "幻觉：看起来像答案，不等于是真的",
+    core: "AI 可能在不确定时继续生成看似合理的内容，所以事实、时间和高风险结论必须验证。",
+    teaching: `知识讲解：
+幻觉不是说 AI 像人一样产生错觉，而是指它生成了看起来合理、语气自信、格式完整，但实际上不可靠甚至错误的内容。
+
+为什么会这样？因为模型的目标是根据上下文生成最可能的下一个内容，而不是天然完成事实核查。它可能把相似概念混在一起，也可能补出不存在的细节。
+
+遇到下面三类问题，尤其不能直接信：
+1. 最新信息：价格、政策、版本、新闻、法规。
+2. 高风险决策：付款、法律、健康、安全、客户承诺。
+3. 需要精确来源的问题：数据、引用、合同条款、技术参数。
+
+示例：
+AI 告诉你“某个平台 2026 年的 API 价格是 X”。这类信息可能已经变化，必须去官方文档或真实账单验证。
+
+但 AI 帮你把一段会议记录改写成更清楚的摘要，风险就低很多。你只需要对照原文检查有没有遗漏和误解。
+
+今天的重点不是让 AI 永远不出错，而是你知道什么时候必须验证。`,
+    objective:
+      "能识别 AI 输出中需要验证的部分，并为一个高风险或事实性结论设计最小验证动作。",
+    practice:
+      "选一个事实类问题，让 AI 回答后标出其中两条需要核实的主张，并写下你会去哪里验证。",
+    criteria: ["幻觉", "事实问题", "高风险", "验证来源"],
+    assessment: {
+      type: "multiple_choice",
+      question: "AI 给出一个会影响付款决策的法规解释时，最合适的下一步是什么？",
+      options: [
+        { id: "a", label: "让 AI 再回答一遍，如果两次一致就相信。" },
+        { id: "b", label: "回到官方法规、专业人士或原始文件处核实。" },
+        { id: "c", label: "先执行，出了问题再修正。" },
+      ],
+      correctOptionId: "b",
+      explanation:
+        "正确。高风险事实不能只靠 AI 二次确认，必须回到原始来源或专业验证。",
+    },
+  },
+  5: {
+    title: "Prompt 基础：把任务说明白",
+    core: "好的 Prompt 不是咒语，而是一份清楚的工作说明。",
+    teaching: `知识讲解：
+现在才正式进入 Prompt。不要把 Prompt 想成玄学，它本质上就是你给 AI 的工作说明。
+
+一条基础 Prompt 至少包含四件事：
+1. 目标：你要它完成什么？
+2. 材料：它基于什么信息工作？
+3. 格式：结果应该长什么样？
+4. 限制：哪些事情不能做，或必须注意什么？
+
+示例：
+差的 Prompt：帮我写一个文案。
+
+好的 Prompt：请基于下面这段产品说明，写一条发给 Telegram 用户的提醒文案。目标是让用户回到 Academy 完成今天课程。语气要有灰色幽默，不要超过 80 字，不要承诺学习效果。
+
+你会发现，好的 Prompt 不一定很长，但边界更清楚。AI 不需要猜你的目标、对象、语气和限制。
+
+今天先不要追求复杂技巧。只要能把一件事说明白，AI 输出质量就会明显稳定。`,
+    objective:
+      "能写出包含目标、材料、格式和限制的基础 Prompt，用于一个低风险真实任务。",
+    practice:
+      "选一个低风险任务，例如改写消息、整理笔记、总结需求，写一条包含目标、材料、格式和限制的 Prompt。",
+    criteria: ["目标", "材料", "格式", "限制"],
+    assessment: {
+      type: "multiple_choice",
+      question: "一条基础 Prompt 最不应该缺少哪组信息？",
+      options: [
+        { id: "a", label: "目标、材料、格式和限制。" },
+        { id: "b", label: "夸张身份，例如“宇宙最强专家”。" },
+        { id: "c", label: "越多无关背景越好。" },
+      ],
+      correctOptionId: "a",
+      explanation:
+        "正确。基础 Prompt 的核心是清楚交代任务，而不是堆砌漂亮词。",
+    },
+  },
+  6: {
+    title: "示例、角色和拆步骤：只加一个变量",
+    core: "示例、角色和拆步骤能减少 AI 猜测，但一次只加一个变量，才知道什么真的有效。",
+    teaching: `知识讲解：
+当基础 Prompt 仍然不够稳定时，可以加三个工具：示例、角色、拆步骤。
+
+示例的作用是告诉 AI：什么样的答案算好。比如你给一条优秀提醒文案，它就更容易模仿风格和长度。
+
+角色的作用是指定判断视角。比如“从产品经理视角指出风险”，比“你是世界顶级专家”更有用，因为前者改变了判断框架，后者只是装饰。
+
+拆步骤的作用是把复杂任务拆成可检查的小步骤。比如调研任务可以拆成：收集信息 → 分类 → 找异常 → 输出结论。
+
+示例：
+不要这样：你是顶级专家，请帮我做一个完美商业分析。
+
+可以这样：先从用户痛点、现有替代方案、付费意愿三个角度分析这个机会。每一项只输出 3 条，并标注哪些是假设。
+
+今天最重要的原则：一次只加一个变量。只加示例，或只加角色，或只拆步骤。这样你才知道结果为什么变好。`,
+    objective:
+      "能在基础 Prompt 上只增加一种改进工具，并对比它是否改善了输出。",
+    practice:
+      "沿用昨天的 Prompt，只增加一个变量：示例、角色或拆步骤。比较前后输出差异。",
+    criteria: ["示例", "角色", "拆步骤", "单变量对比"],
+    assessment: {
+      type: "multiple_choice",
+      question: "要判断“示例”是否改善了输出，最好的方法是什么？",
+      options: [
+        { id: "a", label: "保持任务不变，只增加一个示例，再比较前后结果。" },
+        { id: "b", label: "同时换模型、换任务、换格式，这样更全面。" },
+        { id: "c", label: "不比较，直接相信有示例一定更好。" },
+      ],
+      correctOptionId: "a",
+      explanation:
+        "正确。一次只改变一个关键变量，才知道哪种方法真的有效。",
+    },
+  },
+  7: {
+    title: "Workflow：把多步任务拆成流程",
+    core: "复杂任务不要只问一句话，要拆成输入、处理、检查和输出。",
+    teaching: `知识讲解：
+很多人一听 Agent，就以为马上要写代码、接工具、搭复杂系统。其实在那之前，先要理解 Workflow。
+
+Workflow 就是把一个多步任务拆成稳定流程。它不是为了炫技，而是为了让每一步更容易检查。
+
+一个最简单的 Workflow 可以拆成四段：
+1. 输入：需要哪些材料？
+2. 处理：AI 要做哪些中间动作？
+3. 检查：如何判断结果有没有问题？
+4. 输出：最后交付什么格式？
+
+示例：
+任务：用 AI 整理用户反馈。
+
+不要只说：帮我分析这些反馈。
+
+可以拆成：
+输入：20 条用户反馈。
+处理：先按问题类型分类，再找高频问题。
+检查：标出不确定分类，不能编造用户没说过的话。
+输出：表格，包含问题类型、代表原话、建议动作。
+
+这就是 Agent 的前置能力。你还没开始搭 Agent，但已经开始用流程思维指挥 AI。`,
+    objective:
+      "能把一个真实多步任务拆成输入、处理、检查和输出四个环节。",
+    practice:
+      "选一个你做过的真实任务，例如调研、需求整理、写周报，把它拆成输入、处理、检查和输出。",
+    criteria: ["Workflow", "输入", "处理", "检查", "输出"],
+    assessment: {
+      type: "multiple_choice",
+      question: "为什么复杂任务要拆成 Workflow？",
+      options: [
+        { id: "a", label: "为了让每一步更容易检查，知道问题卡在哪里。" },
+        { id: "b", label: "为了让 Prompt 看起来更长、更专业。" },
+        { id: "c", label: "为了让 AI 自动承担最终责任。" },
+      ],
+      correctOptionId: "a",
+      explanation:
+        "正确。Workflow 的价值是可检查、可定位问题、可稳定复用。",
+    },
+  },
+};
+
 const ROUND_META = [
   {
     name: "理解与模仿",
@@ -711,6 +980,7 @@ export function buildAiLesson(day: number): FixedLesson {
     const definition = {
       ...baseDefinition,
       ...(AI_LEVEL_REFINEMENTS[level] ?? {}),
+      ...(AI_BEGINNER_REFINEMENTS[level] ?? {}),
     };
     const roundMeta = ROUND_META[round - 1];
 
@@ -792,7 +1062,12 @@ function buildAiLessonAligned(day: number): FixedLesson {
   if (day <= 56) {
     const level = ((day - 1) % 14) + 1;
     const round = Math.floor((day - 1) / 14) + 1;
-    const definition = AI_LEVELS[level - 1];
+    const baseDefinition = AI_LEVELS[level - 1];
+    const definition = {
+      ...baseDefinition,
+      ...(AI_LEVEL_REFINEMENTS[level] ?? {}),
+      ...(AI_BEGINNER_REFINEMENTS[level] ?? {}),
+    };
     const roundMeta = ROUND_META[round - 1];
 
     return {
@@ -876,6 +1151,110 @@ function buildSpiralKnowledgeCheck(definition: SpiralLevel): MultipleChoiceAsses
         explanation: `本课检查会围绕这些关键点：${definition.criteria.join("、")}。`,
       },
     ],
+  };
+}
+
+function buildLessonEvidenceCheck(lesson: FixedLesson): MultipleChoiceAssessment {
+  const primaryCriterion = lesson.criteria[0] ?? "核心概念";
+  const secondaryCriterion = lesson.criteria[1] ?? "真实证据";
+  const evidenceCriterion = lesson.criteria[2] ?? "可复查结果";
+  return {
+    type: "multiple_choice",
+    questions: [
+      {
+        question: "根据本课，开始提交 Evidence 前最应该先确认什么？",
+        options: [
+          {
+            id: "a",
+            label: `已经理解本课目标：${lesson.objective}`,
+          },
+          {
+            id: "b",
+            label: "先提交一段很长的感想，后面再看课程正文。",
+          },
+          {
+            id: "c",
+            label: "只要点了按钮，就可以算完成学习。",
+          },
+        ],
+        correctOptionId: "a",
+        explanation: "Academy 的顺序是先理解目标和正文，再提交可复查的 Evidence。",
+      },
+      {
+        question: "本课 Evidence 最应该覆盖哪一组关键点？",
+        options: [
+          {
+            id: "a",
+            label: `${primaryCriterion} / ${secondaryCriterion} / ${evidenceCriterion}`,
+          },
+          {
+            id: "b",
+            label: "只写今天心情不错，不说明任何具体动作。",
+          },
+          {
+            id: "c",
+            label: "复制 AI 的输出，不判断是否真实可用。",
+          },
+        ],
+        correctOptionId: "a",
+        explanation: `本课检查重点来自课程 criteria：${lesson.criteria.join("、")}。`,
+      },
+      {
+        question: "如果本课检查题答错，最合理的处理方式是什么？",
+        options: [
+          {
+            id: "a",
+            label: "回到上方知识讲解和示例，找到对应知识点后再提交。",
+          },
+          {
+            id: "b",
+            label: "连续乱选，直到系统通过。",
+          },
+          {
+            id: "c",
+            label: "跳过本课，因为错题不影响真实能力。",
+          },
+        ],
+        correctOptionId: "a",
+        explanation: "错题代表知识点没有抓住，应先回看正文，再重新提交 Evidence。",
+      },
+    ],
+  };
+}
+
+function ensureStructuredLessonFlow(lesson: FixedLesson): FixedLesson {
+  const hasAssessment = Boolean(lesson.assessment?.questions.length);
+  const questionCount = lesson.assessment?.questions.length ?? 0;
+  const assessment =
+    hasAssessment && questionCount >= 3
+      ? lesson.assessment
+      : buildLessonEvidenceCheck(lesson);
+  const contentHasExplicitFlow =
+    lesson.content.includes("先学") ||
+    lesson.content.includes("示例") ||
+    lesson.content.includes("Example") ||
+    lesson.content.includes("Evidence");
+  const content = contentHasExplicitFlow
+    ? lesson.content
+    : [
+        "知识讲解：",
+        lesson.content,
+        "",
+        "示例：先看一个可模仿的最小样子，再做自己的版本。不要一上来就写作业。",
+        "",
+        "课后检查：下面会有 3 道选择题，只检查本课正文讲过的关键知识点；答对至少 2 题即可通过。",
+      ].join("\n");
+  const practicePrompt = [
+    lesson.practicePrompt,
+    "",
+    "Evidence：提交前先完成选择题检查。通过后，这次记录才会作为本课学习证据保存。",
+  ].join("\n");
+
+  return {
+    ...lesson,
+    content,
+    practicePrompt,
+    assessment,
   };
 }
 
@@ -1387,4 +1766,4 @@ export const FIXED_LESSONS = [
   ...BUSINESS_LESSONS,
   ...FOUNDER_NOTE_LESSONS,
   ...QUIZ_LESSONS,
-];
+].map(ensureStructuredLessonFlow);

@@ -8538,7 +8538,7 @@ export async function deliverDueReminders(
     .prepare(
       `SELECT id
        FROM users
-       WHERE reminder_enabled = 1
+       WHERE reminder_enabled = TRUE
        ORDER BY created_at ASC
        LIMIT ?`,
     )

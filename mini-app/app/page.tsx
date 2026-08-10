@@ -77,6 +77,7 @@ type Enrollment = {
   courseId: string;
   currentDay: number;
   active: number;
+  sortOrder: number;
   title: string;
   slug: string;
   accent: string;
@@ -1174,7 +1175,10 @@ function TodayView({
   onMilestoneSaved: (data: Bootstrap) => void;
 }) {
   const minutes = data.enrollments.reduce(
-    (sum, item) => sum + item.dailyMinutes,
+    (sum, item) =>
+      data.today.some((todayItem) => todayItem.enrollment.id === item.id)
+        ? sum + item.dailyMinutes
+        : sum,
     0,
   );
   const completedCourseIds = new Set(
@@ -1182,8 +1186,14 @@ function TodayView({
       .filter((item) => hasAcceptedMainlineEvidence(item))
       .map((item) => item.enrollment.courseId),
   );
+  const todayCourseIds = new Set(data.today.map((item) => item.enrollment.courseId));
+  const mainlineComplete =
+    data.today.length > 0 &&
+    data.today.every((item) => hasAcceptedMainlineEvidence(item));
   const learningAhead = data.learningAhead.filter((item) =>
-    completedCourseIds.has(item.enrollment.courseId),
+    todayCourseIds.has(item.enrollment.courseId)
+      ? completedCourseIds.has(item.enrollment.courseId)
+      : mainlineComplete,
   );
   const completedTodayCount = completedCourseIds.size;
   const courseCopy = courseRuntimeCopy(locale);
@@ -2054,12 +2064,17 @@ function CoursePicker({
       if (current.includes(courseId)) {
         return current.filter((id) => id !== courseId);
       }
-      if (current.length >= 3) {
-        setError(courseCopy.maxThreeCourses);
-        return current;
-      }
       return [...current, courseId];
     });
+  }
+
+  function setPrimary(courseId: string) {
+    setError("");
+    setSelectedIds((current) =>
+      current.includes(courseId)
+        ? [courseId, ...current.filter((id) => id !== courseId)]
+        : [courseId, ...current],
+    );
   }
 
   async function save() {
@@ -2105,23 +2120,45 @@ function CoursePicker({
       <div className="course-picker-list">
         {catalog.map((course) => {
           const checked = selectedIds.includes(course.id);
+          const isPrimary = selectedIds[0] === course.id;
           return (
-            <button
+            <article
               className={`course-choice ${checked ? "selected" : ""}`}
-              type="button"
               key={course.id}
-              onClick={() => toggle(course.id)}
               style={{ "--course-accent": course.accent } as React.CSSProperties}
-              aria-pressed={checked}
             >
-              <span className="choice-check">{checked ? "✓" : ""}</span>
+              <button
+                className="choice-toggle"
+                type="button"
+                onClick={() => toggle(course.id)}
+                aria-pressed={checked}
+              >
+                <span className="choice-check">{checked ? "✓" : ""}</span>
+              </button>
               <span className="choice-copy">
                 <small>{course.subtitle}</small>
                 <strong>{course.title}</strong>
                 <span>{course.summary}</span>
               </span>
-              <span className="choice-time">{course.dailyMinutes} min</span>
-            </button>
+              <span className="choice-meta">
+                <span className="choice-time">{course.dailyMinutes} min</span>
+                {checked ? (
+                  isPrimary ? (
+                    <em>{courseCopy.primaryCourseLabel}</em>
+                  ) : (
+                    <button
+                      type="button"
+                      className="choice-primary-button"
+                      onClick={() => setPrimary(course.id)}
+                    >
+                      {courseCopy.setPrimaryCourse}
+                    </button>
+                  )
+                ) : (
+                  <em>{courseCopy.electiveCourseLabel}</em>
+                )}
+              </span>
+            </article>
           );
         })}
       </div>

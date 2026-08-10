@@ -1720,7 +1720,7 @@ blockquote {
   --course-accent: var(--terracotta);
   min-height: 104px;
   display: grid;
-  grid-template-columns: 28px minmax(0, 1fr) auto;
+  grid-template-columns: 28px minmax(0, 1fr) minmax(62px, auto);
   gap: 12px;
   align-items: start;
   padding: 15px 14px;
@@ -1728,7 +1728,6 @@ blockquote {
   border-left: 4px solid var(--course-accent);
   background: rgba(251, 248, 241, 0.55);
   text-align: left;
-  cursor: pointer;
 }
 
 .course-choice.selected {
@@ -1749,6 +1748,14 @@ blockquote {
 .course-choice.selected .choice-check {
   border-color: var(--course-accent);
   background: var(--course-accent);
+}
+
+.choice-toggle {
+  appearance: none;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
 }
 
 .choice-copy {
@@ -1777,6 +1784,32 @@ blockquote {
   color: var(--muted);
   font: 500 9px/1 Georgia, serif;
   white-space: nowrap;
+}
+
+.choice-meta {
+  display: grid;
+  gap: 8px;
+  justify-items: end;
+  min-width: 62px;
+}
+
+.choice-meta em,
+.choice-primary-button {
+  border: 1px solid color-mix(in srgb, var(--course-accent) 42%, transparent);
+  background: color-mix(in srgb, var(--course-accent) 8%, transparent);
+  color: var(--course-accent);
+  padding: 5px 7px;
+  font: 500 9px/1.2 "Noto Sans SC", sans-serif;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.choice-meta em {
+  font-style: normal;
+}
+
+.choice-primary-button {
+  cursor: pointer;
 }
 
 .picker-footer {

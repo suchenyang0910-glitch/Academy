@@ -1105,12 +1105,14 @@ export async function getBootstrap(identity: AcademyIdentity) {
       d1
         .prepare(
           `SELECT e.id, e.course_id AS courseId, e.current_day AS currentDay,
-                  e.active, e.started_on AS startedOn, c.title, c.slug, c.accent,
+                  e.active, e.started_on AS startedOn,
+                  COALESCE(e.sort_order, 0) AS sortOrder,
+                  c.title, c.slug, c.accent,
                   c.daily_minutes AS dailyMinutes
            FROM enrollments e
            JOIN courses c ON c.id = e.course_id
            WHERE e.user_id = ? AND e.active = 1
-           ORDER BY e.enrolled_at`,
+           ORDER BY COALESCE(e.sort_order, 0), e.enrolled_at, e.id`,
         )
         .bind(identity.id)
         .all(),
@@ -1165,6 +1167,7 @@ export async function getBootstrap(identity: AcademyIdentity) {
     currentDay: number;
     active: number;
     startedOn: string;
+    sortOrder: number;
     title: string;
     slug: string;
     accent: string;
@@ -1216,8 +1219,9 @@ export async function getBootstrap(identity: AcademyIdentity) {
     ]),
   );
 
+  const primaryEnrollments = enrollments.slice(0, 1);
   const today = await Promise.all(
-    enrollments.map(async (enrollment) => {
+    primaryEnrollments.map(async (enrollment) => {
       const lesson = await d1
         .prepare(
           `SELECT id, course_id AS courseId, day, level, round, title, objective,
@@ -1245,6 +1249,23 @@ export async function getBootstrap(identity: AcademyIdentity) {
     }),
   );
 
+  const lagDays = enrollments.reduce((maximum, enrollment) => {
+    const calendarDay = Math.min(
+      60,
+      dateDistance(enrollment.startedOn, todayKey) + 1,
+    );
+    return Math.max(maximum, Math.max(0, calendarDay - enrollment.currentDay));
+  }, 0);
+
+  const requiredMainlineCompleted =
+    today.length > 0 &&
+    today.every(
+      (item) =>
+        item.submission?.status === "completed" &&
+        item.submission.evidenceStatus === "accepted" &&
+        item.submission.completionSource !== "extra",
+    );
+
   const canStudyAheadByEnrollment = new Map(
     today.map((item) => {
       const calendarDay = Math.min(
@@ -1265,9 +1286,38 @@ export async function getBootstrap(identity: AcademyIdentity) {
   // has fallen behind.
   const learningAhead = (
     await Promise.all(
-      enrollments.map(async (enrollment) => {
-        if (!canStudyAheadByEnrollment.get(enrollment.id)) {
+      enrollments.map(async (enrollment, index) => {
+        const isPrimary = index === 0;
+        if (isPrimary && !canStudyAheadByEnrollment.get(enrollment.id)) {
           return [];
+        }
+        if (!isPrimary && (!requiredMainlineCompleted || lagDays > 0)) {
+          return [];
+        }
+        if (!isPrimary) {
+          const lesson = await d1
+            .prepare(
+              `SELECT id, course_id AS courseId, day, level, round, title, objective,
+                      content, practice_prompt AS practicePrompt,
+                      criteria_json AS criteriaJson, estimated_minutes AS estimatedMinutes
+               FROM lessons
+               WHERE course_id = ? AND day = ?
+               LIMIT 1`,
+            )
+            .bind(enrollment.courseId, enrollment.currentDay)
+            .first();
+          if (!lesson) return [];
+          const localized = await localizedLesson(lesson, uiLocale);
+          return [{
+            enrollment,
+            lesson: {
+              ...localized,
+              ...lessonMetadataFromJson(localized.criteriaJson),
+              criteriaJson: undefined,
+            },
+            submission: submittedByLesson.get(String(lesson.id)) ?? null,
+            isExtra: true,
+          }];
         }
         const result = await d1
           .prepare(
@@ -1311,13 +1361,6 @@ export async function getBootstrap(identity: AcademyIdentity) {
         item.submission.evidenceStatus === "accepted" &&
         item.submission.completionSource !== "extra",
     );
-  const lagDays = enrollments.reduce((maximum, enrollment) => {
-    const calendarDay = Math.min(
-      60,
-      dateDistance(enrollment.startedOn, todayKey) + 1,
-    );
-    return Math.max(maximum, Math.max(0, calendarDay - enrollment.currentDay));
-  }, 0);
 
   const referral = await getReferralSummary(identity.id, user?.referralCode);
   const access = await getLearningAccess(identity.id);
@@ -5489,8 +5532,8 @@ export async function updateEnrollments(
   courseIds: string[],
 ) {
   await assertLearningAccess(identity);
-  if (courseIds.length < 1 || courseIds.length > 3) {
-    throw new Response("请选择 1–3 门课程", { status: 400 });
+  if (courseIds.length < 1) {
+    throw new Response("请选择至少 1 门主课程", { status: 400 });
   }
 
   const uniqueCourseIds = [...new Set(courseIds)];
@@ -5522,17 +5565,18 @@ export async function updateEnrollments(
          WHERE user_id = ?`,
       )
       .bind(identity.id),
-    ...uniqueCourseIds.map((courseId) =>
+    ...uniqueCourseIds.map((courseId, index) =>
       d1
         .prepare(
           `INSERT INTO enrollments
-             (user_id, course_id, current_day, active, started_on)
-           VALUES (?, ?, 1, 1, ?)
+             (user_id, course_id, current_day, active, started_on, sort_order)
+           VALUES (?, ?, 1, 1, ?, ?)
            ON CONFLICT(user_id, course_id) DO UPDATE SET
              active = 1,
-             paused_at = NULL`,
+             paused_at = NULL,
+             sort_order = ?`,
         )
-        .bind(identity.id, courseId, startedOn),
+        .bind(identity.id, courseId, startedOn, index, index),
     ),
   ];
   await d1.batch(statements);

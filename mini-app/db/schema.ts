@@ -70,12 +70,18 @@ export const enrollments = sqliteTable(
     currentDay: integer("current_day").notNull().default(1),
     active: integer("active", { mode: "boolean" }).notNull().default(true),
     startedOn: text("started_on").notNull().default(sql`CURRENT_DATE`),
+    sortOrder: integer("sort_order").notNull().default(0),
     enrolledAt: text("enrolled_at").notNull().default(sql`CURRENT_TIMESTAMP`),
     pausedAt: text("paused_at"),
   },
   (table) => [
     uniqueIndex("enrollments_user_course_unique").on(table.userId, table.courseId),
     index("enrollments_user_active_idx").on(table.userId, table.active),
+    index("enrollments_user_active_sort_idx").on(
+      table.userId,
+      table.active,
+      table.sortOrder,
+    ),
   ],
 );
 

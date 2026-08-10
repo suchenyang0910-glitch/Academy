@@ -191,7 +191,8 @@ const COPY: Record<AppLocale, Copy> = {
       selectCourse: "先选择课程",
       adjustCourses: "调整课程",
       coursePickerTitle: "选择训练方向",
-      coursePickerDescription: "必选 1 门，最多 3 门，可以中途更换。",
+      coursePickerDescription:
+        "先选 1 门主课程作为每日监督线；其他课程可作为选修，不限制数量，可以中途更换。",
       courseCatalogDescription: "每门课程独立计算 Day，换课不会删除过去的证据。",
       changeMyCourses: "调整我的课程",
       notesTitle: "学习笔记",
@@ -292,7 +293,8 @@ const COPY: Record<AppLocale, Copy> = {
       selectCourse: "Chọn khóa học trước",
       adjustCourses: "Điều chỉnh khóa học",
       coursePickerTitle: "Chọn hướng luyện tập",
-      coursePickerDescription: "Chọn ít nhất 1, tối đa 3 khóa; có thể đổi giữa chừng.",
+      coursePickerDescription:
+        "Chọn 1 khóa chính làm lộ trình hằng ngày; các khóa khác là tự chọn, không giới hạn số lượng và có thể đổi sau.",
       courseCatalogDescription: "Mỗi khóa có số ngày riêng; đổi khóa không xóa bằng chứng đã có.",
       changeMyCourses: "Điều chỉnh khóa học của tôi",
       notesTitle: "Ghi chú học tập",
@@ -393,7 +395,8 @@ const COPY: Record<AppLocale, Copy> = {
       selectCourse: "ជ្រើសរើសវគ្គជាមុន",
       adjustCourses: "កែសម្រួលវគ្គ",
       coursePickerTitle: "ជ្រើសទិសដៅហ្វឹកហាត់",
-      coursePickerDescription: "ត្រូវជ្រើស 1 វគ្គ អតិបរមា 3 វគ្គ ហើយអាចប្ដូរបានពេលក្រោយ។",
+      coursePickerDescription:
+        "ជ្រើសវគ្គសំខាន់ 1 សម្រាប់ផ្លូវរៀនប្រចាំថ្ងៃ។ វគ្គផ្សេងទៀតជាជម្រើស មិនកំណត់ចំនួន ហើយអាចប្ដូរបាន។",
       courseCatalogDescription: "វគ្គនីមួយៗមាន Day ដាច់ដោយឡែក; ការប្ដូរវគ្គមិនលុបភស្តុតាងចាស់ទេ។",
       changeMyCourses: "កែសម្រួលវគ្គរបស់ខ្ញុំ",
       notesTitle: "កំណត់ត្រាសិក្សា",
@@ -494,7 +497,8 @@ const COPY: Record<AppLocale, Copy> = {
       selectCourse: "เลือกคอร์สก่อน",
       adjustCourses: "ปรับคอร์ส",
       coursePickerTitle: "เลือกทิศทางการฝึก",
-      coursePickerDescription: "ต้องเลือกอย่างน้อย 1 คอร์ส สูงสุด 3 คอร์ส และเปลี่ยนได้ระหว่างทาง",
+      coursePickerDescription:
+        "เลือกคอร์สหลัก 1 คอร์สเป็นเส้นทางประจำวัน ส่วนคอร์สอื่นเป็นคอร์สเสริม ไม่จำกัดจำนวน และเปลี่ยนได้",
       courseCatalogDescription: "แต่ละคอร์สนับ Day แยกกัน การเปลี่ยนคอร์สไม่ลบหลักฐานที่ผ่านมา",
       changeMyCourses: "ปรับคอร์สของฉัน",
       notesTitle: "บันทึกการเรียน",

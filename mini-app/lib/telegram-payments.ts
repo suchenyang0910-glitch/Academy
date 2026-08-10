@@ -477,7 +477,8 @@ async function buildBotTodaySummary(userId: string) {
        LEFT JOIN submissions s
          ON s.user_id = e.user_id AND s.lesson_id = l.id
        WHERE e.user_id = ? AND e.active = 1
-       ORDER BY e.enrolled_at ASC`,
+       ORDER BY COALESCE(e.sort_order, 0), e.enrolled_at ASC, e.id ASC
+       LIMIT 1`,
     )
     .bind(userId)
     .all<{
@@ -493,7 +494,7 @@ async function buildBotTodaySummary(userId: string) {
   if (rows.results.length === 0) {
     return {
       text:
-        "你还没有激活课程。\n\n打开 Academy 先选 1–3 门课，再回来我就能继续盯你。",
+        "你还没有激活课程。\n\n打开 Academy 先选 1 门主课；其他课程可以作为选修加上，再回来我就能继续盯你。",
       buttonText: "打开 Academy",
     };
   }

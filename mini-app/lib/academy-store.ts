@@ -4752,7 +4752,7 @@ async function getLearningMetrics(userId: string) {
           `SELECT evidence_type AS evidenceType,
                   source_type AS sourceType,
                   source_ref AS sourceRef,
-                  course_id AS courseId,
+                  ei.course_id AS courseId,
                   lesson_id AS lessonId,
                   l.day AS lessonDay,
                   status,

@@ -726,18 +726,18 @@ export default function Home() {
   const progress =
     totalCount === 0 ? 0 : Math.round((completedCount / totalCount) * 100);
 
-  const openReviewItems = data.reviewQueue.filter((item) => item.status === "open");
-  const incompleteTodayLesson = data.today.find(
+  const openReviewItems = (data?.reviewQueue ?? []).filter((item) => item.status === "open");
+  const incompleteTodayLesson = data?.today.find(
     (item) => !hasAcceptedMainlineEvidence(item),
   );
   const todayCopy = todayRuntimeCopy(locale);
   const primaryMission =
-    data.assessmentRecommendations.length > 0
+    (data?.assessmentRecommendations ?? []).length > 0
       ? {
           eyebrow: "TODAY'S MISSION",
           title: todayCopy.missionAssessmentTitle,
           detail:
-            data.assessmentRecommendations[0]?.message ??
+            data?.assessmentRecommendations[0]?.message ??
             todayCopy.missionAssessmentDetail,
           evidence: todayCopy.missionAssessmentEvidence,
         }

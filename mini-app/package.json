@@ -28,6 +28,7 @@
     "db:verify": "node scripts/verify-local.mjs",
     "db:import:sqlite": "node scripts/import-sqlite-to-postgres.mjs",
     "content:crawl:ai": "node scripts/crawl-ai-sources.mjs",
+    "content:obsidian:sync": "node scripts/sync-obsidian-knowledge.mjs",
     "templates:check": "node scripts/check-template-design-guide.mjs",
     "content:quality:check": "node scripts/check-curriculum-quality.mjs",
     "content:i18n:template": "node scripts/generate-localization-template.mjs",

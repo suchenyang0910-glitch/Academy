@@ -8,6 +8,25 @@
 - GitHub repositories must stay in `pending_review` until a human reviews relevance, license, maintenance status, difficulty, and fit with Academy's Evidence-first model.
 - A source may support lesson rewrites, examples, quizzes, or recovery missions, but it must not change the MVP path, graduation criteria, or user progress by itself.
 - Sources that are too broad or academic should be used as background references, not copied into 15–20 minute daily lessons.
+- Local/private sources such as Obsidian vaults are personal learning memory. They may simplify review, recap, recovery notes, and future lesson drafting, but must remain private and pending review until explicitly promoted.
+
+## Local private sources
+
+| ID | Source | Path | Type | Priority | Academy role | Decision |
+|---|---|---|---|---|---|---|
+| `obsidian-codex-memory` | Codex Memory Obsidian Vault | `E:\Obsidian\Codex-Memory\` | Obsidian Markdown vault | P1 | Personal learning memory, founder notes, reusable explanations, course-drafting reference | Import Markdown metadata into Knowledge Hub as `pending_review`; do not auto-generate lessons, alter Quiz standards, or calculate progress from notes alone. |
+
+Sync command:
+
+```bash
+npm run content:obsidian:sync -- --vault "E:\Obsidian\Codex-Memory"
+```
+
+Dry-run command:
+
+```bash
+npm run content:obsidian:sync -- --vault "E:\Obsidian\Codex-Memory" --dry-run
+```
 
 ## Candidate sources
 

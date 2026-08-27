@@ -2800,7 +2800,7 @@ function parseJsonObject(value: string | null | undefined): Record<string, unkno
 
 function normalizeKnowledgeSourceType(value: string | null | undefined) {
   const type = String(value ?? "").trim().toLowerCase();
-  return new Set(["github", "pdf", "docs", "video", "blog", "manual"]).has(type)
+  return new Set(["github", "pdf", "docs", "video", "blog", "manual", "obsidian"]).has(type)
     ? type
     : "manual";
 }

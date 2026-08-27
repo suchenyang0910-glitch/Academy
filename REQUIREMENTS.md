@@ -1138,6 +1138,7 @@ FWPR 是“Build While You Learn”在首个模板中的北极星指标；它不
 - `order_pricing_snapshots`：订单原价、主优惠类型、优惠金额、积分抵扣、最终应付金额、币种、汇率锚定版本与结算版本；
 - `feedback`：Bug、需求、内容错误和处理状态。
 - `knowledge_sources`：来源 URL、类型、抓取时间、内容摘要、许可信息、审核状态和课程引用；
+- `knowledge_sources` 支持本地 Obsidian Markdown vault 作为私人学习记忆源；导入内容默认 `pending_review`，仅保存标题、标签、摘要、路径、checksum、更新时间等索引元数据，不自动进入课程、不自动推荐、不自动计入学习进度；
 - `classroom_sessions`：外部互动课堂提供方、课程版本、会话引用、启动/完成事件和成本；
 - `lab_projects`：项目模板、代码或工作流版本、运行地址、测试结果、人工审核和毕业证据；
 - `goals`：用户目标、目标模板、状态、预计周期、完成定义与当前里程碑；

@@ -1,6 +1,6 @@
 # Academy 英语对话接入
 
-日期：2026-09-08。范围：在现有 English 课程内练习，与课程检查题并存。当前交付为本地代码与隔离环境验证，尚未更新线上 VPS。
+日期：2026-09-14。范围：在现有 English 课程内练习，与课程检查题并存。当前交付为本地代码与隔离环境验证，尚未更新线上 VPS。
 
 ## 使用流程
 
@@ -20,6 +20,8 @@
 
 识别依赖浏览器支持、麦克风权限、网络及安全上下文，不能承诺所有 Telegram WebView 都可用。可能由浏览器的在线服务处理音频；页面在使用前说明。Academy 不上传、保存原始音频。不支持或拒绝权限时继续使用文字输入。退出面板时停止识别、朗读与客户端请求。
 
+完成 AI 对话后，反馈中的“再练一次”句子提供一个跟读校对面板：朗读示范 → 浏览器识别用户的跟读 → 对照目标句显示已识别词、缺失词和目标词覆盖率。该覆盖率只说明转写与目标文本的相符程度，不能表示元音、辅音、重音、节奏或真实可懂度；不保存录音、转写或覆盖率，不计入课程成绩、能力证据或发音分数。
+
 后续如果需要覆盖更多 Telegram 设备，应接入独立 STT 服务并重新明确音频处理、保留和成本策略；当前未实现实时双向通话或可打断的流式 AI 音频。
 
 参考：[MDN SpeechRecognition](https://developer.mozilla.org/en-US/docs/Web/API/SpeechRecognition)、[MDN getUserMedia](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia)。
@@ -27,6 +29,8 @@
 ## 实现与接口
 
 - `app/english-conversation-panel.tsx`：课程内交互、识别、播放、反馈、重练。
+- `app/english-pronunciation-practice.tsx`：反馈句的本地跟读校对，不建立新 API 或数据库事实源。
+- `lib/pronunciation-alignment.ts`：可测试的转写词序对齐；设计上不输出声学或发音分数。
 - `lib/english-conversation.ts`：共享类型、输入和模型输出校验。
 - `lib/english-conversation-store.ts`：权限、课程归属、持久化、预算、锁、幂等。
 - `lib/english-conversation-ai.ts`：DeepSeek → Ollama，单个供应商超时 20 秒。

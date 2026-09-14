@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { ENGLISH_LEVELS, ENGLISH_SCENARIOS, MAX_ENGLISH_TURNS, MIN_ENGLISH_TURNS, type EnglishAction, type EnglishLevel, type EnglishScenario, type EnglishSession } from "../lib/english-conversation";
 import { englishConversationCopy } from "../lib/english-conversation-copy";
 import type { AppLocale } from "../lib/i18n";
+import { EnglishPronunciationPractice } from "./english-pronunciation-practice";
 
 type Recognition = {
   lang: string; continuous: boolean; interimResults: boolean;
@@ -163,6 +164,7 @@ function Conversation({ lessonId, locale, readOnly }: Props) {
         {session.feedback.corrections.map((c, i) => <div key={i} className="english-correction"><p lang="en">{c.original}</p><strong lang="en">→ {c.improved}</strong><p>{c.reason}</p></div>)}
         <h3>{copy.practice}</h3><p lang="en">{session.feedback.practice}</p>
         <div className="english-actions"><button type="button" className="secondary-button" onClick={() => speak(session.feedback!.practice)}>{copy.listen}</button><button type="button" className="primary-button" disabled={disabled} onClick={() => void act({ action: "start", lessonId, scenario: session.scenario, level: session.level }, session.feedback!.practice)}>{copy.again}</button></div>
+        <EnglishPronunciationPractice phrase={session.feedback.practice} locale={locale} />
       </div>}
     </>}
     {busy && <p role="status">{copy.busy}</p>}

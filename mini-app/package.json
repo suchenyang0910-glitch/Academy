@@ -9,7 +9,7 @@
     "dev": "vinext dev",
     "build": "vinext build",
     "start": "vinext start",
-    "test": "npm run build && node --experimental-vm-modules --test tests/rendered-html.test.mjs tests/english-conversations.test.mjs tests/english-listening.test.mjs tests/listening-sessions.test.mjs",
+    "test": "npm run build && node --experimental-vm-modules --test tests/rendered-html.test.mjs tests/english-conversations.test.mjs tests/english-listening.test.mjs tests/listening-sessions.test.mjs tests/pronunciation-alignment.test.mjs",
     "test:english": "node --experimental-vm-modules --test tests/english-conversations.test.mjs",
     "acceptance:check": "node scripts/check-acceptance-static.mjs",
     "acceptance:new": "node scripts/create-acceptance-run.mjs",

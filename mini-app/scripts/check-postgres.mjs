@@ -40,9 +40,15 @@ const REQUIRED_TABLES = [
   "agent_lab_projects",
   "agent_runtime_checks",
   "knowledge_sources",
+  "english_conversations",
+  "english_conversation_usage",
+  "listening_sessions",
+  "listening_events",
+  "listening_attempts",
 ];
 
 const REQUIRED_INDEXES = [
+  "english_conversations_user_lesson_idx",
   "enrollments_user_active_idx",
   "lessons_course_idx",
   "submissions_user_idx",
@@ -103,6 +109,9 @@ const REQUIRED_INDEXES = [
   "knowledge_sources_canonical_ref_unique",
   "knowledge_sources_status_created_idx",
   "knowledge_sources_type_status_idx",
+  "listening_sessions_user_lesson_updated_idx",
+  "listening_events_session_created_idx",
+  "listening_attempts_user_material_set_idx",
 ];
 
 function loadEnvFile(path) {

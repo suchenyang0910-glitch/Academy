@@ -46,6 +46,11 @@ const STARTUP_REQUIRED_TABLES = [
   "agent_lab_projects",
   "agent_runtime_checks",
   "knowledge_sources",
+  "english_conversations",
+  "english_conversation_usage",
+  "listening_sessions",
+  "listening_events",
+  "listening_attempts",
 ];
 
 function databaseUrl() {

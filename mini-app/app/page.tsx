@@ -2,6 +2,8 @@
 
 import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
+import { EnglishConversationPanel } from "./english-conversation-panel";
+import { EnglishListeningPanel } from "./english-listening-panel";
 import {
   LOCALE_LABELS,
   contentLocaleLabel,
@@ -2503,6 +2505,10 @@ function LessonSheet({
           <p>{lesson.objective}</p>
         </section>
 
+        {lesson.courseId === "english" && canSubmit && lesson.day <= item.enrollment.currentDay && (
+          <EnglishListeningPanel lessonId={lesson.id} readOnly={!canSubmit || lesson.day > item.enrollment.currentDay} />
+        )}
+
         <section className="lesson-reading">
           <span className="eyebrow">01 · LEARN FIRST</span>
           <h2>{copy.learnFirstTitle}</h2>
@@ -2517,6 +2523,15 @@ function LessonSheet({
             </button>
           )}
         </section>
+
+        {lesson.courseId === "english" && (
+          <EnglishConversationPanel
+            key={lesson.id}
+            lessonId={lesson.id}
+            locale={locale}
+            readOnly={!canSubmit || lesson.day > item.enrollment.currentDay}
+          />
+        )}
 
         <section className="practice-card">
           <span className="eyebrow">02 · ACTIVE PRACTICE</span>

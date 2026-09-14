@@ -9,6 +9,87 @@ import {
   uniqueIndex,
 } from "drizzle-orm/sqlite-core";
 
+export const englishConversations = sqliteTable("english_conversations", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull().references(() => users.id),
+  lessonId: text("lesson_id").notNull().references(() => lessons.id),
+  scenario: text("scenario").notNull(),
+  level: text("level").notNull(),
+  status: text("status").notNull().default("active"),
+  messagesJson: text("messages_json").notNull(),
+  feedbackJson: text("feedback_json"),
+  version: integer("version").notNull().default(0),
+  startRequestId: text("start_request_id").notNull(),
+  lastRequestId: text("last_request_id"),
+  lockToken: text("lock_token"),
+  lockUntil: integer("lock_until").notNull().default(0),
+  provider: text("provider"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+}, table => [uniqueIndex("english_conversations_user_request_idx").on(table.userId, table.startRequestId), index("english_conversations_user_lesson_idx").on(table.userId, table.lessonId, table.createdAt)]);
+
+export const englishConversationUsage = sqliteTable("english_conversation_usage", {
+  userId: text("user_id").notNull().references(() => users.id),
+  dayKey: text("day_key").notNull(),
+  requests: integer("requests").notNull().default(0),
+}, table => [primaryKey({ columns: [table.userId, table.dayKey] })]);
+
+export const listeningSessions = sqliteTable("listening_sessions", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull().references(() => users.id),
+  lessonId: text("lesson_id").notNull().references(() => lessons.id),
+  materialId: text("material_id").notNull(),
+  materialVersion: text("material_version").notNull(),
+  questionSetId: text("question_set_id").notNull(),
+  mode: text("mode").notNull(),
+  stage: text("stage").notNull().default("ready"),
+  answersDraftJson: text("answers_draft_json").notNull().default("{}"),
+  supportJson: text("support_json").notNull().default("{}"),
+  status: text("status").notNull().default("active"),
+  version: integer("version").notNull().default(0),
+  priorExposure: integer("prior_exposure").notNull().default(0),
+  startRequestId: text("start_request_id").notNull(),
+  lastRequestId: text("last_request_id"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+  completedAt: text("completed_at"),
+}, table => [
+  uniqueIndex("listening_sessions_user_request_idx").on(table.userId, table.startRequestId),
+  index("listening_sessions_user_lesson_updated_idx").on(table.userId, table.lessonId, table.updatedAt),
+]);
+
+export const listeningEvents = sqliteTable("listening_events", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull().references(() => users.id),
+  sessionId: text("session_id").notNull().references(() => listeningSessions.id),
+  requestId: text("request_id").notNull(),
+  sequence: integer("sequence").notNull(),
+  type: text("type").notNull(),
+  payloadJson: text("payload_json").notNull().default("{}"),
+  createdAt: text("created_at").notNull(),
+}, table => [
+  uniqueIndex("listening_events_user_request_idx").on(table.userId, table.requestId),
+  index("listening_events_session_created_idx").on(table.sessionId, table.createdAt),
+]);
+
+export const listeningAttempts = sqliteTable("listening_attempts", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull().references(() => users.id),
+  sessionId: text("session_id").notNull().references(() => listeningSessions.id),
+  materialVersion: text("material_version").notNull(),
+  questionSetId: text("question_set_id").notNull(),
+  requestId: text("request_id").notNull(),
+  answersJson: text("answers_json").notNull(),
+  correctCount: integer("correct_count").notNull(),
+  questionCount: integer("question_count").notNull(),
+  supportSnapshotJson: text("support_snapshot_json").notNull().default("{}"),
+  priorExposure: integer("prior_exposure").notNull().default(0),
+  submittedAt: text("submitted_at").notNull(),
+}, table => [
+  uniqueIndex("listening_attempts_user_request_idx").on(table.userId, table.requestId),
+  index("listening_attempts_user_material_set_idx").on(table.userId, table.materialVersion, table.questionSetId),
+]);
+
 export const users = sqliteTable(
   "users",
   {

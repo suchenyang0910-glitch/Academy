@@ -5738,7 +5738,7 @@ async function markReminderCompleted(
   await getD1()
     .prepare(
       `UPDATE reminder_events
-       SET completed_at = COALESCE(completed_at, CURRENT_TIMESTAMP),
+       SET completed_at = COALESCE(completed_at, CAST(CURRENT_TIMESTAMP AS TEXT)),
            completed_submission_id = COALESCE(completed_submission_id, ?)
        WHERE id = ?`,
     )
@@ -5829,7 +5829,7 @@ export async function markReminderOpened(
   await getD1()
     .prepare(
       `UPDATE reminder_events
-       SET clicked_at = COALESCE(clicked_at, CURRENT_TIMESTAMP)
+       SET clicked_at = COALESCE(clicked_at, CAST(CURRENT_TIMESTAMP AS TEXT))
        WHERE id = ? AND user_id = ?`,
     )
     .bind(reminderEventId, identity.id)

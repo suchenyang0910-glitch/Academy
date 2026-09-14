@@ -47,6 +47,10 @@ for (const name of allowedUserWriteExceptions) {
   assert(store.includes(`function ${name}`), `${name} missing`);
 }
 
+const englishStore = readFileSync(resolve("lib", "english-conversation-store.ts"), "utf8");
+assert(englishStore.includes("await assertLearningAccess(identity)"), "English conversation writes must enforce learning access");
+assert(englishStore.includes("WHERE id = ? AND user_id = ?"), "English conversations must scope records to the authenticated user");
+
 console.log("OK learning access gates");
 console.log(`protected_learning_writes=${protectedLearningWrites.length}`);
 console.log("access_policy=server_side_learning_writes_only");

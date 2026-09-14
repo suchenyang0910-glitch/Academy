@@ -36,6 +36,20 @@ test("builds the Academy product shell without starter content", async () => {
   assert.doesNotMatch(page, /codex-preview|Your site is taking shape/i);
 });
 
+test("opens every course card and distinguishes a selected path from a course preview", async () => {
+  const [page, runtimeCopy] = await Promise.all([
+    read("../app/page.tsx"),
+    read("../lib/runtime-copy.ts"),
+  ]);
+
+  assert.match(page, /function CoursePreviewView/);
+  assert.match(page, /onClick=\{\(\) => setFocusedCourseId\(course\.id\)\}/);
+  assert.doesNotMatch(page, /disabled=\{!active\}/);
+  assert.match(page, /currentLesson=\{currentLesson \?\? availableElectiveLesson \?\? null\}/);
+  assert.match(runtimeCopy, /courseNotSelected/);
+  assert.match(runtimeCopy, /electiveWaiting/);
+});
+
 test("ships fixed curricula with choice-based checks and the reminder pool", async () => {
   const [curriculum, reminders, hosting] = await Promise.all([
     read("../lib/curriculum.ts"),

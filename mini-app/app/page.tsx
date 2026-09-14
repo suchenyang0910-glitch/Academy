@@ -2215,6 +2215,9 @@ function CoursesView({
   const currentLesson = today.find(
     (item) => item.enrollment.courseId === focusedCourseId,
   );
+  const availableElectiveLesson = learningAhead.find(
+    (item) => item.enrollment.courseId === focusedCourseId,
+  );
   const mainDone = currentLesson
     ? hasAcceptedMainlineEvidence(currentLesson)
     : false;
@@ -2230,7 +2233,7 @@ function CoursesView({
           ? courseCopy.extraOpen
           : courseCopy.extraLocked;
 
-  if (focusedCourse && focusedEnrollment && currentLesson) {
+  if (focusedCourse && focusedEnrollment) {
     const continuation =
       courseCopy.extensionPaths[
         focusedCourse.id as keyof typeof courseCopy.extensionPaths
@@ -2241,7 +2244,7 @@ function CoursesView({
       <CoursePathView
         course={focusedCourse}
         enrollment={focusedEnrollment}
-        currentLesson={currentLesson}
+        currentLesson={currentLesson ?? availableElectiveLesson ?? null}
         nextLessons={nextLessons}
         mainDone={Boolean(mainDone)}
         lagDays={supervision.lagDays}
@@ -2251,6 +2254,17 @@ function CoursesView({
         locale={locale}
         onBack={() => setFocusedCourseId(null)}
         onSelect={onSelect}
+      />
+    );
+  }
+
+  if (focusedCourse) {
+    return (
+      <CoursePreviewView
+        course={focusedCourse}
+        locale={locale}
+        onBack={() => setFocusedCourseId(null)}
+        onChoose={onEdit}
       />
     );
   }
@@ -2271,8 +2285,7 @@ function CoursesView({
               type="button"
               className="catalog-card"
               key={course.id}
-              onClick={() => active && setFocusedCourseId(course.id)}
-              disabled={!active}
+              onClick={() => setFocusedCourseId(course.id)}
               style={{ "--course-accent": course.accent } as React.CSSProperties}
             >
               <span>{course.subtitle}</span>
@@ -2294,7 +2307,7 @@ function CoursesView({
               <div className="catalog-card-meta">
                 <strong>{course.durationDays} DAYS</strong>
                 <small>{courseCopy.minutesPerDay(course.dailyMinutes)}</small>
-                <em>{active ? courseCopy.viewPath : courseCopy.notSelected}</em>
+                <em>{active ? courseCopy.viewPath : courseCopy.viewCourse}</em>
               </div>
             </button>
           );
@@ -2323,7 +2336,7 @@ function CoursePathView({
 }: {
   course: CatalogCourse;
   enrollment: Enrollment;
-  currentLesson: TodayItem;
+  currentLesson: TodayItem | null;
   nextLessons: TodayItem[];
   mainDone: boolean;
   lagDays: number;
@@ -2366,11 +2379,13 @@ function CoursePathView({
 
       <section className="path-current">
         <span className="eyebrow">CURRENT REQUIRED</span>
-        <strong>{currentLesson.lesson?.title}</strong>
-        <p>{currentLesson.lesson?.objective}</p>
-        <button className="primary-button" type="button" onClick={() => onSelect(currentLesson)}>
-          {mainDone ? copy.viewTodayEvidence : copy.continueMainline}
-        </button>
+        {currentLesson ? <>
+          <strong>{currentLesson.lesson?.title}</strong>
+          <p>{currentLesson.lesson?.objective}</p>
+          <button className="primary-button" type="button" onClick={() => onSelect(currentLesson)}>
+            {mainDone ? copy.viewTodayEvidence : copy.continueMainline}
+          </button>
+        </> : <p>{copy.electiveWaiting}</p>}
       </section>
 
       {!graduated && (
@@ -2413,6 +2428,32 @@ function CoursePathView({
           </strong>
         </section>
       )}
+    </section>
+  );
+}
+
+function CoursePreviewView({
+  course,
+  locale,
+  onBack,
+  onChoose,
+}: {
+  course: CatalogCourse;
+  locale: AppLocale;
+  onBack: () => void;
+  onChoose: () => void;
+}) {
+  const copy = courseRuntimeCopy(locale);
+  const appCopy = copyFor(locale);
+  const domain = courseDomainRuntimeCopy(locale, course.id);
+  return (
+    <section className="course-path" style={{ "--course-accent": course.accent } as React.CSSProperties}>
+      <button className="path-back" type="button" onClick={onBack}>{copy.backCourses}</button>
+      <span className="eyebrow">{course.subtitle.toUpperCase()}</span>
+      <h1>{course.title}</h1><p>{course.summary}</p>
+      <div className="course-domain-panel"><span>{domain.domain}</span><strong>{domain.evidence}</strong><p>{domain.mode}</p></div>
+      {course.isContentFallback && <ContentFallbackNotice copy={appCopy} locale={locale} contentLocale={course.contentLocale} />}
+      <section className="path-current"><span className="eyebrow">COURSE PREVIEW</span><p>{copy.courseNotSelected}</p><button className="primary-button" type="button" onClick={onChoose}>{copy.chooseCourse}</button></section>
     </section>
   );
 }

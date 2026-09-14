@@ -4388,7 +4388,10 @@ async function grantReferralRewards(userId: string, qualified: number) {
     await d1
       .prepare(
         `UPDATE invitations
-         SET reward_granted_at = COALESCE(reward_granted_at, CURRENT_TIMESTAMP)
+         SET reward_granted_at = COALESCE(
+               reward_granted_at,
+               CAST(CURRENT_TIMESTAMP AS TEXT)
+             )
          WHERE id = ?`,
       )
       .bind(invitation.id)
@@ -5266,7 +5269,7 @@ async function resolveReviewQueueItem(
     .prepare(
       `UPDATE review_queue_items
        SET status = 'completed',
-           resolved_at = COALESCE(resolved_at, CURRENT_TIMESTAMP),
+           resolved_at = COALESCE(resolved_at, CAST(CURRENT_TIMESTAMP AS TEXT)),
            updated_at = CURRENT_TIMESTAMP
        WHERE user_id = ?
          AND source_type = ?
@@ -5432,7 +5435,7 @@ export async function resolveReviewQueueEntry(
     .prepare(
       `UPDATE review_queue_items
        SET status = 'completed',
-           resolved_at = COALESCE(resolved_at, CURRENT_TIMESTAMP),
+           resolved_at = COALESCE(resolved_at, CAST(CURRENT_TIMESTAMP AS TEXT)),
            updated_at = CURRENT_TIMESTAMP
        WHERE id = ? AND user_id = ?
        RETURNING id,
